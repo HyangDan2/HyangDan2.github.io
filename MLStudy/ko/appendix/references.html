@@ -1,0 +1,133 @@
+<!doctype html>
+<html data-language="ko" lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="표준 개념의 근거와 이 사이트의 작성·계산 범위를 정리합니다.">
+    <meta name="theme-color" content="#18312e">
+    <title>참고자료와 제작 정보 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">본문으로 건너뛰기</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html" aria-label="HD2Lab 홈"><i
+            aria-hidden="true"></i>HD2Lab<small>LEARNING ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="주 메뉴"><a href="../main.html#curriculum">학습 목차</a><a
+            href="../main.html#labs">실험실</a><a href="../appendix/references.html">참고자료</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="언어"><a href="../../appendix/references.html"
+              lang="en" hreflang="en" data-language="en">English</a><a
+              href="../../ko/appendix/references.html" lang="ko" hreflang="ko" data-language="ko"
+              aria-current="true">한국어</a><a href="../../ja/appendix/references.html" lang="ja"
+              hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>다크 모드</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Appendix / References</div>
+        <h1>참고자료와 제작 정보</h1>
+        <p>표준 개념의 근거와 이 사이트의 작성·계산 범위를 정리합니다.</p>
+        <div class="meta"><span>공식 문헌</span><span>재현 정보</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>이 페이지의 흐름</summary>
+        <ol>
+          <li><a href="#mml">수학적 배경</a></li>
+          <li><a href="#evaluation">평가와 데이터 누출</a></li>
+          <li><a href="#probability">확률분포와 수치 확인</a></li>
+          <li><a href="#linear">회귀와 정규화</a></li>
+          <li><a href="#pca">PCA와 행렬 분해</a></li>
+          <li><a href="#gmm">혼합모형과 EM</a></li>
+          <li><a href="#svm">분류와 마진</a></li>
+          <li><a href="#reproduce">제작과 재현</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="mml">
+          <h2>수학적 배경</h2>
+          <p><a href="https://mml-book.github.io/">Mathematics for Machine Learning — 저자 공식
+              사이트</a><br>Marc Peter Deisenroth, A. Aldo Faisal, Cheng Soon Ong, Cambridge University
+            Press, 2020.</p>
+          <p>선형대수, 기하, 행렬 분해, 미분, 확률, 최적화를 더 깊이 공부하기 위한 문헌입니다. 이 사이트의 문장·예제·코드·그림은 별도로 작성했으며 교재의 도표나
+            연습문제를 복제하지 않았습니다.</p>
+        </section>
+        <section id="evaluation">
+          <h2>평가와 데이터 누출</h2>
+          <p><a href="https://scikit-learn.org/stable/common_pitfalls.html">scikit-learn 공식 문서:
+              Common pitfalls</a>와 <a
+              href="https://scikit-learn.org/stable/modules/model_evaluation.html">Model
+              evaluation</a>. 훈련에서만 전처리를 적합하는 원칙, 평가 지표와 누출 개념을 확인합니다. 본문의 시간 변화·사후 특징·비용 사례는 별도 설계한
+            합성 실험입니다.</p>
+        </section>
+        <section id="probability">
+          <h2>확률분포와 수치 확인</h2>
+          <p><a
+              href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.beta.html">SciPy
+              공식 문서: Beta distribution</a>. 밀도 정의와 CDF·분위수의 의미를 확인합니다. Beta–Bernoulli 갱신과 가우시안 예측
+            분산은 본문에서 유도했으며 다운로드 계산에는 SciPy를 사용하지 않습니다.</p>
+        </section>
+        <section id="linear">
+          <h2>회귀와 정규화</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/linear_model.html">scikit-learn 공식 문서:
+              Linear Models</a>. 최소제곱과 Ridge 목적함수, 특징 확장과 구현 참고. 브라우저는 scikit-learn을 호출하지 않고 직접 작성한
+            QR 계산을 사용합니다.</p>
+        </section>
+        <section id="pca">
+          <h2>PCA와 행렬 분해</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/decomposition.html#pca">scikit-learn
+              공식 문서: PCA</a>. 중심화, 설명분산, 압축의 개념과 실제 라이브러리 사용을 비교할 때 참고하세요.</p>
+        </section>
+        <section id="gmm">
+          <h2>혼합모형과 EM</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/mixture.html">scikit-learn 공식 문서:
+              Gaussian mixture models</a>. 공분산 형태와 혼합모형의 적합, 성분 수 선택에 관한 구현 참고입니다.</p>
+        </section>
+        <section id="svm">
+          <h2>분류와 마진</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/svm.html">scikit-learn 공식 문서: Support
+              Vector Machines</a>. 선형·커널 SVM과 결정 함수의 사용법을 확인할 수 있습니다.</p>
+        </section>
+        <section id="reproduce">
+          <h2>제작과 재현</h2>
+          <p>HD2Lab의 학습 아카이브를 위해 설명·합성 사례·JavaScript 계산·SVG 도표를 새로 작성했습니다. AI 작성 지원을 사용했으며 공개 문헌 대조,
+            계산 테스트와 화면 검증으로 검토합니다. 개인의 학습 경험이나 실제 서비스 수행 이력을 대신 작성하지 않습니다.</p>
+          <p>브라우저 런타임 의존성은 없습니다. 수식은 HTML의 위·아래첨자와 유니코드로 표현하며, 그래프는 SVG입니다. 실험은 모두 로컬에서 실행되고 입력을
+            전송하거나 저장하지 않습니다. JavaScript가 꺼지면 기본 설정에서 계산한 정적 결과를 표시합니다.</p>
+          <p><a href="../downloads/study-examples.py" download>7개 장 Python 예제 다운로드</a> · <a
+              href="../downloads/study-examples.ipynb" download>Jupyter Notebook 다운로드</a> · <a
+              href="../assets/js/math-core.js" download>브라우저 수치 코드</a></p>
+          <p><a href="../downloads/advanced-experiments.ipynb" download>심화 Notebook · 28개 그림 출력</a>
+            · <a href="../downloads/advanced-experiments.py" download>심화 계산 Python</a> · <a
+              href="../downloads/advanced-figures.py" download>그림 재생성 Python</a> · <a
+              href="../downloads/advanced-results.json" download>심화 수치 결과</a></p>
+          <p>심화 그림 28개는 NumPy 2.2.6과 Matplotlib 3.10.5로 사전 계산한 SVG입니다. Notebook의 모든 셀을 실행하면 같은 실험과
+            그림을 다시 생성합니다. Matplotlib은 제작 도구이며 웹 런타임에는 포함하지 않습니다. <a
+              href="https://matplotlib.org/stable/project/license.html">Matplotlib 라이선스</a> · <a
+              href="https://numpy.org/doc/stable/license.html">NumPy 라이선스</a>.</p>
+          <p>Python 계산 예제에는 NumPy, 심화 그림 재생성에는 Matplotlib도 필요합니다. Python과 JavaScript는 난수 생성기가 달라 같은
+            숫자의 시드라도 표본은 일치하지 않습니다. 별도 검증에서는 브라우저가 생성한 동일한 배열을 NumPy에 전달해 계산을 비교합니다.</p>
+          <p>참고 링크 확인: 2026-09-08. 외부 의존 코드·폰트·이미지를 번들하지 않았습니다. 공개 문헌의 저작권은 각 저작권자에게 있으며 이 사이트 전체에
+            대한 이용허락은 별도로 정하지 않았습니다.</p>
+        </section>
+        <p class="sources">더 읽기: <a href="../appendix/references.html#mml">관련 개념의 참고자료</a> · <a
+            href="../appendix/glossary.html">용어와 기호</a></p><button class="print-button"
+          type="button" data-print>이 페이지 인쇄 / PDF 저장</button>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>개념을 연결하고, 계산으로 확인하는 학습 기록.<br>합성 데이터 · 직접 작성한 설명과 실험</p><a
+          href="../appendix/references.html">참고자료 및 제작 정보 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

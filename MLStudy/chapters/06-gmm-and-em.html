@@ -1,0 +1,999 @@
+<!doctype html>
+<html data-language="en" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="Is it possible to represent the affiliation of a particular observer as a probability? We need to distinguish between mixed densities and probabilities of affiliation. We follow the approach outlined in EM, which involves repeated estimations and updates.">
+    <meta name="theme-color" content="#18312e">
+    <title>How to find hidden groups | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab learning home"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="Main navigation"><a
+            href="../main.html#curriculum">Curriculum</a><a href="../main.html#labs">Labs</a><a
+            href="../appendix/references.html">References</a><a class="hq-link"
+            href="../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="Language"><a
+              href="../chapters/06-gmm-and-em.html" lang="en" hreflang="en" data-language="en"
+              aria-current="true">English</a><a href="../ko/chapters/06-gmm-and-em.html" lang="ko"
+              hreflang="ko" data-language="ko">한국어</a><a href="../ja/chapters/06-gmm-and-em.html"
+              lang="ja" hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>Dark mode</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Chapter 06 / Gaussian mixtures</div>
+        <h1>Finding Hidden Groups</h1>
+        <p>Is it possible to represent the affiliation of a particular observer as a probability? We
+          need to distinguish between mixed densities and probabilities of affiliation. We follow
+          the approach outlined in EM, which involves repeated estimations and updates.</p>
+        <div class="meta"><span>04 · probability / 05 · covariance</span><span>Mixtures ·
+            Responsibilities · EM</span><span>3 advanced cases · 4 comparative figures</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>On this page</summary>
+        <ol>
+          <li><a href="#question">01 / overlapping request types</a></li>
+          <li><a href="#density">The weighted sum of the densities 02 /</a></li>
+          <li><a href="#responsibility">The probability of belonging after the observation of 03
+              /</a></li>
+          <li><a href="#em">04 / E-step and M-step</a></li>
+          <li><a href="#likelihood">05 / What Logwood tells us…</a></li>
+          <li><a href="#code">06 / Implementation of accountability mechanisms and observation</a>
+          </li>
+          <li><a href="#advanced-a">Compare the initialization of the advanced stage A / with the
+              number of components involved.</a></li>
+          <li><a href="#advanced-b">Let’s rewrite the value of B / in terms of entropy.</a></li>
+          <li><a href="#advanced-c">Diagnose and prevent the collapse of the covariance matrix in
+              the advanced case C /</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="question">
+          <h2>01 / overlapping request types</h2>
+          <p>Let’s consider the virtual coordinates that standardize the size of service requests
+            and their processing times. When different types of data are mixed together, it’s
+            possible to calculate how well each type of data can explain the observations, rather
+            than trying to determine a definitive category for each type of data. GMM represents the
+            entire distribution as a weighted sum of Gaussian distributions with different weights.
+          </p>
+          <aside class="note "><strong>Chapter goals</strong>
+            <p>It’s necessary to distinguish between the mixing ratio and the responsibility values.
+              The E/M stage is also calculated. The initialization, number of components, and
+              numerical stability are all monitored together with the log-likelihood.</p>
+          </aside>
+          <nav class="study-route" aria-label="Jump to advanced cases"><strong>After the
+              fundamentals: 3 advanced cases · 4 comparative figures</strong><a
+              href="#advanced-a">Compare the initialization of the advanced stage A / with the
+              number of components involved.</a><a href="#advanced-b">Let’s rewrite the value of B /
+              in terms of entropy.</a><a href="#advanced-c">Diagnose and prevent the collapse of the
+              covariance matrix in the advanced case C /</a></nav>
+        </section>
+        <section id="density">
+          <h2>The weighted sum of the densities 02 /</h2>
+          <p>Each component has a mean value of μₖ, a variance of Σₖ, and a mixing ratio of πₖ. πₖ
+            represents the probability that a component will be selected before observation. The sum
+            of the weights is 1, and the integral of each density is 1. Therefore, the integral of
+            the mixed density is also 1.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>p(x) =
+            Σ<sub>k=1</sub><sup>K</sup>π<sub>k</sub>N(x|μ<sub>k</sub>,Σ<sub>k</sub>)<br>π<sub>k</sub>
+            ≥ 0,   Σ<sub>k</sub>π<sub>k</sub> = 1</div>
+          <p>The equipartition line is an ellipse that has its axis aligned with the eigenvector of
+            the covariance matrix. The diagonal covariance is limited to being parallel to the axis,
+            while the full covariance allows for rotation. As the degrees of freedom increase, the
+            number of samples required and the requirements for stability also increase.</p>
+        </section>
+        <section id="responsibility">
+          <h2>The probability of belonging after the observation of 03 /</h2>
+          <p>The component number z represents a latent variable that cannot be observed. The value
+            obtained by calculating the probability of this component after observing xᵢ is the
+            liability value rᵢₖ. The mixing ratio belongs to the entire model, while the liability
+            values belong to each individual observation.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>r<sub>ik</sub> =
+            π<sub>k</sub>N(x<sub>i</sub>|μ<sub>k</sub>,Σ<sub>k</sub>) /
+            Σ<sub>j</sub>π<sub>j</sub>N(x<sub>i</sub>|μ<sub>j</sub>,Σ<sub>j</sub>)</div>
+          <p>If the weighted densities of the two components are 0.12 and 0.08, then the
+            responsibility values should be 0.6 and 0.4. The largest value can be displayed, but a
+            clear distinction between them isn’t possible. The sum of the responsibility values for
+            each observation should be equal to 1.</p>
+          <aside class="note "><strong>Very small densities</strong>
+            <p>After calculating the log density, it is normalized using log-sum-exp. If m = max(aₖ)
+              is the case, then log Σexp(aₖ) = m + log Σexp(aₖ−m) is also the case. It’s the same
+              formula used to reduce the underflow.</p>
+          </aside>
+        </section>
+        <section id="em">
+          <h2>04 / E-step and M-step</h2>
+          <p>The observation log odds are combined within the log component. As a result, it’s
+            difficult to calculate the parameters in a closed form. Currently, the E-step component
+            is used to calculate the significance levels, and the M-step component is used to
+            estimate the weighted statistics.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>N<sub>k</sub> =
+            Σ<sub>i</sub>r<sub>ik</sub><br>μ<sub>k</sub><sup>new</sup> =
+            Σ<sub>i</sub>r<sub>ik</sub>x<sub>i</sub>/N<sub>k</sub><br>Σ<sub>k</sub><sup>new</sup> =
+            Σ<sub>i</sub>r<sub>ik</sub>(x<sub>i</sub>−μ<sub>k</sub><sup>new</sup>)(x<sub>i</sub>−μ<sub>k</sub><sup>new</sup>)<sup>T</sup>/N<sub>k</sub><br>π<sub>k</sub><sup>new</sup>
+            = N<sub>k</sub>/N</div>
+          <p>If the value of 0,2,5] and some other parameter is 0.8,0.6,0.1], then the number of
+            valid samples is 1.5. The new mean is 1.7/1.5 ≈ 1.133. In case of repeated covariance,
+            the new mean is used. The impact of observations with larger values of the parameter
+            increases.</p>
+        </section>
+        <section id="likelihood">
+          <h2>05 / What Logwood tells us…</h2>
+          <p>In an ideal, exact EM, the observation log-likelihood does not decrease. However, the
+            global maximum is not guaranteed. It can converge to different parameters depending on
+            the initial mean. In a unbounded mixture model, the variance of one component can become
+            infinitely large when it collapses into a single point.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>ℓ(θ) =
+            Σ<sub>i</sub>log[Σ<sub>k</sub>π<sub>k</sub>N(x<sub>i</sub>|μ<sub>k</sub>,Σ<sub>k</sub>)]
+          </div>
+          <p>The experiment reduces the peculiarities by adding 10⁻⁶ to the covariance diagonal.
+            Since this approach differs slightly from the pure maximum likelihood method, if there
+            are any deviations or abnormal values, the process will be aborted. Even if the training
+            likelihood is high, future predictions may not always be accurate. The number of
+            components can be determined through separate verifications, or using criteria that
+            reflect the complexity of the problem, such as AIC·BIC.</p>
+          <aside class="note warning"><strong>There is no order or sequence in the designation of
+              groups.</strong>
+            <p>Even if the names of the components are changed, the density can still remain the
+              same. The initialization does not assume that the same numbers correspond to the same
+              group.</p>
+          </aside>
+        </section>
+        <section id="code">
+          <h2>06 / Implementation of accountability mechanisms and observation</h2>
+          <figure class="figure" tabindex="0"
+            aria-label="The calculation results are shown in a graph. On a narrow screen, it’s possible to scroll left and right.">
+            <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+              aria-labelledby="gmm-fit-title">
+              <title id="gmm-fit-title">GMM – The maximum liability values of the clusters; the
+                distances between components: 2 – Elliptical shapes</title>
+              <defs>
+                <clippath id="gmm-fit-clip">
+                  <rect x="64" y="22" width="596" height="283" />
+                </clippath>
+              </defs>
+              <rect width="680" height="360" fill="white" />
+              <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-4</text><text x="54" y="309" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-4</text>
+              <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-2.4</text><text x="54" y="252.4" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-2.4</text>
+              <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-0.8</text><text x="54" y="195.8" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-0.8</text>
+              <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                font-family="sans-serif" font-size="11" fill="#526964">0.8</text><text x="54"
+                y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                fill="#526964">0.8</text>
+              <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">2.4</text><text x="54" y="82.6" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">2.4</text>
+              <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">4</text><text x="54" y="26" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">4</text>
+              <g clip-path="url(#gmm-fit-clip)">
+                <circle cx="417.68691978566335" cy="114.82678354702693" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="513.7929056707931" cy="150.6818874973117" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="549.007846580178" cy="155.35927845080735" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="491.76783969977924" cy="131.45933210053985" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="415.93965599319944" cy="108.31389096466094" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="471.814121641326" cy="151.06233573345054" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="529.9813570389761" cy="179.8193537940328" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="458.64678586265785" cy="107.78344428523488" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="549.0266141865911" cy="160.68352128313543" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="528.4292403767231" cy="129.34173894561488" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="428.8318261941034" cy="96.29773592022087" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="466.61720891236274" cy="116.72967308981362" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="523.857730878845" cy="156.8990678427047" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="468.1495210595683" cy="92.8880711482376" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="495.5930480758928" cy="111.08218249671285" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="428.6521968278475" cy="125.1520641131219" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="395.9044410658901" cy="116.63601042893123" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="483.2493938661623" cy="154.36239953876301" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="526.0180766084651" cy="137.7372330854654" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="404.1209409636057" cy="117.56570074751528" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="443.1852126319797" cy="123.8021085553803" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="432.63130538132185" cy="115.58625718852736" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="479.53068198102517" cy="145.16855181882534" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="467.70635942121174" cy="130.4372466613064" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="491.426686804432" cy="133.81668617589582" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="526.1351903727423" cy="122.98291016407856" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="406.3560674508449" cy="95.88699572630503" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="495.0662575607978" cy="125.15530118084271" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="489.5039438338102" cy="140.51876609798177" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="411.5480679941308" cy="86.66471395322549" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="459.1088601704325" cy="150.57287568767254" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="451.5319519811373" cy="118.8896273885531" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="403.82237008500044" cy="123.2507814430086" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="579.4425999880791" cy="136.632560959545" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="453.8354868060609" cy="125.60705211942246" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="541.6945150088836" cy="160.4368341494152" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="422.9350978567566" cy="90.05600213710358" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="397.2274203360118" cy="120.1201381331739" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="415.1507552236037" cy="123.99587390082974" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="533.5576059463854" cy="143.84557943423493" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="590.1175583173798" cy="158.66011183352146" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="499.9201963364938" cy="146.58593395847157" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="430.7911629410403" cy="118.67682741284298" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="460.6786758381771" cy="126.87955387274812" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="412.8711364464462" cy="139.65621895055412" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="470.05699972673483" cy="118.84620529588926" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="505.52059338139054" cy="154.41641165313223" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="477.74858091635394" cy="119.63845215075924" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="406.63597102019486" cy="128.11614161374072" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="512.8861731778245" cy="140.83629623337185" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="543.3199643743935" cy="158.021423013722" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="550.3947821262122" cy="129.28634051142006" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="536.9177757816046" cy="129.21254115945322" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="473.2021811675825" cy="119.71446576964908" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="453.5876057090745" cy="128.7598438409503" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="530.8465504555097" cy="149.39828479737216" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="400.72817540922534" cy="115.47718321499988" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="440.89893070979105" cy="124.18808086615192" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="395.1350203154921" cy="104.41147176134007" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="456.6173856766798" cy="141.13331459248278" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="453.86569612811695" cy="112.97405876152561" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="474.49793737308687" cy="116.96878176446276" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="514.2623729847141" cy="121.72125593682017" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="457.4750049147969" cy="119.40106191507707" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="426.47462539805565" cy="117.56379315631841" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="412.6836921761779" cy="96.45629263054127" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="494.7904115933078" cy="156.42909137084072" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="489.26147736582135" cy="107.00023675738697" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="361.6525144241964" cy="185.59739691100134" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="447.660565991644" cy="127.00275354480564" r="3" fill="#106858"
+                  opacity="0.7" />
+                <path
+                  d="M601.44 134.87 L601.44 138.32 L600.86 141.75 L599.70 145.18 L597.98 148.57 L595.69 151.91 L592.86 155.20 L589.48 158.42 L585.57 161.55 L581.15 164.59 L576.24 167.52 L570.85 170.32 L565.01 173.00 L558.75 175.53 L552.07 177.91 L545.02 180.13 L537.62 182.17 L529.91 184.04 L521.90 185.71 L513.64 187.20 L505.15 188.48 L496.48 189.56 L487.66 190.43 L478.71 191.09 L469.69 191.53 L460.62 191.75 L451.54 191.76 L442.49 191.54 L433.50 191.11 L424.62 190.47 L415.86 189.61 L407.29 188.54 L398.91 187.26 L390.78 185.79 L382.92 184.12 L375.36 182.26 L368.14 180.23 L361.28 178.02 L354.81 175.65 L348.76 173.12 L343.15 170.45 L338.00 167.65 L333.34 164.73 L329.18 161.70 L325.55 158.57 L322.45 155.36 L319.89 152.07 L317.89 148.73 L316.46 145.34 L315.61 141.92 L315.32 138.48 L315.61 135.04 L316.48 131.60 L317.92 128.20 L319.92 124.83 L322.49 121.51 L325.60 118.25 L329.24 115.08 L333.41 111.99 L338.07 109.01 L343.23 106.14 L348.84 103.39 L354.90 100.79 L361.37 98.33 L368.24 96.03 L375.47 93.90 L383.03 91.95 L390.90 90.17 L399.03 88.59 L407.41 87.21 L415.99 86.02 L424.74 85.05 L433.63 84.29 L442.62 83.74 L451.67 83.40 L460.75 83.29 L469.82 83.39 L478.85 83.72 L487.79 84.26 L496.61 85.01 L505.28 85.97 L513.76 87.15 L522.02 88.52 L530.02 90.09 L537.73 91.86 L545.13 93.81 L552.17 95.93 L558.84 98.22 L565.10 100.67 L570.94 103.27 L576.32 106.00 L581.22 108.87 L585.63 111.85 L589.53 114.93 L592.90 118.10 L595.73 121.35 L598.01 124.67 L599.72 128.04 L600.87 131.44 L601.44 134.87"
+                  fill="none" stroke="#106858" stroke-width="2" />
+                <rect x="397.91198674817895" y="232.38370208088423" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="382.2718271302529" y="199.0898552583213" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="415.9595918818205" y="173.1547332467585" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="372.88530234829074" y="184.68546265530162" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="412.2016712632486" y="241.78619782509685" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="367.73221530627774" y="232.6720764789161" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="446.10373531772836" y="146.5161829650586" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="418.75554569064167" y="209.50186794187817" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="450.10374236600643" y="181.73965331996288" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="417.113850652404" y="238.1072152688248" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="407.5020184736628" y="180.7940170503864" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="385.30821668233204" y="198.37808627788468" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="410.53004047514025" y="208.07446332724282" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="420.6011818131289" y="219.139665875065" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="420.56803172869166" y="146.6899406373796" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="424.81720606452603" y="230.40209033959565" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="424.88034402472346" y="216.26113496081285" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="414.2994587921939" y="208.39702186898904" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="387.150614830503" y="197.15980134218307" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="438.4039607777154" y="225.30886816278988" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="442.46460683301535" y="137.95966603598455" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="403.7842232083901" y="230.08660086921972" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="407.115673648544" y="222.6367848007706" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="427.9079172467385" y="199.23104757058618" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="400.20878303885894" y="207.25839163830767" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="377.41136994217123" y="191.66067368162163" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="446.92652668813696" y="99.66558371426856" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="467.4543320886026" y="236.28782362597553" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="415.89440441523504" y="205.25167653641293" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="440.492452787106" y="168.3441016566757" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="441.9871237802607" y="130.79284274947935" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="446.36490722112717" y="211.57121952458738" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="452.27262718412106" y="208.83236918786238" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="431.05826027008965" y="182.6006905512632" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="433.68771581048856" y="190.31282120387812" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="409.76272906383764" y="259.9963576546104" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="396.573127426877" y="163.44810294782766" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="438.8814805294259" y="187.34751566476916" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="422.4690559870072" y="221.6229237041839" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="372.6714915313905" y="233.96404335504684" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="412.29709456719326" y="187.90328595563005" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="421.1761839548322" y="205.28368361550758" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="442.3846054645017" y="211.69199122138826" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="444.44145608021876" y="189.03586828600783" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="427.8503656510593" y="218.67842997736778" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="416.7099348947293" y="234.9232208252193" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="422.259400241609" y="201.6329853709325" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="437.00977476385685" y="211.11307459464908" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="422.2751741468876" y="258.09552977473425" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="432.8133587070298" y="193.33588530148205" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="425.1967680217249" y="84.89751771293189" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="457.66976143056746" y="86.09227601436456" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="349.555132608342" y="215.47281767597173" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="417.52834390945225" y="251.4692183017358" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="423.02141942930035" y="273.99795914982894" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="394.8996284313091" y="216.42861134393723" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="417.1953685493999" y="176.2141230565555" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="429.6422438758266" y="79.75366849574212" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <path
+                  d="M449.66 85.10 L452.61 85.45 L455.45 86.19 L458.19 87.34 L460.80 88.88 L463.27 90.81 L465.61 93.12 L467.79 95.80 L469.82 98.84 L471.67 102.22 L473.35 105.94 L474.84 109.98 L476.15 114.32 L477.26 118.94 L478.17 123.83 L478.88 128.97 L479.38 134.33 L479.68 139.90 L479.76 145.65 L479.64 151.56 L479.31 157.60 L478.77 163.75 L478.03 169.99 L477.08 176.29 L475.94 182.63 L474.60 188.97 L473.08 195.30 L471.37 201.59 L469.49 207.81 L467.43 213.94 L465.22 219.96 L462.86 225.83 L460.36 231.54 L457.73 237.06 L454.98 242.37 L452.11 247.46 L449.15 252.29 L446.11 256.85 L442.99 261.12 L439.81 265.08 L436.58 268.73 L433.31 272.03 L430.03 274.99 L426.73 277.58 L423.44 279.80 L420.17 281.64 L416.93 283.09 L413.73 284.15 L410.59 284.81 L407.52 285.06 L404.53 284.91 L401.63 284.36 L398.84 283.42 L396.17 282.07 L393.62 280.34 L391.21 278.22 L388.95 275.72 L386.85 272.86 L384.91 269.65 L383.14 266.10 L381.56 262.22 L380.16 258.03 L378.95 253.54 L377.94 248.78 L377.13 243.77 L376.52 238.51 L376.12 233.04 L375.93 227.38 L375.95 221.55 L376.17 215.57 L376.61 209.47 L377.25 203.27 L378.09 197.00 L379.14 190.68 L380.38 184.33 L381.81 177.99 L383.43 171.68 L385.23 165.42 L387.19 159.24 L389.33 153.17 L391.61 147.22 L394.05 141.43 L396.61 135.81 L399.31 130.39 L402.12 125.19 L405.03 120.23 L408.03 115.53 L411.12 111.11 L414.27 106.99 L417.48 103.19 L420.72 99.71 L424.00 96.58 L427.29 93.80 L430.59 91.40 L433.87 89.36 L437.13 87.72 L440.35 86.46 L443.52 85.61 L446.63 85.15 L449.66 85.10"
+                  fill="none" stroke="#b15d2d" stroke-width="2" stroke-dasharray="6 5" />
+                <circle cx="146.07830530228824" cy="199.98980442492183" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="249.94515417386145" cy="204.90832996960663" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="255.0113935342487" cy="140.81688982200134" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="318.4668519765621" cy="134.95566575860997" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="235.40563625088305" cy="192.378924567307" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="309.4681841007068" cy="97.25086631098273" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="268.0309524063683" cy="184.6727577489935" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="314.67562710283187" cy="182.26471980301235" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="381.9692601328741" cy="104.47939166750456" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="258.15835307288927" cy="148.41183650258998" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="286.33961741427197" cy="168.30553555598019" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="230.12684991597956" cy="201.48536733696665" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="185.32995669868637" cy="180.187098233675" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="370.0182197346939" cy="119.65482735777925" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="314.06724060601783" cy="169.1807330643807" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="411.99800672235796" cy="73.57590260713422" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="366.8530947602036" cy="114.07673625658717" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="215.47147436220237" cy="199.58436320277406" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="214.937591343059" cy="214.15788513395023" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="341.7429237467703" cy="132.8410674059795" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="324.5264644253225" cy="196.3050320188292" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="300.0524506948142" cy="151.27853980149845" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="276.6029991935259" cy="164.7090690754377" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="253.33556713909562" cy="192.41820600293676" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="390.3669885968156" cy="90.44430678046916" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="209.4500975017644" cy="236.33085372356632" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="310.27878293071103" cy="186.5008751031532" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="266.25805855089214" cy="193.97695195844446" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="190.52482041795565" cy="227.24460705214113" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="250.99081938095435" cy="152.50607029623566" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="318.26691211759305" cy="160.48832486724314" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="261.7464553766597" cy="210.51739242387413" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="249.02145809226346" cy="202.16698166552197" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="317.82208494011206" cy="163.02310660233798" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="299.55498336135173" cy="155.0675115602467" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="186.27330294622925" cy="229.88254888904862" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="207.50802219727277" cy="181.32338021187428" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="290.280791472347" cy="161.25202942282172" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="261.9053625307846" cy="186.4771033903128" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="210.29809376622427" cy="211.2057450798165" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="276.1059164098182" cy="158.8053118280459" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="234.3089422269347" cy="162.50687694349529" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="305.7488376653382" cy="184.7975879094194" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="389.0331356838733" cy="94.91833138272045" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="144.95177834411527" cy="202.2506175494301" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="234.2520876234861" cy="189.66683735091152" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="352.3783024705754" cy="85.95510512924494" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="237.1695811441479" cy="137.5829108100467" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="231.63100166030773" cy="201.40888396376147" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="133.71724054115117" cy="184.36089083322864" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="201.614269383707" cy="212.60721054664907" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="210.53233176447353" cy="195.49320839237225" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="241.15494661144908" cy="154.59832305754702" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="388.3796957094452" cy="98.50366076783715" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="287.7881653165901" cy="150.81361191376146" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="385.39499362136695" cy="111.94101187456005" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="351.3823566066911" cy="173.8902632250774" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="156.65069909474474" cy="189.84927440084562" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="222.02702265641187" cy="213.15430986872977" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="282.53886291915245" cy="176.53632500785255" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="266.1142460245363" cy="172.95060736819391" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="351.8503186702512" cy="99.46820838338033" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="254.83772089582806" cy="155.7304508872748" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="198.1585664874883" cy="246.7274815833597" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="250.27628078402748" cy="179.6346395045807" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="308.40137566807584" cy="141.10294547051456" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="192.0666590882644" cy="213.11332958371347" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="227.04255059782614" cy="168.32057726420308" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="207.96926700050003" cy="201.70300375084062" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.66828642500934" cy="172.79287664372876" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="257.2379565988747" cy="176.24573286789428" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.9986107170479" cy="177.42632769031516" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="292.77917352908474" cy="132.9757749834454" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="180.46900115521447" cy="254.93412065931375" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="373.94132268239434" cy="113.13803045052126" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="230.24591609724047" cy="172.92251663716493" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="292.6597352432406" cy="159.94893413805144" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="275.5298757226019" cy="184.34466363272134" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="217.2741141312872" cy="220.66295412909597" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="275.70938291247376" cy="175.03590432669583" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="215.10777593154185" cy="240.0614543677387" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="320.6204446765622" cy="190.79641906643332" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="323.75626695216806" cy="166.51853917198005" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="319.13097986900925" cy="193.0295342227334" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.3279779409845" cy="179.69112588816168" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="224.44875456485943" cy="191.1152739632651" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="338.8284386999933" cy="126.01098116205736" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="240.4297185135345" cy="144.4619826855073" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="259.6973634508863" cy="204.89240818258014" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="291.14991835021704" cy="191.43038143545203" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.5296084228518" cy="167.84969515265212" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="244.89384486362624" cy="202.89977056446224" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="253.7418262758608" cy="181.33122073078727" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="308.1320081069536" cy="165.712322778603" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="248.23850110705905" cy="183.73906930738556" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="277.4516516653123" cy="210.82782326126252" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="190.2618147960635" cy="245.91528479178675" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="177.48616872636546" cy="215.44810294733418" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="288.35640342883505" cy="156.35094011542708" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="245.34778803669315" cy="199.12792948384472" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="295.6384982514321" cy="172.62466697366511" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="214.27322286218794" cy="181.57263948102405" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="273.16135669923256" cy="177.33669313906964" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="225.70670511164397" cy="215.38955767664515" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="259.9901230523027" cy="192.14074857828246" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="207.61328731382926" cy="171.92064046850447" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="188.7368474857452" cy="251.50953250592866" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="304.8200874342622" cy="158.93219322308119" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="189.11782306015266" cy="210.69392039734458" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="253.46808322460168" cy="155.9878747756209" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="333.28718747772706" cy="164.58746752031243" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="294.3295856637134" cy="148.77600049273065" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <path
+                  d="M386.48 101.09 L389.49 102.41 L392.02 104.02 L394.04 105.92 L395.57 108.08 L396.59 110.52 L397.09 113.21 L397.08 116.15 L396.55 119.32 L395.51 122.72 L393.96 126.32 L391.91 130.12 L389.36 134.09 L386.33 138.23 L382.83 142.51 L378.87 146.92 L374.47 151.44 L369.64 156.06 L364.41 160.74 L358.79 165.49 L352.81 170.27 L346.50 175.06 L339.87 179.85 L332.96 184.62 L325.80 189.35 L318.40 194.02 L310.81 198.61 L303.04 203.10 L295.15 207.48 L287.14 211.72 L279.06 215.81 L270.95 219.74 L262.82 223.48 L254.73 227.03 L246.68 230.36 L238.73 233.47 L230.91 236.34 L223.23 238.96 L215.74 241.32 L208.47 243.41 L201.44 245.23 L194.68 246.76 L188.22 247.99 L182.09 248.93 L176.30 249.57 L170.89 249.91 L165.88 249.94 L161.28 249.67 L157.12 249.10 L153.41 248.22 L150.16 247.05 L147.39 245.58 L145.12 243.83 L143.34 241.80 L142.06 239.50 L141.30 236.93 L141.06 234.12 L141.33 231.06 L142.11 227.77 L143.41 224.27 L145.21 220.57 L147.51 216.68 L150.30 212.63 L153.57 208.41 L157.30 204.07 L161.49 199.60 L166.10 195.03 L171.14 190.37 L176.56 185.66 L182.36 180.89 L188.51 176.11 L194.98 171.31 L201.75 166.53 L208.80 161.77 L216.08 157.07 L223.58 152.44 L231.26 147.90 L239.10 143.46 L247.05 139.15 L255.10 134.98 L263.20 130.97 L271.32 127.13 L279.44 123.49 L287.51 120.04 L295.51 116.82 L303.41 113.83 L311.16 111.08 L318.75 108.59 L326.13 106.36 L333.29 104.41 L340.19 102.74 L346.80 101.36 L353.10 100.27 L359.06 99.48 L364.66 98.99 L369.87 98.80 L374.68 98.92 L379.06 99.35 L383.00 100.07 L386.48 101.09"
+                  fill="none" stroke="#6263a1" stroke-width="2" />
+              </g>
+              <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Request
+                size (standardized)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                text-anchor="middle" font-size="12" fill="#18312e"
+                font-family="sans-serif">Processing time (standardized)</text>
+            </svg>
+            <figcaption>It’s the result of the calculations that were done directly in the basic
+              settings. You can change the settings in the laboratory below.</figcaption>
+          </figure>
+          <pre><code>import numpy as np
+# Rows are observations and columns are components. Values are log(pi_k) + log N(x_i).
+logp = np.array([[-2.1,-2.5],[-900.,-902.]])
+shift = logp.max(axis=1, keepdims=True)
+q = np.exp(logp-shift)
+r = q/q.sum(axis=1, keepdims=True)
+print(r)
+assert np.allclose(r.sum(axis=1), 1)</code></pre>
+          <p>Repetition 0 It’s the initial stage. 1,5,20,60 Compare the ellipses and logarithmic
+            domains. If the initialization is changed, the data remains fixed; only the initial
+            average value changes. The ellipse has each component… Mahalanobis Distance 2 In
+            reality, it’s not a contour line that represents the overall mixed density.</p>
+          <details class="answer">
+            <summary>Is it better if the responsibility is shared among all those with 0, or should
+              it be distributed among those with 1?</summary>
+            <p>In a overlapping distribution, the median value is a natural result. It represents
+              the probability of belonging to that group within the current model. However, this
+              doesn’t guarantee that the model itself is correct.</p>
+          </details>
+          <details class="answer">
+            <summary>Is it better to increase the number of components, thereby increasing the
+              training efficiency?</summary>
+            <p>As the expressive power increases, it becomes possible to achieve overfitting. It’s
+              important to check both the complexity and the independence of the results.</p>
+          </details><a class="callout-link" href="../labs/clustering.html">GMM Cluster Laboratory is
+            closed.</a>
+        </section>
+        <section id="advanced-a">
+          <h2>Compare the initialization of the advanced stage A / with the number of components
+            involved.</h2>
+          <div class="case-brief"><span class="pill">Advanced settings: A · – Multiple initial
+              values and model selection</span>
+            <p><strong>Problem to explore</strong> EM Can we say that we have found the best mixture
+              model just because the log-likelihood has increased?</p>
+          </div>
+          <p>With seed 2606, generate 210 training and 400 independent validation observations.
+            Mixture weights are [.4,.35,.25]; means are [−1.2,0], [1.1,.7], [.3,−.9]. For each
+            component use x=μ+Lz, z~N(0,I₂), with L equal to [[.7,0],[.35,.55]], [[.7,0],[−.2,.5]],
+            or [[.45,0],[0,.6]]. Covariances are LLᵀ, and the three groups overlap partially.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>The number of free
+            parameters in the 2-dimensional space of the full covariance GMM
+            dimensions<br>p=(K−1)+2K+3K=6K−1<br>BIC = −2ℓ<sub>train</sub> + p log N</div>
+          <ol class="worked-steps">
+            <li>K=1~5 Initialize each of them as a seed value. 3,11,29,47 Roads 100 It is renewed
+              periodically. The initial average values are obtained by selecting observations
+              without any duplicates. The covariance is the total covariance of all the training
+              data. The mixing ratio is set to zero at the beginning.</li>
+            <li>The final log-likelihood of K=3 is -572.284, -557.453, -557.453, -557.455. A
+              monotonically increasing path can also remain below other initial values for a certain
+              period of time.</li>
+            <li>In each K, the execution with the highest training log-likelihood is selected. If
+              the number of components differs, in addition to considering the goodness of fit, the
+              number of parameters also needs to be taken into account. The average log-density per
+              observation for the independent validation set is also calculated separately.</li>
+            <li>The minimum number of executions of this operation is… BIC It’s… K=3 The maximum
+              validation average log-density is also mentioned here. K=3 It’s important to know the
+              number of components that are generated. This is a privilege of synthetic experiments.
+              However, it’s not always the case that both criteria are met, or that the actual
+              number of components can be accurately determined.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations visually</span><strong>The
+                increase in dimensionality and global optimization are two different
+                concepts.</strong><small class="scroll-hint">Scroll horizontally to see the entire
+                graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="The increase in dimensionality and the concept of global optimization are two different things. In a narrow screen, scrolling to the left or right doesn’t have any effect.">
+              <img src="../assets/images/advanced/06-initialization.svg" width="940" height="450"
+                loading="lazy"
+                alt="It’s the same K=3 for both cases. The log odds of EM are just the initialization seeds that have been changed. After 100 iterations, one of the paths remains at a lower value. The final values of the seeds 11 and 29 are almost identical.">
+            </div>
+            <figcaption>It’s the same K=3 for both cases. The log odds of EM are just the
+              initialization seeds that have been changed. After 100 iterations, one of the paths
+              remains at a lower value. The final values of the seeds 11 and 29 are almost
+              identical.<a href="../assets/images/advanced/06-initialization.svg" download>Download
+                SVG ↗</a></figcaption>
+          </figure>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations visually</span><strong>It’s
+                important to consider both the benefits and costs when increasing the
+                ingredients.</strong><small class="scroll-hint">Scroll horizontally to see the
+                entire graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="Let’s see both the benefits and costs when increasing the ingredients. On a narrow screen, the scroll can be used horizontally.">
+              <img src="../assets/images/advanced/06-model-selection.svg" width="940" height="450"
+                loading="lazy"
+                alt="Each one K Among the four initial values, the one with the highest training efficiency was used. The left side… BIC The smaller the value, the better the average logarithmic density of the right-hand side. Since the two axes represent different values, the height of the curves cannot be directly compared.">
+            </div>
+            <figcaption>Each one K Among the four initial values, the one with the highest training
+              efficiency was used. The left side… BIC The smaller the value, the better the average
+              logarithmic density of the right-hand side. Since the two axes represent different
+              values, the height of the curves cannot be directly compared.<a
+                href="../assets/images/advanced/06-model-selection.svg" download>Download SVG ↗</a>
+            </figcaption>
+          </figure>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">K</th>
+                  <th scope="col">Training Logou</th>
+                  <th scope="col">BIC ↓</th>
+                  <th scope="col">Verified average log density ↑</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>-610.914</td>
+                  <td>1248.563</td>
+                  <td>-2.895</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>-575.610</td>
+                  <td>1210.038</td>
+                  <td>-2.818</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>-557.453</td>
+                  <td>1205.808</td>
+                  <td>-2.763</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>-553.181</td>
+                  <td>1229.346</td>
+                  <td>-2.810</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>-547.754</td>
+                  <td>1250.574</td>
+                  <td>-2.874</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <details class="answer">
+            <summary>Can we determine which component number among 11 and 29 represents the true
+              group 1?</summary>
+            <p>The component numbers remain the same regardless of any substitutions made to them.
+              The log value does not determine the meaning of the numbers. To compare the components
+              of different executions, it’s necessary to first establish relationships such as
+              averages and covariance.</p>
+          </details>
+        </section>
+        <section id="advanced-b">
+          <h2>Let’s rewrite the value of B / in terms of entropy.</h2>
+          <div class="case-brief"><span class="pill">Advanced B · Responsibility Values and
+              Entropy</span>
+            <p><strong>Problem to explore</strong> What kind of information would be lost if we try
+              to represent each observation as just one color, which represents the most likely
+              component?</p>
+          </div>
+          <p>We use the highest training objective of K=3 for this task. The value of rᵢₖ represents
+            the probability of a particular component belonging to that observation, given the
+            current model. This value is different from the classification accuracy for the correct
+            label, or the probability that the observation is normal. At points where the components
+            overlap, more than one component can explain the observation.</p>
+          <div class="equation"><span class="eq-label">Key
+              equation</span>rᵢₖ=exp(aᵢₖ−logsumexp(aᵢ₁,…,aᵢK))<br>aᵢₖ=log πₖ+log
+            N(xᵢ|μₖ,Σₖ)<br>Hᵢ=−Σₖrᵢₖ log rᵢₖ,   0≤Hᵢ/log K≤1</div>
+          <ol class="worked-steps">
+            <li>Both r=[.98,.01,.01] and [.51,.48,.01] are both transformed into hard assignment.
+              However, the description for the second element is almost identical to that for the
+              first element.</li>
+            <li>In the case where the entropy of a particular component is completely focused, the
+              value of 0 is equal to the sum of the values of 1 and K, each accounting for half of
+              each. This is defined using natural logarithms, and denoted as 0log0=0.</li>
+            <li>In this training sample, there are 13 observations where the maximum liability value
+              is less than 0.7. 0.7 is an arbitrary criterion for explanation purposes, and it isn’t
+              a criterion for selecting the number of clusters.</li>
+            <li>The concept of “large entropy” represents the degree of ambiguity between different
+              components. Even when we are far away from all components, the density of the entire
+              system can still be low. Therefore, in the detection of anomalies, it’s necessary to
+              consider the log-density separately.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations
+                visually</span><strong>Reading both “maximum affiliation” and “ambiguity of
+                affiliation” side by side</strong><small class="scroll-hint">Scroll horizontally to
+                see the entire graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="Read both “maximum affiliation” and “ambiguity of affiliation” together. In a narrow screen, scroll left and right.">
+              <img src="../assets/images/advanced/06-responsibility.svg" width="940" height="450"
+                loading="lazy"
+                alt="On the left side, the components with the highest responsibility are categorized into circles, squares, and triangles. The ellipse is represented by the distance Mahalanobis and 2. On the right side, there is another observation with a value of H/log3. The higher this value, the more ambiguous the result becomes. Both coordinates are dimensionless. The ellipse does not represent a confidence interval for mean estimation.">
+            </div>
+            <figcaption>On the left side, the components with the highest responsibility are
+              categorized into circles, squares, and triangles. The ellipse is represented by the
+              distance Mahalanobis and 2. On the right side, there is another observation with a
+              value of H/log3. The higher this value, the more ambiguous the result becomes. Both
+              coordinates are dimensionless. The ellipse does not represent a confidence interval
+              for mean estimation.<a href="../assets/images/advanced/06-responsibility.svg"
+                download>Download SVG ↗</a></figcaption>
+          </figure>
+          <details class="worked-code">
+            <summary>Expand the core calculation code</summary>
+            <p>An excerpt from the corresponding advanced Python function. Full data generation and
+              helper functions are available in the downloads below.</p>
+            <pre><code>logp = gmm_logp(X, weights, means, covs)
+shift = logp.max(axis=1, keepdims=True)
+log_norm = shift + np.log(np.exp(logp-shift).sum(axis=1, keepdims=True))
+responsibility = np.exp(logp-log_norm)
+entropy = -np.sum(responsibility * np.log(np.maximum(responsibility, 1e-300)), axis=1)
+normalized_entropy = entropy / np.log(len(weights))
+assert np.allclose(responsibility.sum(axis=1), 1)
+# In addition to checking for abnormalities, it’s also necessary to check the value of log_norm separately.</code></pre>
+          </details>
+        </section>
+        <section id="advanced-c">
+          <h2>Diagnose and prevent the collapse of the covariance matrix in the advanced case C /
+          </h2>
+          <div class="case-brief"><span class="pill">Advanced C · Covariance Decay and Numerical
+              Stability</span>
+            <p><strong>Problem to explore</strong> What temptation does the maximum likelihood face,
+              as the variance of a Gaussian distribution remains constant when the mean is fixed for
+              a given observation?</p>
+          </div>
+          <p>The average of the Gaussian distributions in the 2-dimensional space has a density of
+            1/(2πσ²). When one component collapses to a single observation with a density of σ→0,
+            the density at that point becomes infinitely large. Since other components can explain
+            the remaining observations, there is a problem of decay in the unbounded GMM probability
+            space.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>Σₖ ←
+            (1/Nₖ)Σᵢrᵢₖ(xᵢ−μₖ)(xᵢ−μₖ)ᵀ + εI<br>This advanced implementation: ε=10<sup>−6</sup></div>
+          <ol class="worked-steps">
+            <li>If the value is reduced from σ=1 to 10⁻³, the average density becomes a million
+              times higher. This is why a high-density point doesn’t necessarily mean a good
+              population.</li>
+            <li>The covariance diagonal is increased by ε, thereby stabilizing the positive definite
+              matrix. ε serves as a measure of dispersion. It has the effect of adding a lower bound
+              on the eigenvalues for all axes.</li>
+            <li>The minimum eigenvalues of the covariance matrix for this case, denoted as K=3, are
+              significantly larger than those for 0.1631 and 10⁻⁶. The sum of the eigenvalues, as
+              well as the finite nature of the matrix, are also verified. Additionally, the change
+              in the log-likelihood function is also checked.</li>
+            <li>This adjustment of the diagonal is different from the exact M-step that comes with
+              no constraints. It doesn’t guarantee a non-decrease in all data points. Instead, it
+              monitors the valid number of observations for each small component, the eigenvalues,
+              and the decrease in the likelihood function. If necessary, the initialization and
+              constraints need to be re-engineered.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations visually</span><strong>The
+                excessive density caused by the reduced dispersion</strong><small
+                class="scroll-hint">Scroll horizontally to see the entire graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="The excessive density caused by the reduced dispersion. In a narrow screen, the scroll can be moved left and right.">
+              <img src="../assets/images/advanced/06-collapse.svg" width="940" height="450"
+                loading="lazy"
+                alt="The horizontal axis represents the mean square deviation, denoted as σ. The vertical axis represents the density at the mean position, denoted as 2. Both axes are logarithmic scales. The lower bound of the variance for ε=10⁻⁶ corresponds to σ=10⁻³. This is an analytical curve that describes the risk levels. It doesn’t mean that the actual execution of EM has failed.">
+            </div>
+            <figcaption>The horizontal axis represents the mean square deviation, denoted as σ. The
+              vertical axis represents the density at the mean position, denoted as 2. Both axes are
+              logarithmic scales. The lower bound of the variance for ε=10⁻⁶ corresponds to σ=10⁻³.
+              This is an analytical curve that describes the risk levels. It doesn’t mean that the
+              actual execution of EM has failed.<a href="../assets/images/advanced/06-collapse.svg"
+                download>Download SVG ↗</a></figcaption>
+          </figure>
+          <details class="answer">
+            <summary>Will changing all the features by 1,000 times still result in the same effect
+              as ε=10⁻⁶?</summary>
+            <p>It’s not the same. If the characteristic value is increased by 1,000 times, the
+              covariance becomes 10⁶ times. Therefore, the relative effect of the same absolute
+              value ε becomes very small. It’s also necessary to determine the correction factor
+              that corresponds to the unit/scale, and to specify whether this correction factor is
+              standardized or not.</p>
+          </details>
+          <div class="reproduce-box">
+            <h3>Reproduce the results and change conditions</h3>
+            <p>The figures are precomputed from this chapter's advanced Python experiments. The
+              notebook contains code for seven chapters and 28 figure outputs. Calculations require
+              NumPy; regenerating figures also requires Matplotlib.</p>
+            <div class="download-links"><a href="../downloads/advanced-experiments.ipynb"
+                download>Advanced notebook ↓</a><a href="../downloads/advanced-experiments.py"
+                download>Calculation Python ↓</a><a href="../downloads/advanced-figures.py"
+                download>Figure Python ↓</a><a href="../downloads/advanced-results.json"
+                download>Numeric results JSON ↓</a></div>
+            <p>Place both Python files in the same folder. The calculation script's
+              <code>--chapter 6</code> option runs just this chapter. The figure script's
+              <code>--output ./figures</code> option generates 28 SVG figures.
+            </p>
+          </div>
+        </section>
+        <p class="sources">Further reading: <a href="../appendix/references.html#gmm">References for
+            related concepts</a> · <a href="../appendix/glossary.html">Terms and Notation</a></p>
+        <button class="print-button" type="button" data-print>Print this page / Save as PDF</button>
+        <nav class="next-prev" aria-label="Learning sequence"><a href="05-pca-and-svd.html">←
+            Previous: How to compress information</a><a href="07-svm.html">Next: How to create
+            classification boundaries →</a></nav>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>A study journal connecting concepts and checking them through calculation.<br>Synthetic
+          data · Original explanations and experiments</p><a
+          href="../appendix/references.html">References and credits ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

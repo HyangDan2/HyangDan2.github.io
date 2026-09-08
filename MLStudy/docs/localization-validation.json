@@ -1,0 +1,22 @@
+{
+  "date": "2026-09-08",
+  "status": "passed",
+  "languages": ["en", "ko", "ja"],
+  "html_pages": 51,
+  "markdown_documents": 18,
+  "translation_source_strings": 1482,
+  "core_assertions": 17840,
+  "svm_settings": 216,
+  "static_audit": "localization-static-check.json",
+  "browser_audit": "localization-browser-check.json",
+  "reference_numpy": "2.3.1",
+  "advanced_notebook": {
+    "cells": 9,
+    "svg_outputs": 28,
+    "numpy": "2.5.3",
+    "matplotlib": "3.11.1",
+    "status": "passed"
+  },
+  "package_files": 118,
+  "linguistic_review": "UI, glossary, lab specifications and selected mathematical passages reviewed; remaining translations include local model drafts; not independently professionally proofread."
+}

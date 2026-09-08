@@ -1,0 +1,230 @@
+<!doctype html>
+<html data-language="ko" lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="읽다가 멈춘 단어를 다시 확인하는 작은 사전.">
+    <meta name="theme-color" content="#18312e">
+    <title>용어와 기호 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">본문으로 건너뛰기</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html" aria-label="HD2Lab 홈"><i
+            aria-hidden="true"></i>HD2Lab<small>LEARNING ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="주 메뉴"><a href="../main.html#curriculum">학습 목차</a><a
+            href="../main.html#labs">실험실</a><a href="../appendix/references.html">참고자료</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="언어"><a href="../../appendix/glossary.html"
+              lang="en" hreflang="en" data-language="en">English</a><a
+              href="../../ko/appendix/glossary.html" lang="ko" hreflang="ko" data-language="ko"
+              aria-current="true">한국어</a><a href="../../ja/appendix/glossary.html" lang="ja"
+              hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>다크 모드</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Appendix / Glossary</div>
+        <h1>용어와 기호</h1>
+        <p>읽다가 멈춘 단어를 다시 확인하는 작은 사전.</p>
+        <div class="meta"><span>25개 용어</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>이 페이지의 흐름</summary>
+        <ol>
+          <li><a href="#symbols">공통 기호</a></li>
+          <li><a href="#terms">용어 사전</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="symbols">
+          <h2>공통 기호</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">기호</th>
+                  <th scope="col">뜻</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>N, D</td>
+                  <td>표본 수, 특징 수</td>
+                </tr>
+                <tr>
+                  <td>X, xᵢ</td>
+                  <td>관측 행렬, i번째 관측의 열벡터</td>
+                </tr>
+                <tr>
+                  <td>θ, w, b</td>
+                  <td>모델 파라미터, 가중치, 스칼라 절편</td>
+                </tr>
+                <tr>
+                  <td>Φ</td>
+                  <td>기저 변환을 적용한 설계행렬</td>
+                </tr>
+                <tr>
+                  <td>μ, Σ, σ²</td>
+                  <td>평균, 공분산, 분산</td>
+                </tr>
+                <tr>
+                  <td>λ, σⱼ</td>
+                  <td>문맥에 따라 고유값·승수, j번째 특잇값</td>
+                </tr>
+                <tr>
+                  <td>η, α, C</td>
+                  <td>학습률, 회귀 벌점, SVM 침범 비용</td>
+                </tr>
+                <tr>
+                  <td>K, k</td>
+                  <td>혼합 성분 수, PCA에서 선택한 성분 수</td>
+                </tr>
+                <tr>
+                  <td>ᵀ, ‖·‖F</td>
+                  <td>전치, Frobenius 노름</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="note "><strong>기호는 문맥과 함께</strong>
+            <p>Σ는 공분산 또는 합 기호처럼 모양이 겹칠 수 있습니다. 각 식의 정의를 먼저 확인하세요. SVD의 Σ는 특잇값 행렬입니다.</p>
+          </aside>
+        </section>
+        <section id="terms">
+          <h2>용어 사전</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">용어</th>
+                  <th scope="col">설명</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>표본 / Sample</td>
+                  <td>분석의 한 관측 단위. 이 사이트에서는 데이터 행렬의 한 행.</td>
+                </tr>
+                <tr>
+                  <td>특징 / Feature</td>
+                  <td>예측 또는 구조 분석에 사용하는 입력 속성.</td>
+                </tr>
+                <tr>
+                  <td>파라미터 / Parameter</td>
+                  <td>정해진 모델 안에서 학습으로 추정하는 값.</td>
+                </tr>
+                <tr>
+                  <td>하이퍼파라미터</td>
+                  <td>차수·학습률·성분 수처럼 학습 설정을 정하는 값.</td>
+                </tr>
+                <tr>
+                  <td>손실 / Loss</td>
+                  <td>관측과 예측 사이의 비용. 목적에 맞춰 정의한다.</td>
+                </tr>
+                <tr>
+                  <td>일반화 / Generalization</td>
+                  <td>학습에 사용하지 않은 관측에서도 유용하게 작동하는 성질.</td>
+                </tr>
+                <tr>
+                  <td>편향과 분산</td>
+                  <td>모델링 가정의 체계적 오차와 표본 변화에 따른 추정의 변동.</td>
+                </tr>
+                <tr>
+                  <td>랭크 / Rank</td>
+                  <td>행렬의 독립인 열 또는 행의 수.</td>
+                </tr>
+                <tr>
+                  <td>기저 / Basis</td>
+                  <td>공간을 생성하는 선형독립 벡터 집합.</td>
+                </tr>
+                <tr>
+                  <td>정사영 / Orthogonal projection</td>
+                  <td>잔차가 부분공간에 직교하는 가장 가까운 투영.</td>
+                </tr>
+                <tr>
+                  <td>고유값 / Eigenvalue</td>
+                  <td>변환이 특정 방향을 유지하며 늘이는 비율.</td>
+                </tr>
+                <tr>
+                  <td>특잇값 / Singular value</td>
+                  <td>SVD에서 직교 방향별 비음수 스케일.</td>
+                </tr>
+                <tr>
+                  <td>Jacobian</td>
+                  <td>벡터 출력의 입력별 1차 편미분 행렬.</td>
+                </tr>
+                <tr>
+                  <td>Hessian</td>
+                  <td>스칼라 함수의 2차 편미분 행렬.</td>
+                </tr>
+                <tr>
+                  <td>우도 / Likelihood</td>
+                  <td>관측을 고정하고 파라미터를 바꾸며 보는 관측 모형의 값.</td>
+                </tr>
+                <tr>
+                  <td>사후분포 / Posterior</td>
+                  <td>관측을 반영한 파라미터 또는 잠재변수의 분포.</td>
+                </tr>
+                <tr>
+                  <td>정밀도 / Precision</td>
+                  <td>분포 문맥에서는 분산 역수 또는 공분산 역행렬. 분류 평가의 precision과 구별.</td>
+                </tr>
+                <tr>
+                  <td>설명분산</td>
+                  <td>선택한 PCA 방향에서 보존되는 입력의 분산. 예측 정보의 비율이 아님.</td>
+                </tr>
+                <tr>
+                  <td>책임값 / Responsibility</td>
+                  <td>현재 혼합모형에서 한 관측의 성분별 사후 확률.</td>
+                </tr>
+                <tr>
+                  <td>로그우도</td>
+                  <td>우도의 로그. 여러 조건부 독립 관측의 기여가 합으로 표현됨.</td>
+                </tr>
+                <tr>
+                  <td>마진 / Margin</td>
+                  <td>SVM 경계와 가까운 관측 사이의 기하학적 여유.</td>
+                </tr>
+                <tr>
+                  <td>서포트 벡터</td>
+                  <td>SVM 쌍대 계수가 0이 아닌 관측. Soft margin에서는 내부 점도 포함.</td>
+                </tr>
+                <tr>
+                  <td>커널 / Kernel</td>
+                  <td>특징 공간의 내적을 계산하는 함수. 적절한 준정부호 조건 필요.</td>
+                </tr>
+                <tr>
+                  <td>정규화 / Regularization</td>
+                  <td>모델 복잡도 등에 벌점을 추가하는 방법. 표준화와 구분.</td>
+                </tr>
+                <tr>
+                  <td>표준화 / Standardization</td>
+                  <td>훈련에서 얻은 평균·스케일로 특징 좌표를 변환하는 전처리.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <p class="sources">더 읽기: <a href="../appendix/references.html#mml">관련 개념의 참고자료</a> · <a
+            href="../appendix/glossary.html">용어와 기호</a></p><button class="print-button"
+          type="button" data-print>이 페이지 인쇄 / PDF 저장</button>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>개념을 연결하고, 계산으로 확인하는 학습 기록.<br>합성 데이터 · 직접 작성한 설명과 실험</p><a
+          href="../appendix/references.html">참고자료 및 제작 정보 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

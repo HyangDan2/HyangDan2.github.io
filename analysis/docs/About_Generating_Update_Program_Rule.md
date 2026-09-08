@@ -1275,3 +1275,13 @@ New generic pages should prefer:
 - `segment_linkage`
 
 The updater may emit both old and new keys during a transition period.
+
+## Shared favicon
+
+Every generated analysis HTML page must include the shared Web-HQ favicon in its head:
+
+```html
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+```
+
+This path applies to `analysis/<ticker>/<ticker>.html`. Root pages such as `analysis.html` use `assets/favicon.svg`. Keep the icon at the repository root; do not create per-page copies.

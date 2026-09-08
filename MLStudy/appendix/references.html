@@ -1,0 +1,166 @@
+<!doctype html>
+<html data-language="en" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="This section outlines the basis for the standard concept, as well as the scope of this site’s creation and calculation.">
+    <meta name="theme-color" content="#18312e">
+    <title>Reference Materials and Production Information | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab learning home"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="Main navigation"><a
+            href="../main.html#curriculum">Curriculum</a><a href="../main.html#labs">Labs</a><a
+            href="../appendix/references.html">References</a><a class="hq-link"
+            href="../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="Language"><a href="../appendix/references.html"
+              lang="en" hreflang="en" data-language="en" aria-current="true">English</a><a
+              href="../ko/appendix/references.html" lang="ko" hreflang="ko"
+              data-language="ko">한국어</a><a href="../ja/appendix/references.html" lang="ja"
+              hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>Dark mode</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Appendix / References</div>
+        <h1>References and Credits</h1>
+        <p>This section outlines the basis for the standard concept, as well as the scope of this
+          site’s creation and calculation.</p>
+        <div class="meta"><span>Official literature</span><span>Reproduction details</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>On this page</summary>
+        <ol>
+          <li><a href="#mml">Mathematical background</a></li>
+          <li><a href="#evaluation">Evaluation and data leakage</a></li>
+          <li><a href="#probability">Probability distributions and numerical checks</a></li>
+          <li><a href="#linear">Regression and regularization</a></li>
+          <li><a href="#pca">PCA and matrix decompositions</a></li>
+          <li><a href="#gmm">Mixture models and EM</a></li>
+          <li><a href="#svm">Classification and margins</a></li>
+          <li><a href="#reproduce">Credits and reproduction</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="mml">
+          <h2>Mathematical background</h2>
+          <p><a href="https://mml-book.github.io/">Mathematics for Machine Learning — authors'
+              official site</a><br>Marc Peter Deisenroth, A. Aldo Faisal, Cheng Soon Ong, Cambridge
+            University Press, 2020.</p>
+          <p>This is a resource for those who want to study linear algebra, geometry, matrix
+            decomposition, differentiation, probability, and optimization in more depth. The texts,
+            examples, code, and diagrams on this site were all written separately. No diagrams or
+            practice problems from the textbook were copied.</p>
+        </section>
+        <section id="evaluation">
+          <h2>Evaluation and data leakage</h2>
+          <p><a href="https://scikit-learn.org/stable/common_pitfalls.html">scikit-learn official
+              documentation: Common pitfalls</a>and <a
+              href="https://scikit-learn.org/stable/modules/model_evaluation.html">Model
+              evaluation</a>It’s important to ensure that the principles of proper handling are only
+            applicable during training. Additionally, it’s necessary to clarify the evaluation
+            metrics and the concept of “leakage”. The time-related changes, post-event
+            characteristics, and cost-related aspects mentioned in this text are all part of a
+            specially designed synthetic experiment.</p>
+        </section>
+        <section id="probability">
+          <h2>Probability distributions and numerical checks</h2>
+          <p><a
+              href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.beta.html">SciPy
+              official documentation: Beta distribution</a>We confirm the definition of density and
+            the meaning of the CDF· percentile. The Beta–Bernoulli update and Gaussian predicted
+            variance are presented in the main text. For the download calculations, SciPy is not
+            used.</p>
+        </section>
+        <section id="linear">
+          <h2>Regression and regularization</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/linear_model.html">scikit-learn
+              official documentation: Linear Models</a>Reference: Minimum square error, Ridge
+            objective function, feature extension, and implementation. The browser uses the QR
+            calculations that were written by hand, rather than calling scikit-learn.</p>
+        </section>
+        <section id="pca">
+          <h2>PCA and matrix decompositions</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/decomposition.html#pca">scikit-learn
+              official documentation: PCA</a>Please refer to this library when comparing the
+            concepts of centrality, descriptive distribution, and compression, as well as their
+            practical applications.</p>
+        </section>
+        <section id="gmm">
+          <h2>Mixture models and EM</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/mixture.html">scikit-learn official
+              documentation: Gaussian mixture models</a>This document provides information regarding
+            the suitability of the covariance form and the mixture model, as well as the selection
+            of the number of components.</p>
+        </section>
+        <section id="svm">
+          <h2>Classification and margins</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/svm.html">scikit-learn official
+              documentation: Support Vector Machines</a>It is possible to understand how linear
+            kernels SVM and certain functions are used.</p>
+        </section>
+        <section id="reproduce">
+          <h2>Credits and reproduction</h2>
+          <p>For the learning archives of HD2Lab, we have created descriptions, synthetic examples,
+            calculations related to JavaScript, and charts related to SVG. We also used support
+            tools for writing AI. The content has been reviewed through public literature review,
+            calculation tests, and screen verification. We did not use personal learning experiences
+            or actual service implementation records as the basis for writing this content.</p>
+          <p>The browser has no external runtime dependencies. Formulas use HTML superscripts,
+            subscripts, and Unicode; graphs are SVG. Experiments run locally without transmitting or
+            saving inputs. Only language and theme preferences are saved. With JavaScript disabled,
+            precomputed results for the default settings remain visible.</p>
+          <p><a href="../downloads/study-examples.py" download>Download Python examples for seven
+              chapters</a> · <a href="../downloads/study-examples.ipynb" download>Download Jupyter
+              Notebook</a> · <a href="../assets/js/math-core.js" download>Browser numerical code</a>
+          </p>
+          <p><a href="../downloads/advanced-experiments.ipynb" download>Advanced notebook · 28
+              figure outputs</a> · <a href="../downloads/advanced-experiments.py" download>Advanced
+              calculation Python</a> · <a href="../downloads/advanced-figures.py" download>Figure
+              regeneration Python</a> · <a href="../downloads/advanced-results.json"
+              download>Advanced numerical results</a></p>
+          <p>The 28 graphs are pre-calculated as SVG, based on the values of NumPy 2.2.6 and
+            Matplotlib 3.10.5. Running all the cells in the Notebook will result in the creation of
+            the same experiments and graphs again. The Matplotlib represents the production tools;
+            they are not included in the web runtime. <a
+              href="https://matplotlib.org/stable/project/license.html">Matplotlib license</a> · <a
+              href="https://numpy.org/doc/stable/license.html">NumPy license</a>.</p>
+          <p>Python The calculation examples include: NumPy In the process of restoring the enhanced
+            images, it’s necessary to regenerate them from scratch. Matplotlib It’s also necessary.
+            Python Lots and more… JavaScript It’s a matter of random number generation. Even if the
+            seeds used for generating the samples are the same, the actual samples still won’t be
+            identical. In separate verifications, it was found that the arrays generated by the
+            browser are also identical. NumPy It is transmitted and the calculations are compared.
+          </p>
+          <p>Please check the reference links: 2026-09-08. External dependencies, fonts, and images
+            have not been bundled. The copyrights of the public documents belong to their respective
+            owners. No separate permission has been granted for the use of this site in general.</p>
+        </section>
+        <p class="sources">Further reading: <a href="../appendix/references.html#mml">References for
+            related concepts</a> · <a href="../appendix/glossary.html">Terms and Notation</a></p>
+        <button class="print-button" type="button" data-print>Print this page / Save as PDF</button>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>A study journal connecting concepts and checking them through calculation.<br>Synthetic
+          data · Original explanations and experiments</p><a
+          href="../appendix/references.html">References and credits ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

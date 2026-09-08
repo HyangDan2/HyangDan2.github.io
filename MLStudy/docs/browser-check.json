@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "pageViewportChecks": 51,
+  "widths": [1440, 390, 320],
+  "interactions": [
+    "regression degree/reset",
+    "gradient divergence/correction",
+    "PCA full reconstruction",
+    "GMM iterations/seed/reset",
+    "SVM C/outlier/scaling/seed/reset/confusion",
+    "keyboard skip link",
+    "expand answers"
+  ],
+  "noJavaScript": "5 lab snapshots and chapter equations",
+  "javascriptErrors": [],
+  "httpFailures": []
+}

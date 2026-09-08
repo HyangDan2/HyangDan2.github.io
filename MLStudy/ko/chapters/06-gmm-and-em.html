@@ -1,0 +1,876 @@
+<!doctype html>
+<html data-language="ko" lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="한 관측의 소속을 확률로 표현할 수 있을까? 혼합밀도와 소속 확률을 구분하고, 추정과 갱신을 반복하는 EM을 따라간다.">
+    <meta name="theme-color" content="#18312e">
+    <title>숨은 집단을 찾는 방법 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">본문으로 건너뛰기</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html" aria-label="HD2Lab 홈"><i
+            aria-hidden="true"></i>HD2Lab<small>LEARNING ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="주 메뉴"><a href="../main.html#curriculum">학습 목차</a><a
+            href="../main.html#labs">실험실</a><a href="../appendix/references.html">참고자료</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="언어"><a href="../../chapters/06-gmm-and-em.html"
+              lang="en" hreflang="en" data-language="en">English</a><a
+              href="../../ko/chapters/06-gmm-and-em.html" lang="ko" hreflang="ko" data-language="ko"
+              aria-current="true">한국어</a><a href="../../ja/chapters/06-gmm-and-em.html" lang="ja"
+              hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>다크 모드</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Chapter 06 / Gaussian mixtures</div>
+        <h1>숨은 집단을 찾는 방법</h1>
+        <p>한 관측의 소속을 확률로 표현할 수 있을까? 혼합밀도와 소속 확률을 구분하고, 추정과 갱신을 반복하는 EM을 따라간다.</p>
+        <div class="meta"><span>04 · 확률 / 05 · 공분산</span><span>혼합분포 · 책임값 · EM</span><span>심화 사례 3 ·
+            새 도표 4</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>이 페이지의 흐름</summary>
+        <ol>
+          <li><a href="#question">01 / 겹치는 요청 유형</a></li>
+          <li><a href="#density">02 / 밀도들의 가중합</a></li>
+          <li><a href="#responsibility">03 / 관측 이후의 소속 확률</a></li>
+          <li><a href="#em">04 / E-step과 M-step</a></li>
+          <li><a href="#likelihood">05 / 로그우도가 말해 주는 것</a></li>
+          <li><a href="#code">06 / 책임값 구현과 관찰</a></li>
+          <li><a href="#advanced-a">심화 A / 초기화와 성분 수를 함께 비교하기</a></li>
+          <li><a href="#advanced-b">심화 B / 책임값을 엔트로피로 다시 읽기</a></li>
+          <li><a href="#advanced-c">심화 C / 공분산 붕괴를 진단하고 막기</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="question">
+          <h2>01 / 겹치는 요청 유형</h2>
+          <p>서비스 요청 크기와 처리시간을 표준화한 가상 좌표를 관찰하자. 여러 유형이 섞이면 소속을 단정하기보다 각 유형이 관측을 얼마나 설명하는지 계산할 수 있다.
+            GMM은 여러 가우시안 밀도의 가중합으로 전체 분포를 모델링한다.</p>
+          <aside class="note "><strong>이 장의 목표</strong>
+            <p>혼합비와 책임값을 구분하고 E/M 단계를 계산한다. 초기화·성분 수·수치 안정성을 로그우도와 함께 관찰한다.</p>
+          </aside>
+          <nav class="study-route" aria-label="심화 학습 바로가기"><strong>기본 개념 다음에는 심화 사례 3개 · 새 도표
+              4개</strong><a href="#advanced-a">심화 A / 초기화와 성분 수를 함께 비교하기</a><a href="#advanced-b">심화
+              B / 책임값을 엔트로피로 다시 읽기</a><a href="#advanced-c">심화 C / 공분산 붕괴를 진단하고 막기</a></nav>
+        </section>
+        <section id="density">
+          <h2>02 / 밀도들의 가중합</h2>
+          <p>각 성분은 평균 μₖ, 공분산 Σₖ, 혼합비 πₖ를 가진다. πₖ는 관측 전 그 성분이 선택될 확률이다. 가중치 합이 1이고 각 밀도의 적분이 1이므로
+            혼합밀도 적분도 1이다.</p>
+          <div class="equation"><span class="eq-label">핵심 식</span>p(x) =
+            Σ<sub>k=1</sub><sup>K</sup>π<sub>k</sub>N(x|μ<sub>k</sub>,Σ<sub>k</sub>)<br>π<sub>k</sub>
+            ≥ 0,   Σ<sub>k</sub>π<sub>k</sub> = 1</div>
+          <p>등밀도선은 공분산 고유벡터 방향을 축으로 하는 타원이다. 대각 공분산은 축에 평행한 형태로 제한하고 완전 공분산은 회전을 허용한다. 자유도가 커지면 필요한
+            표본과 안정성 관리도 늘어난다.</p>
+        </section>
+        <section id="responsibility">
+          <h2>03 / 관측 이후의 소속 확률</h2>
+          <p>성분 번호 z는 관측하지 못하는 잠재변수다. 관측 xᵢ 이후 성분 확률을 베이즈 정리로 계산한 값이 책임값 rᵢₖ다. 혼합비는 전체 모형에, 책임값은 각
+            관측에 속한다.</p>
+          <div class="equation"><span class="eq-label">핵심 식</span>r<sub>ik</sub> =
+            π<sub>k</sub>N(x<sub>i</sub>|μ<sub>k</sub>,Σ<sub>k</sub>) /
+            Σ<sub>j</sub>π<sub>j</sub>N(x<sub>i</sub>|μ<sub>j</sub>,Σ<sub>j</sub>)</div>
+          <p>두 성분의 가중 밀도가 0.12와 0.08이면 책임값은 0.6과 0.4다. 가장 큰 값을 표시할 수 있지만 확실한 구분은 아니다. 각 관측의 책임값 합은
+            1이어야 한다.</p>
+          <aside class="note "><strong>아주 작은 밀도</strong>
+            <p>로그밀도를 계산한 뒤 log-sum-exp로 정규화한다. m = max(aₖ)이면 log Σexp(aₖ) = m + log Σexp(aₖ−m).
+              언더플로를 줄이는 동일한 식이다.</p>
+          </aside>
+        </section>
+        <section id="em">
+          <h2>04 / E-step과 M-step</h2>
+          <p>관측 로그우도는 log 안에 성분 합이 있어 파라미터를 한 번에 닫힌식으로 구하기 어렵다. 현재 파라미터에서 책임값을 계산하는 E-step과 가중 통계를
+            추정하는 M-step을 반복한다.</p>
+          <div class="equation"><span class="eq-label">핵심 식</span>N<sub>k</sub> =
+            Σ<sub>i</sub>r<sub>ik</sub><br>μ<sub>k</sub><sup>new</sup> =
+            Σ<sub>i</sub>r<sub>ik</sub>x<sub>i</sub>/N<sub>k</sub><br>Σ<sub>k</sub><sup>new</sup> =
+            Σ<sub>i</sub>r<sub>ik</sub>(x<sub>i</sub>−μ<sub>k</sub><sup>new</sup>)(x<sub>i</sub>−μ<sub>k</sub><sup>new</sup>)<sup>T</sup>/N<sub>k</sub><br>π<sub>k</sub><sup>new</sup>
+            = N<sub>k</sub>/N</div>
+          <p>관측 [0,2,5]와 어떤 성분의 책임값 [0.8,0.6,0.1]이면 유효 표본 수는 1.5, 새 평균은 1.7/1.5 ≈ 1.133이다. 공분산 갱신에는
+            새 평균을 쓴다. 책임값이 큰 관측의 영향이 커진다.</p>
+        </section>
+        <section id="likelihood">
+          <h2>05 / 로그우도가 말해 주는 것</h2>
+          <p>이상적인 정확한 EM에서 관측 로그우도는 감소하지 않는다. 하지만 전역 최댓값은 보장하지 않는다. 초기 평균에 따라 다른 적합으로 수렴할 수 있다. 제한
+            없는 혼합모형에서는 한 성분의 분산이 한 점으로 붕괴할 때 우도가 무한히 커질 수도 있다.</p>
+          <div class="equation"><span class="eq-label">핵심 식</span>ℓ(θ) =
+            Σ<sub>i</sub>log[Σ<sub>k</sub>π<sub>k</sub>N(x<sub>i</sub>|μ<sub>k</sub>,Σ<sub>k</sub>)]
+          </div>
+          <p>실험은 공분산 대각에 10⁻⁶을 더해 특이성을 줄인다. 순수 최대우도 갱신과 미세하게 다르므로 우도 감소나 비정상 수치가 있으면 중단한다. 훈련 우도가
+            높아도 미래 예측이 항상 좋지는 않다. 성분 수는 별도 검증 또는 AIC·BIC처럼 복잡도를 반영하는 기준으로 선택할 수 있다.</p>
+          <aside class="note warning"><strong>군집 번호에는 순서가 없다</strong>
+            <p>성분 이름을 바꿔도 같은 밀도일 수 있다. 초기화가 다른 결과에서 같은 번호라고 같은 집단으로 가정하지 않는다.</p>
+          </aside>
+        </section>
+        <section id="code">
+          <h2>06 / 책임값 구현과 관찰</h2>
+          <figure class="figure" tabindex="0" aria-label="계산 결과 그래프. 좁은 화면에서는 좌우로 스크롤"><svg
+              xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+              aria-labelledby="gmm-fit-title">
+              <title id="gmm-fit-title">GMM 최대 책임값 군집과 성분별 거리 2 타원</title>
+              <defs>
+                <clippath id="gmm-fit-clip">
+                  <rect x="64" y="22" width="596" height="283" />
+                </clippath>
+              </defs>
+              <rect width="680" height="360" fill="white" />
+              <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-4</text><text x="54" y="309" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-4</text>
+              <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-2.4</text><text x="54" y="252.4" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-2.4</text>
+              <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-0.8</text><text x="54" y="195.8" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-0.8</text>
+              <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                font-family="sans-serif" font-size="11" fill="#526964">0.8</text><text x="54"
+                y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                fill="#526964">0.8</text>
+              <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">2.4</text><text x="54" y="82.6" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">2.4</text>
+              <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">4</text><text x="54" y="26" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">4</text>
+              <g clip-path="url(#gmm-fit-clip)">
+                <circle cx="417.68691978566335" cy="114.82678354702693" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="513.7929056707931" cy="150.6818874973117" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="549.007846580178" cy="155.35927845080735" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="491.76783969977924" cy="131.45933210053985" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="415.93965599319944" cy="108.31389096466094" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="471.814121641326" cy="151.06233573345054" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="529.9813570389761" cy="179.8193537940328" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="458.64678586265785" cy="107.78344428523488" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="549.0266141865911" cy="160.68352128313543" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="528.4292403767231" cy="129.34173894561488" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="428.8318261941034" cy="96.29773592022087" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="466.61720891236274" cy="116.72967308981362" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="523.857730878845" cy="156.8990678427047" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="468.1495210595683" cy="92.8880711482376" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="495.5930480758928" cy="111.08218249671285" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="428.6521968278475" cy="125.1520641131219" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="395.9044410658901" cy="116.63601042893123" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="483.2493938661623" cy="154.36239953876301" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="526.0180766084651" cy="137.7372330854654" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="404.1209409636057" cy="117.56570074751528" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="443.1852126319797" cy="123.8021085553803" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="432.63130538132185" cy="115.58625718852736" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="479.53068198102517" cy="145.16855181882534" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="467.70635942121174" cy="130.4372466613064" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="491.426686804432" cy="133.81668617589582" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="526.1351903727423" cy="122.98291016407856" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="406.3560674508449" cy="95.88699572630503" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="495.0662575607978" cy="125.15530118084271" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="489.5039438338102" cy="140.51876609798177" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="411.5480679941308" cy="86.66471395322549" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="459.1088601704325" cy="150.57287568767254" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="451.5319519811373" cy="118.8896273885531" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="403.82237008500044" cy="123.2507814430086" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="579.4425999880791" cy="136.632560959545" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="453.8354868060609" cy="125.60705211942246" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="541.6945150088836" cy="160.4368341494152" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="422.9350978567566" cy="90.05600213710358" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="397.2274203360118" cy="120.1201381331739" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="415.1507552236037" cy="123.99587390082974" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="533.5576059463854" cy="143.84557943423493" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="590.1175583173798" cy="158.66011183352146" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="499.9201963364938" cy="146.58593395847157" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="430.7911629410403" cy="118.67682741284298" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="460.6786758381771" cy="126.87955387274812" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="412.8711364464462" cy="139.65621895055412" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="470.05699972673483" cy="118.84620529588926" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="505.52059338139054" cy="154.41641165313223" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="477.74858091635394" cy="119.63845215075924" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="406.63597102019486" cy="128.11614161374072" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="512.8861731778245" cy="140.83629623337185" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="543.3199643743935" cy="158.021423013722" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="550.3947821262122" cy="129.28634051142006" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="536.9177757816046" cy="129.21254115945322" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="473.2021811675825" cy="119.71446576964908" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="453.5876057090745" cy="128.7598438409503" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="530.8465504555097" cy="149.39828479737216" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="400.72817540922534" cy="115.47718321499988" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="440.89893070979105" cy="124.18808086615192" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="395.1350203154921" cy="104.41147176134007" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="456.6173856766798" cy="141.13331459248278" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="453.86569612811695" cy="112.97405876152561" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="474.49793737308687" cy="116.96878176446276" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="514.2623729847141" cy="121.72125593682017" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="457.4750049147969" cy="119.40106191507707" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="426.47462539805565" cy="117.56379315631841" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="412.6836921761779" cy="96.45629263054127" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="494.7904115933078" cy="156.42909137084072" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="489.26147736582135" cy="107.00023675738697" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="361.6525144241964" cy="185.59739691100134" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="447.660565991644" cy="127.00275354480564" r="3" fill="#106858"
+                  opacity="0.7" />
+                <path
+                  d="M601.44 134.87 L601.44 138.32 L600.86 141.75 L599.70 145.18 L597.98 148.57 L595.69 151.91 L592.86 155.20 L589.48 158.42 L585.57 161.55 L581.15 164.59 L576.24 167.52 L570.85 170.32 L565.01 173.00 L558.75 175.53 L552.07 177.91 L545.02 180.13 L537.62 182.17 L529.91 184.04 L521.90 185.71 L513.64 187.20 L505.15 188.48 L496.48 189.56 L487.66 190.43 L478.71 191.09 L469.69 191.53 L460.62 191.75 L451.54 191.76 L442.49 191.54 L433.50 191.11 L424.62 190.47 L415.86 189.61 L407.29 188.54 L398.91 187.26 L390.78 185.79 L382.92 184.12 L375.36 182.26 L368.14 180.23 L361.28 178.02 L354.81 175.65 L348.76 173.12 L343.15 170.45 L338.00 167.65 L333.34 164.73 L329.18 161.70 L325.55 158.57 L322.45 155.36 L319.89 152.07 L317.89 148.73 L316.46 145.34 L315.61 141.92 L315.32 138.48 L315.61 135.04 L316.48 131.60 L317.92 128.20 L319.92 124.83 L322.49 121.51 L325.60 118.25 L329.24 115.08 L333.41 111.99 L338.07 109.01 L343.23 106.14 L348.84 103.39 L354.90 100.79 L361.37 98.33 L368.24 96.03 L375.47 93.90 L383.03 91.95 L390.90 90.17 L399.03 88.59 L407.41 87.21 L415.99 86.02 L424.74 85.05 L433.63 84.29 L442.62 83.74 L451.67 83.40 L460.75 83.29 L469.82 83.39 L478.85 83.72 L487.79 84.26 L496.61 85.01 L505.28 85.97 L513.76 87.15 L522.02 88.52 L530.02 90.09 L537.73 91.86 L545.13 93.81 L552.17 95.93 L558.84 98.22 L565.10 100.67 L570.94 103.27 L576.32 106.00 L581.22 108.87 L585.63 111.85 L589.53 114.93 L592.90 118.10 L595.73 121.35 L598.01 124.67 L599.72 128.04 L600.87 131.44 L601.44 134.87"
+                  fill="none" stroke="#106858" stroke-width="2" />
+                <rect x="397.91198674817895" y="232.38370208088423" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="382.2718271302529" y="199.0898552583213" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="415.9595918818205" y="173.1547332467585" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="372.88530234829074" y="184.68546265530162" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="412.2016712632486" y="241.78619782509685" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="367.73221530627774" y="232.6720764789161" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="446.10373531772836" y="146.5161829650586" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="418.75554569064167" y="209.50186794187817" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="450.10374236600643" y="181.73965331996288" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="417.113850652404" y="238.1072152688248" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="407.5020184736628" y="180.7940170503864" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="385.30821668233204" y="198.37808627788468" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="410.53004047514025" y="208.07446332724282" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="420.6011818131289" y="219.139665875065" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="420.56803172869166" y="146.6899406373796" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="424.81720606452603" y="230.40209033959565" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="424.88034402472346" y="216.26113496081285" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="414.2994587921939" y="208.39702186898904" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="387.150614830503" y="197.15980134218307" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="438.4039607777154" y="225.30886816278988" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="442.46460683301535" y="137.95966603598455" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="403.7842232083901" y="230.08660086921972" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="407.115673648544" y="222.6367848007706" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="427.9079172467385" y="199.23104757058618" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="400.20878303885894" y="207.25839163830767" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="377.41136994217123" y="191.66067368162163" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="446.92652668813696" y="99.66558371426856" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="467.4543320886026" y="236.28782362597553" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="415.89440441523504" y="205.25167653641293" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="440.492452787106" y="168.3441016566757" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="441.9871237802607" y="130.79284274947935" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="446.36490722112717" y="211.57121952458738" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="452.27262718412106" y="208.83236918786238" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="431.05826027008965" y="182.6006905512632" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="433.68771581048856" y="190.31282120387812" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="409.76272906383764" y="259.9963576546104" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="396.573127426877" y="163.44810294782766" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="438.8814805294259" y="187.34751566476916" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="422.4690559870072" y="221.6229237041839" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="372.6714915313905" y="233.96404335504684" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="412.29709456719326" y="187.90328595563005" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="421.1761839548322" y="205.28368361550758" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="442.3846054645017" y="211.69199122138826" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="444.44145608021876" y="189.03586828600783" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="427.8503656510593" y="218.67842997736778" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="416.7099348947293" y="234.9232208252193" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="422.259400241609" y="201.6329853709325" width="6" height="6" fill="#b15d2d"
+                  opacity=".65" />
+                <rect x="437.00977476385685" y="211.11307459464908" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="422.2751741468876" y="258.09552977473425" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="432.8133587070298" y="193.33588530148205" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="425.1967680217249" y="84.89751771293189" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="457.66976143056746" y="86.09227601436456" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="349.555132608342" y="215.47281767597173" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="417.52834390945225" y="251.4692183017358" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="423.02141942930035" y="273.99795914982894" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="394.8996284313091" y="216.42861134393723" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="417.1953685493999" y="176.2141230565555" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <rect x="429.6422438758266" y="79.75366849574212" width="6" height="6"
+                  fill="#b15d2d" opacity=".65" />
+                <path
+                  d="M449.66 85.10 L452.61 85.45 L455.45 86.19 L458.19 87.34 L460.80 88.88 L463.27 90.81 L465.61 93.12 L467.79 95.80 L469.82 98.84 L471.67 102.22 L473.35 105.94 L474.84 109.98 L476.15 114.32 L477.26 118.94 L478.17 123.83 L478.88 128.97 L479.38 134.33 L479.68 139.90 L479.76 145.65 L479.64 151.56 L479.31 157.60 L478.77 163.75 L478.03 169.99 L477.08 176.29 L475.94 182.63 L474.60 188.97 L473.08 195.30 L471.37 201.59 L469.49 207.81 L467.43 213.94 L465.22 219.96 L462.86 225.83 L460.36 231.54 L457.73 237.06 L454.98 242.37 L452.11 247.46 L449.15 252.29 L446.11 256.85 L442.99 261.12 L439.81 265.08 L436.58 268.73 L433.31 272.03 L430.03 274.99 L426.73 277.58 L423.44 279.80 L420.17 281.64 L416.93 283.09 L413.73 284.15 L410.59 284.81 L407.52 285.06 L404.53 284.91 L401.63 284.36 L398.84 283.42 L396.17 282.07 L393.62 280.34 L391.21 278.22 L388.95 275.72 L386.85 272.86 L384.91 269.65 L383.14 266.10 L381.56 262.22 L380.16 258.03 L378.95 253.54 L377.94 248.78 L377.13 243.77 L376.52 238.51 L376.12 233.04 L375.93 227.38 L375.95 221.55 L376.17 215.57 L376.61 209.47 L377.25 203.27 L378.09 197.00 L379.14 190.68 L380.38 184.33 L381.81 177.99 L383.43 171.68 L385.23 165.42 L387.19 159.24 L389.33 153.17 L391.61 147.22 L394.05 141.43 L396.61 135.81 L399.31 130.39 L402.12 125.19 L405.03 120.23 L408.03 115.53 L411.12 111.11 L414.27 106.99 L417.48 103.19 L420.72 99.71 L424.00 96.58 L427.29 93.80 L430.59 91.40 L433.87 89.36 L437.13 87.72 L440.35 86.46 L443.52 85.61 L446.63 85.15 L449.66 85.10"
+                  fill="none" stroke="#b15d2d" stroke-width="2" stroke-dasharray="6 5" />
+                <circle cx="146.07830530228824" cy="199.98980442492183" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="249.94515417386145" cy="204.90832996960663" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="255.0113935342487" cy="140.81688982200134" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="318.4668519765621" cy="134.95566575860997" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="235.40563625088305" cy="192.378924567307" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="309.4681841007068" cy="97.25086631098273" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="268.0309524063683" cy="184.6727577489935" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="314.67562710283187" cy="182.26471980301235" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="381.9692601328741" cy="104.47939166750456" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="258.15835307288927" cy="148.41183650258998" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="286.33961741427197" cy="168.30553555598019" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="230.12684991597956" cy="201.48536733696665" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="185.32995669868637" cy="180.187098233675" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="370.0182197346939" cy="119.65482735777925" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="314.06724060601783" cy="169.1807330643807" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="411.99800672235796" cy="73.57590260713422" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="366.8530947602036" cy="114.07673625658717" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="215.47147436220237" cy="199.58436320277406" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="214.937591343059" cy="214.15788513395023" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="341.7429237467703" cy="132.8410674059795" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="324.5264644253225" cy="196.3050320188292" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="300.0524506948142" cy="151.27853980149845" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="276.6029991935259" cy="164.7090690754377" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="253.33556713909562" cy="192.41820600293676" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="390.3669885968156" cy="90.44430678046916" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="209.4500975017644" cy="236.33085372356632" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="310.27878293071103" cy="186.5008751031532" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="266.25805855089214" cy="193.97695195844446" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="190.52482041795565" cy="227.24460705214113" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="250.99081938095435" cy="152.50607029623566" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="318.26691211759305" cy="160.48832486724314" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="261.7464553766597" cy="210.51739242387413" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="249.02145809226346" cy="202.16698166552197" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="317.82208494011206" cy="163.02310660233798" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="299.55498336135173" cy="155.0675115602467" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="186.27330294622925" cy="229.88254888904862" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="207.50802219727277" cy="181.32338021187428" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="290.280791472347" cy="161.25202942282172" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="261.9053625307846" cy="186.4771033903128" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="210.29809376622427" cy="211.2057450798165" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="276.1059164098182" cy="158.8053118280459" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="234.3089422269347" cy="162.50687694349529" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="305.7488376653382" cy="184.7975879094194" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="389.0331356838733" cy="94.91833138272045" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="144.95177834411527" cy="202.2506175494301" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="234.2520876234861" cy="189.66683735091152" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="352.3783024705754" cy="85.95510512924494" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="237.1695811441479" cy="137.5829108100467" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="231.63100166030773" cy="201.40888396376147" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="133.71724054115117" cy="184.36089083322864" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="201.614269383707" cy="212.60721054664907" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="210.53233176447353" cy="195.49320839237225" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="241.15494661144908" cy="154.59832305754702" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="388.3796957094452" cy="98.50366076783715" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="287.7881653165901" cy="150.81361191376146" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="385.39499362136695" cy="111.94101187456005" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="351.3823566066911" cy="173.8902632250774" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="156.65069909474474" cy="189.84927440084562" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="222.02702265641187" cy="213.15430986872977" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="282.53886291915245" cy="176.53632500785255" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="266.1142460245363" cy="172.95060736819391" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="351.8503186702512" cy="99.46820838338033" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="254.83772089582806" cy="155.7304508872748" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="198.1585664874883" cy="246.7274815833597" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="250.27628078402748" cy="179.6346395045807" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="308.40137566807584" cy="141.10294547051456" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="192.0666590882644" cy="213.11332958371347" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="227.04255059782614" cy="168.32057726420308" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="207.96926700050003" cy="201.70300375084062" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.66828642500934" cy="172.79287664372876" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="257.2379565988747" cy="176.24573286789428" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.9986107170479" cy="177.42632769031516" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="292.77917352908474" cy="132.9757749834454" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="180.46900115521447" cy="254.93412065931375" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="373.94132268239434" cy="113.13803045052126" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="230.24591609724047" cy="172.92251663716493" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="292.6597352432406" cy="159.94893413805144" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="275.5298757226019" cy="184.34466363272134" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="217.2741141312872" cy="220.66295412909597" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="275.70938291247376" cy="175.03590432669583" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="215.10777593154185" cy="240.0614543677387" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="320.6204446765622" cy="190.79641906643332" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="323.75626695216806" cy="166.51853917198005" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="319.13097986900925" cy="193.0295342227334" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.3279779409845" cy="179.69112588816168" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="224.44875456485943" cy="191.1152739632651" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="338.8284386999933" cy="126.01098116205736" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="240.4297185135345" cy="144.4619826855073" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="259.6973634508863" cy="204.89240818258014" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="291.14991835021704" cy="191.43038143545203" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="278.5296084228518" cy="167.84969515265212" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="244.89384486362624" cy="202.89977056446224" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="253.7418262758608" cy="181.33122073078727" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="308.1320081069536" cy="165.712322778603" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="248.23850110705905" cy="183.73906930738556" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="277.4516516653123" cy="210.82782326126252" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="190.2618147960635" cy="245.91528479178675" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="177.48616872636546" cy="215.44810294733418" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="288.35640342883505" cy="156.35094011542708" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="245.34778803669315" cy="199.12792948384472" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="295.6384982514321" cy="172.62466697366511" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="214.27322286218794" cy="181.57263948102405" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="273.16135669923256" cy="177.33669313906964" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="225.70670511164397" cy="215.38955767664515" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="259.9901230523027" cy="192.14074857828246" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="207.61328731382926" cy="171.92064046850447" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="188.7368474857452" cy="251.50953250592866" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="304.8200874342622" cy="158.93219322308119" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="189.11782306015266" cy="210.69392039734458" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="253.46808322460168" cy="155.9878747756209" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="333.28718747772706" cy="164.58746752031243" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <circle cx="294.3295856637134" cy="148.77600049273065" r="3" fill="#6263a1"
+                  opacity="0.7" />
+                <path
+                  d="M386.48 101.09 L389.49 102.41 L392.02 104.02 L394.04 105.92 L395.57 108.08 L396.59 110.52 L397.09 113.21 L397.08 116.15 L396.55 119.32 L395.51 122.72 L393.96 126.32 L391.91 130.12 L389.36 134.09 L386.33 138.23 L382.83 142.51 L378.87 146.92 L374.47 151.44 L369.64 156.06 L364.41 160.74 L358.79 165.49 L352.81 170.27 L346.50 175.06 L339.87 179.85 L332.96 184.62 L325.80 189.35 L318.40 194.02 L310.81 198.61 L303.04 203.10 L295.15 207.48 L287.14 211.72 L279.06 215.81 L270.95 219.74 L262.82 223.48 L254.73 227.03 L246.68 230.36 L238.73 233.47 L230.91 236.34 L223.23 238.96 L215.74 241.32 L208.47 243.41 L201.44 245.23 L194.68 246.76 L188.22 247.99 L182.09 248.93 L176.30 249.57 L170.89 249.91 L165.88 249.94 L161.28 249.67 L157.12 249.10 L153.41 248.22 L150.16 247.05 L147.39 245.58 L145.12 243.83 L143.34 241.80 L142.06 239.50 L141.30 236.93 L141.06 234.12 L141.33 231.06 L142.11 227.77 L143.41 224.27 L145.21 220.57 L147.51 216.68 L150.30 212.63 L153.57 208.41 L157.30 204.07 L161.49 199.60 L166.10 195.03 L171.14 190.37 L176.56 185.66 L182.36 180.89 L188.51 176.11 L194.98 171.31 L201.75 166.53 L208.80 161.77 L216.08 157.07 L223.58 152.44 L231.26 147.90 L239.10 143.46 L247.05 139.15 L255.10 134.98 L263.20 130.97 L271.32 127.13 L279.44 123.49 L287.51 120.04 L295.51 116.82 L303.41 113.83 L311.16 111.08 L318.75 108.59 L326.13 106.36 L333.29 104.41 L340.19 102.74 L346.80 101.36 L353.10 100.27 L359.06 99.48 L364.66 98.99 L369.87 98.80 L374.68 98.92 L379.06 99.35 L383.00 100.07 L386.48 101.09"
+                  fill="none" stroke="#6263a1" stroke-width="2" />
+              </g>
+              <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Request
+                size (standardized)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                text-anchor="middle" font-size="12" fill="#18312e"
+                font-family="sans-serif">Processing time (standardized)</text>
+            </svg>
+            <figcaption>기본 설정에서 직접 계산한 결과. 아래 실험실에서 설정을 변경할 수 있습니다.</figcaption>
+          </figure>
+          <pre><code>import numpy as np
+# 행은 관측, 열은 성분. 값은 log(pi_k) + log N(x_i).
+logp = np.array([[-2.1,-2.5],[-900.,-902.]])
+shift = logp.max(axis=1, keepdims=True)
+q = np.exp(logp-shift)
+r = q/q.sum(axis=1, keepdims=True)
+print(r)
+assert np.allclose(r.sum(axis=1), 1)</code></pre>
+          <p>반복 0은 초기 상태다. 1,5,20,60으로 늘리며 타원과 로그우도를 비교한다. 초기화를 바꾸면 데이터는 고정되고 초기 평균만 달라진다. 타원은 각
+            성분에서 Mahalanobis 거리 2인 선으로, 전체 혼합밀도의 등고선은 아니다.</p>
+          <details class="answer">
+            <summary>책임값은 모두 0이나 1이어야 좋은가?</summary>
+            <p>겹치는 분포에서는 중간 값이 자연스럽다. 현재 모델 안의 소속 확률이며 모델 자체가 맞다는 보장은 아니다.</p>
+          </details>
+          <details class="answer">
+            <summary>성분 수를 늘려 훈련 우도가 올라가면 더 좋은가?</summary>
+            <p>표현력이 늘면서 과적합할 수 있다. 복잡도와 독립 평가를 함께 확인한다.</p>
+          </details><a class="callout-link" href="../labs/clustering.html">GMM 군집 실험실 열기 →</a>
+        </section>
+        <section id="advanced-a">
+          <h2>심화 A / 초기화와 성분 수를 함께 비교하기</h2>
+          <div class="case-brief"><span class="pill">심화 A · 여러 초기값과 모델 선택</span>
+            <p><strong>풀어볼 문제</strong> EM 로그우도가 증가했다는 사실만으로 가장 좋은 혼합모형을 찾았다고 말할 수 있을까?</p>
+          </div>
+          <p>시드 2606, 훈련 210개와 독립 검증 400개를 생성한다. 혼합비는 [.4,.35,.25], 평균은 [−1.2,0], [1.1,.7],
+            [.3,−.9]다. 성분별 x=μ+Lz, z~N(0,I₂)의 L은 [[.7,0],[.35,.55]], [[.7,0],[−.2,.5]],
+            [[.45,0],[0,.6]]이다. 즉 공분산은 LLᵀ이며 세 집단은 일부 겹친다.</p>
+          <div class="equation"><span class="eq-label">핵심 식</span>2차원 full covariance GMM의 자유 파라미터
+            수<br>p=(K−1)+2K+3K=6K−1<br>BIC = −2ℓ<sub>train</sub> + p log N</div>
+          <ol class="worked-steps">
+            <li>K=1~5 각각을 초기화 시드 3,11,29,47로 100회씩 갱신한다. 초기 평균은 관측에서 중복 없이 뽑고 공분산은 전체 훈련 공분산, 혼합비는
+              균등하게 시작한다.</li>
+            <li>K=3의 네 최종 로그우도는 -572.284, -557.453, -557.453, -557.455다. 단조 증가한 한 경로도 다른 초기값보다 낮은 해에
+              머물 수 있다.</li>
+            <li>각 K에서 훈련 로그우도가 가장 큰 실행을 고른다. 성분 수가 다르면 적합도에 더해 파라미터 수를 고려해야 한다. 독립 검증의 관측당 평균 로그밀도도
+              따로 계산한다.</li>
+            <li>이 실행의 최소 BIC는 K=3, 최대 검증 평균 로그밀도도 K=3다. 생성 성분 수를 아는 것은 합성 실험의 특권이며, 항상 두 기준이 일치하거나
+              실제 의미의 집단 수를 찾아준다고 보장하지 않는다.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>계산으로 읽는 그림</span><strong>단조 증가와 전역 최적은
+                다르다</strong><small class="scroll-hint">좌우로 스크롤하여 전체 그래프를 확인하세요.</small></div>
+            <div class="graph-scroll" tabindex="0" aria-label="단조 증가와 전역 최적은 다르다. 좁은 화면에서는 좌우로 스크롤">
+              <img src="../../assets/images/advanced/06-initialization.svg" width="940" height="450"
+                loading="lazy"
+                alt="같은 K=3, 같은 관측에 대해 초기화 시드만 바꾼 EM 로그우도다. 100회 후에도 한 경로는 더 낮은 해에 머문다. 시드 11과 29는 거의 겹쳐 보일 만큼 비슷한 최종 값에 도달한다.">
+            </div>
+            <figcaption>같은 K=3, 같은 관측에 대해 초기화 시드만 바꾼 EM 로그우도다. 100회 후에도 한 경로는 더 낮은 해에 머문다. 시드 11과
+              29는 거의 겹쳐 보일 만큼 비슷한 최종 값에 도달한다.<a
+                href="../../assets/images/advanced/06-initialization.svg" download>SVG 다운로드 ↗</a>
+            </figcaption>
+          </figure>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>계산으로 읽는 그림</span><strong>성분을 늘렸을 때의 이득과 비용을 함께
+                보기</strong><small class="scroll-hint">좌우로 스크롤하여 전체 그래프를 확인하세요.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="성분을 늘렸을 때의 이득과 비용을 함께 보기. 좁은 화면에서는 좌우로 스크롤"><img
+                src="../../assets/images/advanced/06-model-selection.svg" width="940" height="450"
+                loading="lazy"
+                alt="각 K의 네 초기값 중 최고 훈련 우도 실행을 사용했다. 왼쪽 BIC는 작을수록, 오른쪽 독립 검증 평균 로그밀도는 클수록 좋다. 두 축은 서로 다른 수치이므로 곡선 높이를 직접 비교하지 않는다.">
+            </div>
+            <figcaption>각 K의 네 초기값 중 최고 훈련 우도 실행을 사용했다. 왼쪽 BIC는 작을수록, 오른쪽 독립 검증 평균 로그밀도는 클수록 좋다. 두
+              축은 서로 다른 수치이므로 곡선 높이를 직접 비교하지 않는다.<a
+                href="../../assets/images/advanced/06-model-selection.svg" download>SVG 다운로드 ↗</a>
+            </figcaption>
+          </figure>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">K</th>
+                  <th scope="col">훈련 로그우도</th>
+                  <th scope="col">BIC ↓</th>
+                  <th scope="col">검증 평균 로그밀도 ↑</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>-610.914</td>
+                  <td>1248.563</td>
+                  <td>-2.895</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>-575.610</td>
+                  <td>1210.038</td>
+                  <td>-2.818</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>-557.453</td>
+                  <td>1205.808</td>
+                  <td>-2.763</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>-553.181</td>
+                  <td>1229.346</td>
+                  <td>-2.810</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>-547.754</td>
+                  <td>1250.574</td>
+                  <td>-2.874</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <details class="answer">
+            <summary>로그우도 차이로 시드 11과 29 중 어느 성분 번호가 진짜 집단 1인지 알 수 있는가?</summary>
+            <p>성분 번호는 치환해도 같은 밀도를 표현한다. 로그우도는 번호의 의미를 결정하지 않는다. 여러 실행의 성분을 비교하려면 평균·공분산 등의 대응을 먼저
+              맞춰야 한다.</p>
+          </details>
+        </section>
+        <section id="advanced-b">
+          <h2>심화 B / 책임값을 엔트로피로 다시 읽기</h2>
+          <div class="case-brief"><span class="pill">심화 B · 책임값과 엔트로피</span>
+            <p><strong>풀어볼 문제</strong> 한 관측을 가장 가능성 높은 성분의 색 하나로 칠하면 어떤 정보가 사라질까?</p>
+          </div>
+          <p>K=3의 최고 훈련 우도 모델을 사용한다. 책임값 rᵢₖ은 이 관측과 현재 모델을 조건으로 한 잠재 성분의 소속 확률이다. 정답 라벨에 대한 분류 정확도나
+            그 관측이 정상일 확률과는 다르다. 겹친 지점에서는 둘 이상의 성분이 관측을 비슷하게 설명할 수 있다.</p>
+          <div class="equation"><span class="eq-label">핵심
+              식</span>rᵢₖ=exp(aᵢₖ−logsumexp(aᵢ₁,…,aᵢK))<br>aᵢₖ=log πₖ+log N(xᵢ|μₖ,Σₖ)<br>Hᵢ=−Σₖrᵢₖ
+            log rᵢₖ,   0≤Hᵢ/log K≤1</div>
+          <ol class="worked-steps">
+            <li>r=[.98,.01,.01]와 [.51,.48,.01]는 모두 첫 성분으로 hard assignment된다. 하지만 두 번째는 첫째와 둘째의 설명이
+              거의 비슷하다.</li>
+            <li>정규화 엔트로피 0은 한 성분에 완전히 집중한 경우, 1은 K개에 균등한 경우다. 자연로그를 사용하며 0log0=0으로 정의한다.</li>
+            <li>이 훈련 표본에서 최대 책임값이 0.7 미만인 관측은 13개다. 0.7은 설명을 위한 임의 기준이며 군집 개수 선택 기준이 아니다.</li>
+            <li>큰 엔트로피는 성분 사이의 애매함을 나타낸다. 모든 성분에서 멀어 전체 밀도가 낮은 이상점도 한 성분의 상대 책임값은 높을 수 있으므로 이상 탐지에는
+              로그밀도를 별도로 살펴야 한다.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>계산으로 읽는 그림</span><strong>최대 소속과 소속의 애매함을 나란히
+                읽기</strong><small class="scroll-hint">좌우로 스크롤하여 전체 그래프를 확인하세요.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="최대 소속과 소속의 애매함을 나란히 읽기. 좁은 화면에서는 좌우로 스크롤"><img
+                src="../../assets/images/advanced/06-responsibility.svg" width="940" height="450"
+                loading="lazy"
+                alt="왼쪽은 최대 책임값 성분을 원·사각·삼각형으로 구분했고 타원은 Mahalanobis 거리 2를 표시한다. 오른쪽은 같은 관측의 H/log3이며 진할수록 애매하다. 두 좌표는 무차원이며 타원은 평균 추정의 신뢰구간이 아니다.">
+            </div>
+            <figcaption>왼쪽은 최대 책임값 성분을 원·사각·삼각형으로 구분했고 타원은 Mahalanobis 거리 2를 표시한다. 오른쪽은 같은 관측의
+              H/log3이며 진할수록 애매하다. 두 좌표는 무차원이며 타원은 평균 추정의 신뢰구간이 아니다.<a
+                href="../../assets/images/advanced/06-responsibility.svg" download>SVG 다운로드 ↗</a>
+            </figcaption>
+          </figure>
+          <details class="worked-code">
+            <summary>계산 코드의 핵심 펼치기</summary>
+            <p>심화 Python의 해당 함수에서 발췌한 계산 흐름입니다. 전체 데이터 생성·보조 함수는 아래 다운로드에 있습니다.</p>
+            <pre><code>logp = gmm_logp(X, weights, means, covs)
+shift = logp.max(axis=1, keepdims=True)
+log_norm = shift + np.log(np.exp(logp-shift).sum(axis=1, keepdims=True))
+responsibility = np.exp(logp-log_norm)
+entropy = -np.sum(responsibility * np.log(np.maximum(responsibility, 1e-300)), axis=1)
+normalized_entropy = entropy / np.log(len(weights))
+assert np.allclose(responsibility.sum(axis=1), 1)
+# 이상점 여부에는 log_norm도 별도로 확인한다.</code></pre>
+          </details>
+        </section>
+        <section id="advanced-c">
+          <h2>심화 C / 공분산 붕괴를 진단하고 막기</h2>
+          <div class="case-brief"><span class="pill">심화 C · 공분산 붕괴와 수치 안정성</span>
+            <p><strong>풀어볼 문제</strong> 평균을 한 관측에 고정한 가우시안의 분산을 계속 줄이면 최대우도는 어떤 유혹을 받는가?</p>
+          </div>
+          <p>2차원 등방 가우시안의 평균에서 밀도는 1/(2πσ²)다. 한 성분이 관측 하나를 잡고 σ→0으로 붕괴하면 그 점의 밀도가 무한히 커진다. 다른 성분이
+            나머지 관측을 설명할 수 있으므로 제약 없는 GMM 우도에는 이런 퇴화 문제가 있다.</p>
+          <div class="equation"><span class="eq-label">핵심 식</span>Σₖ ← (1/Nₖ)Σᵢrᵢₖ(xᵢ−μₖ)(xᵢ−μₖ)ᵀ +
+            εI<br>본 심화 구현: ε=10<sup>−6</sup></div>
+          <ol class="worked-steps">
+            <li>σ=1에서 10⁻³으로 줄이면 평균의 밀도는 백만 배 커진다. 높은 밀도 한 점이 좋은 군집을 의미하지 않는 이유다.</li>
+            <li>공분산 대각에 ε를 더해 양의 정부호 계산을 안정화한다. ε는 분산 단위이며 모든 축에 대해 고유값 하한을 추가하는 효과가 있다.</li>
+            <li>이번 K=3 적합의 최소 공분산 고유값은 0.1631로 10⁻⁶보다 충분히 크다. 책임값 합과 유한성, 로그우도 변화량도 함께 검증한다.</li>
+            <li>이 대각 보정은 원래 무제약 우도의 정확한 M-step과 다르다. 모든 데이터에서 비감소를 무조건 보장한다고 쓰지 않는다. 작은 성분의 유효 관측 수,
+              고유값, 우도 감소를 감시하고 필요하면 초기화·제약을 재설계한다.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>계산으로 읽는 그림</span><strong>작아진 분산이 만드는 과도한
+                밀도</strong><small class="scroll-hint">좌우로 스크롤하여 전체 그래프를 확인하세요.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="작아진 분산이 만드는 과도한 밀도. 좁은 화면에서는 좌우로 스크롤"><img
+                src="../../assets/images/advanced/06-collapse.svg" width="940" height="450"
+                loading="lazy"
+                alt="가로축은 등방 표준편차 σ, 세로축은 평균 위치의 2차원 밀도이며 둘 다 로그 축이다. ε=10⁻⁶의 분산 하한은 σ=10⁻³에 대응한다. 이는 위험을 설명하는 해석적 곡선이며 실제 EM 실행이 붕괴했다는 그림은 아니다.">
+            </div>
+            <figcaption>가로축은 등방 표준편차 σ, 세로축은 평균 위치의 2차원 밀도이며 둘 다 로그 축이다. ε=10⁻⁶의 분산 하한은 σ=10⁻³에
+              대응한다. 이는 위험을 설명하는 해석적 곡선이며 실제 EM 실행이 붕괴했다는 그림은 아니다.<a
+                href="../../assets/images/advanced/06-collapse.svg" download>SVG 다운로드 ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>모든 특징을 1,000배로 바꾸어도 ε=10⁻⁶의 효과가 같을까?</summary>
+            <p>같지 않다. 특징을 1,000배 늘리면 공분산은 10⁶배가 되므로 같은 절대 ε의 상대 효과는 매우 작아진다. 단위·스케일에 맞는 보정 크기를 정하고
+              표준화 여부도 명시해야 한다.</p>
+          </details>
+          <div class="reproduce-box">
+            <h3>직접 재현하고 조건 바꾸기</h3>
+            <p>위 그림은 이 장의 심화 Python 실험을 사전 계산한 결과입니다. Notebook에는 7개 장의 실행 코드와 28개 그림 출력이 들어 있습니다.
+              계산만 실행하려면 NumPy, 그림을 다시 생성하려면 Matplotlib도 필요합니다.</p>
+            <div class="download-links"><a href="../downloads/advanced-experiments.ipynb"
+                download>심화 Notebook ↓</a><a href="../downloads/advanced-experiments.py" download>계산
+                Python ↓</a><a href="../downloads/advanced-figures.py" download>그림 Python ↓</a><a
+                href="../downloads/advanced-results.json" download>수치 결과 JSON ↓</a></div>
+            <p>Python 파일 두 개를 같은 폴더에 두세요. 계산 파일의 <code>--chapter 6</code> 옵션으로 이 장만 실행할 수 있습니다. 그림
+              파일의 <code>--output ./figures</code> 옵션은 28개 SVG를 생성합니다.</p>
+          </div>
+        </section>
+        <p class="sources">더 읽기: <a href="../appendix/references.html#gmm">관련 개념의 참고자료</a> · <a
+            href="../appendix/glossary.html">용어와 기호</a></p><button class="print-button"
+          type="button" data-print>이 페이지 인쇄 / PDF 저장</button>
+        <nav class="next-prev" aria-label="학습 순서"><a href="05-pca-and-svd.html">← 이전: 정보를 압축하는
+            방법</a><a href="07-svm.html">다음: 분류 경계를 만드는 방법 →</a></nav>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>개념을 연결하고, 계산으로 확인하는 학습 기록.<br>합성 데이터 · 직접 작성한 설명과 실험</p><a
+          href="../appendix/references.html">참고자료 및 제작 정보 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

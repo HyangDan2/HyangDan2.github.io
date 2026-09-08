@@ -1,0 +1,289 @@
+<!doctype html>
+<html data-language="en" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="From mathematics to models: HD2Lab&#x27;s personal machine learning studies.">
+    <meta name="theme-color" content="#18312e">
+    <title>Gradient Descent Lab | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script defer src="../assets/js/math-core.js"></script>
+    <script defer src="../assets/js/svm-core.js"></script>
+    <script defer src="../assets/js/figures.js"></script>
+    <script defer src="../assets/js/labs.js"></script>
+    <script src="../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab learning home"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="Main navigation"><a
+            href="../main.html#curriculum">Curriculum</a><a href="../main.html#labs">Labs</a><a
+            href="../appendix/references.html">References</a><a class="hq-link"
+            href="../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="Language"><a href="../labs/gradient-descent.html"
+              lang="en" hreflang="en" data-language="en" aria-current="true">English</a><a
+              href="../ko/labs/gradient-descent.html" lang="ko" hreflang="ko"
+              data-language="ko">한국어</a><a href="../ja/labs/gradient-descent.html" lang="ja"
+              hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>Dark mode</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Optimization studio</div>
+        <h1>Gradient Descent Lab</h1>
+        <p>Observe convergence and oscillation as you change the learning rate and curvature.</p>
+        <div class="meta"><span>Synthetic data</span><span>Browser
+            calculations</span><span>Reproducible settings</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap">
+      <div class="lab-layout">
+        <form class="controls" data-lab="gradient-descent" aria-label="Experiment settings">
+          <div class="control"><label for="rate">Learning rate η<output
+                for="rate">0.15</output></label><input id="rate" name="rate" type="range" min="0.01"
+              max="0.6" step="0.01" value="0.15" disabled></div>
+          <div class="control"><label for="curvature">Curvature κ along v<output
+                for="curvature">6</output></label><input id="curvature" name="curvature"
+              type="range" min="1" max="12" step="1" value="6" disabled></div>
+          <div class="control"><label for="x">Initial u<output for="x">3</output></label><input
+              id="x" name="x" type="range" min="-4" max="4" step="0.5" value="3" disabled></div>
+          <div class="control"><label for="y">Initial v<output for="y">2</output></label><input
+              id="y" name="y" type="range" min="-3" max="3" step="0.5" value="2" disabled></div>
+          <div class="control"><label for="steps">Maximum updates<output
+                for="steps">45</output></label><input id="steps" name="steps" type="range" min="5"
+              max="100" step="5" value="45" disabled></div>
+          <div class="control"><label for="scaled"><input id="scaled" name="scaled" type="checkbox"
+                disabled> Axis preconditioning</label></div><button type="reset" disabled>Reset to
+            defaults</button>
+        </form>
+        <div>
+          <p class="eyebrow" id="mode">Precomputed results at default settings </p>
+          <div id="metrics" class="metrics">
+            <div class="metric"><span>Final loss</span><strong>2.00e-6</strong></div>
+            <div class="metric"><span>Updates performed</span><strong>45</strong></div>
+            <div class="metric"><span>η upper bound before
+                preconditioning</span><strong>0.333</strong></div>
+          </div>
+          <div class="plot-panel">
+            <h2>Movement on the loss landscape</h2>
+            <p class="scroll-hint">Scroll horizontally to read graph axes and values.</p>
+            <div id="primary-plot" class="graph-scroll" tabindex="0"
+              aria-label="Primary graph; horizontal scrolling available"><svg
+                xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+                aria-labelledby="gd-path-title">
+                <title id="gd-path-title">The isochars of the second-order losses, and the steeping
+                  paths</title>
+                <defs>
+                  <clippath id="gd-path-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-5</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-4</text>
+                <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-3</text><text x="54" y="252.4" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-2.4</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-1</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-0.8</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">1</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.8</text>
+                <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">3</text><text x="54" y="82.6" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">2.4</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">5</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">4</text>
+                <g clip-path="url(#gd-path-clip)">
+                  <path
+                    d="M446.29 163.50 L446.17 162.43 L445.83 161.37 L445.25 160.31 L444.45 159.25 L443.42 158.21 L442.16 157.19 L440.69 156.18 L439.00 155.19 L437.10 154.23 L434.99 153.29 L432.69 152.38 L430.19 151.50 L427.50 150.65 L424.64 149.83 L421.60 149.06 L418.40 148.32 L415.04 147.63 L411.54 146.98 L407.91 146.37 L404.14 145.81 L400.27 145.30 L396.28 144.84 L392.21 144.43 L388.05 144.08 L383.82 143.77 L379.52 143.52 L375.19 143.33 L370.81 143.19 L366.41 143.10 L362.00 143.08 L357.59 143.10 L353.19 143.19 L348.81 143.33 L344.48 143.52 L340.18 143.77 L335.95 144.08 L331.79 144.43 L327.72 144.84 L323.73 145.30 L319.86 145.81 L316.09 146.37 L312.46 146.98 L308.96 147.63 L305.60 148.32 L302.40 149.06 L299.36 149.83 L296.50 150.65 L293.81 151.50 L291.31 152.38 L289.01 153.29 L286.90 154.23 L285.00 155.19 L283.31 156.18 L281.84 157.19 L280.58 158.21 L279.55 159.25 L278.75 160.31 L278.17 161.37 L277.83 162.43 L277.71 163.50 L277.83 164.57 L278.17 165.63 L278.75 166.69 L279.55 167.75 L280.58 168.79 L281.84 169.81 L283.31 170.82 L285.00 171.81 L286.90 172.77 L289.01 173.71 L291.31 174.62 L293.81 175.50 L296.50 176.35 L299.36 177.17 L302.40 177.94 L305.60 178.68 L308.96 179.37 L312.46 180.02 L316.09 180.63 L319.86 181.19 L323.73 181.70 L327.72 182.16 L331.79 182.57 L335.95 182.92 L340.18 183.23 L344.48 183.48 L348.81 183.67 L353.19 183.81 L357.59 183.90 L362.00 183.92 L366.41 183.90 L370.81 183.81 L375.19 183.67 L379.52 183.48 L383.82 183.23 L388.05 182.92 L392.21 182.57 L396.28 182.16 L400.27 181.70 L404.14 181.19 L407.91 180.63 L411.54 180.02 L415.04 179.37 L418.40 178.68 L421.60 177.94 L424.64 177.17 L427.50 176.35 L430.19 175.50 L432.69 174.62 L434.99 173.71 L437.10 172.77 L439.00 171.81 L440.69 170.82 L442.16 169.81 L443.42 168.79 L444.45 167.75 L445.25 166.69 L445.83 165.63 L446.17 164.57 L446.29 163.50"
+                    fill="none" stroke="#c5d5c7" stroke-width="1" />
+                  <path
+                    d="M530.57 163.50 L530.34 161.36 L529.65 159.23 L528.50 157.11 L526.89 155.01 L524.83 152.93 L522.32 150.88 L519.38 148.86 L516.00 146.89 L512.20 144.96 L507.99 143.08 L503.38 141.25 L498.38 139.49 L493.01 137.79 L487.28 136.17 L481.20 134.62 L474.80 133.14 L468.09 131.76 L461.09 130.45 L453.81 129.24 L446.29 128.13 L438.53 127.10 L430.57 126.18 L422.41 125.37 L414.09 124.65 L405.63 124.04 L397.05 123.55 L388.37 123.16 L379.62 122.88 L370.82 122.71 L362.00 122.65 L353.18 122.71 L344.38 122.88 L335.63 123.16 L326.95 123.55 L318.37 124.04 L309.91 124.65 L301.59 125.37 L293.43 126.18 L285.47 127.10 L277.71 128.13 L270.19 129.24 L262.91 130.45 L255.91 131.76 L249.20 133.14 L242.80 134.62 L236.72 136.17 L230.99 137.79 L225.62 139.49 L220.62 141.25 L216.01 143.08 L211.80 144.96 L208.00 146.89 L204.62 148.86 L201.68 150.88 L199.17 152.93 L197.11 155.01 L195.50 157.11 L194.35 159.23 L193.66 161.36 L193.43 163.50 L193.66 165.64 L194.35 167.77 L195.50 169.89 L197.11 171.99 L199.17 174.07 L201.68 176.12 L204.62 178.14 L208.00 180.11 L211.80 182.04 L216.01 183.92 L220.62 185.75 L225.62 187.51 L230.99 189.21 L236.72 190.83 L242.80 192.38 L249.20 193.86 L255.91 195.24 L262.91 196.55 L270.19 197.76 L277.71 198.88 L285.47 199.90 L293.43 200.82 L301.59 201.63 L309.91 202.35 L318.37 202.96 L326.95 203.45 L335.63 203.84 L344.38 204.12 L353.18 204.29 L362.00 204.35 L370.82 204.29 L379.62 204.12 L388.37 203.84 L397.05 203.45 L405.63 202.96 L414.09 202.35 L422.41 201.63 L430.57 200.82 L438.53 199.90 L446.29 198.88 L453.81 197.76 L461.09 196.55 L468.09 195.24 L474.80 193.86 L481.20 192.38 L487.28 190.83 L493.01 189.21 L498.38 187.51 L503.38 185.75 L507.99 183.92 L512.20 182.04 L516.00 180.11 L519.38 178.14 L522.32 176.12 L524.83 174.07 L526.89 171.99 L528.50 169.89 L529.65 167.77 L530.34 165.64 L530.57 163.50"
+                    fill="none" stroke="#c5d5c7" stroke-width="1" />
+                  <path
+                    d="M614.86 163.50 L614.51 160.29 L613.48 157.10 L611.75 153.92 L609.34 150.76 L606.25 147.64 L602.49 144.57 L598.07 141.54 L593.00 138.58 L587.30 135.68 L580.98 132.86 L574.07 130.13 L566.57 127.49 L558.51 124.94 L549.91 122.50 L540.80 120.17 L531.20 117.97 L521.13 115.88 L510.63 113.93 L499.72 112.11 L488.43 110.44 L476.80 108.91 L464.85 107.53 L452.62 106.30 L440.14 105.23 L427.45 104.32 L414.57 103.57 L401.56 102.98 L388.43 102.56 L375.23 102.31 L362.00 102.23 L348.77 102.31 L335.57 102.56 L322.44 102.98 L309.43 103.57 L296.55 104.32 L283.86 105.23 L271.38 106.30 L259.15 107.53 L247.20 108.91 L235.57 110.44 L224.28 112.11 L213.37 113.93 L202.87 115.88 L192.80 117.97 L183.20 120.17 L174.09 122.50 L165.49 124.94 L157.43 127.49 L149.93 130.13 L143.02 132.86 L136.70 135.68 L131.00 138.58 L125.93 141.54 L121.51 144.57 L117.75 147.64 L114.66 150.76 L112.25 153.92 L110.52 157.10 L109.49 160.29 L109.14 163.50 L109.49 166.71 L110.52 169.90 L112.25 173.08 L114.66 176.24 L117.75 179.36 L121.51 182.43 L125.93 185.46 L131.00 188.42 L136.70 191.32 L143.02 194.14 L149.93 196.87 L157.43 199.51 L165.49 202.06 L174.09 204.50 L183.20 206.83 L192.80 209.03 L202.87 211.12 L213.37 213.07 L224.28 214.89 L235.57 216.56 L247.20 218.09 L259.15 219.47 L271.38 220.70 L283.86 221.77 L296.55 222.68 L309.43 223.43 L322.44 224.02 L335.57 224.44 L348.77 224.69 L362.00 224.77 L375.23 224.69 L388.43 224.44 L401.56 224.02 L414.57 223.43 L427.45 222.68 L440.14 221.77 L452.62 220.70 L464.85 219.47 L476.80 218.09 L488.43 216.56 L499.72 214.89 L510.63 213.07 L521.13 211.12 L531.20 209.03 L540.80 206.83 L549.91 204.50 L558.51 202.06 L566.57 199.51 L574.07 196.87 L580.98 194.14 L587.30 191.32 L593.00 188.42 L598.07 185.46 L602.49 182.43 L606.25 179.36 L609.34 176.24 L611.75 173.08 L613.48 169.90 L614.51 166.71 L614.86 163.50"
+                    fill="none" stroke="#c5d5c7" stroke-width="1" />
+                  <path
+                    d="M719.60 163.50 L719.11 158.97 L717.64 154.44 L715.20 149.94 L711.79 145.48 L707.42 141.07 L702.10 136.72 L695.85 132.45 L688.68 128.26 L680.62 124.16 L671.69 120.17 L661.91 116.31 L651.30 112.57 L639.91 108.97 L627.75 105.52 L614.86 102.23 L601.28 99.11 L587.04 96.16 L572.19 93.40 L556.76 90.83 L540.80 88.46 L524.35 86.29 L507.45 84.34 L490.15 82.60 L472.50 81.09 L454.55 79.80 L436.35 78.74 L417.94 77.92 L399.38 77.32 L380.72 76.97 L362.00 76.85 L343.28 76.97 L324.62 77.32 L306.06 77.92 L287.65 78.74 L269.45 79.80 L251.50 81.09 L233.85 82.60 L216.55 84.34 L199.65 86.29 L183.20 88.46 L167.24 90.83 L151.81 93.40 L136.96 96.16 L122.72 99.11 L109.14 102.23 L96.25 105.52 L84.09 108.97 L72.70 112.57 L62.09 116.31 L52.31 120.17 L43.38 124.16 L35.32 128.26 L28.15 132.45 L21.90 136.72 L16.58 141.07 L12.21 145.48 L8.80 149.94 L6.36 154.44 L4.89 158.97 L4.40 163.50 L4.89 168.03 L6.36 172.56 L8.80 177.06 L12.21 181.52 L16.58 185.93 L21.90 190.28 L28.15 194.55 L35.32 198.74 L43.38 202.84 L52.31 206.83 L62.09 210.69 L72.70 214.43 L84.09 218.03 L96.25 221.48 L109.14 224.77 L122.72 227.89 L136.96 230.84 L151.81 233.60 L167.24 236.17 L183.20 238.54 L199.65 240.71 L216.55 242.66 L233.85 244.40 L251.50 245.91 L269.45 247.20 L287.65 248.26 L306.06 249.08 L324.62 249.68 L343.28 250.03 L362.00 250.15 L380.72 250.03 L399.38 249.68 L417.94 249.08 L436.35 248.26 L454.55 247.20 L472.50 245.91 L490.15 244.40 L507.45 242.66 L524.35 240.71 L540.80 238.54 L556.76 236.17 L572.19 233.60 L587.04 230.84 L601.28 227.89 L614.86 224.77 L627.75 221.48 L639.91 218.03 L651.30 214.43 L661.91 210.69 L671.69 206.83 L680.62 202.84 L688.68 198.74 L695.85 194.55 L702.10 190.28 L707.42 185.93 L711.79 181.52 L715.20 177.06 L717.64 172.56 L719.11 168.03 L719.60 163.50"
+                    fill="none" stroke="#c5d5c7" stroke-width="1" />
+                  <path
+                    d="M540.80 92.75 L513.98 156.42 L491.18 162.79 L471.81 163.43 L455.33 163.49 L441.33 163.50 L429.43 163.50 L419.32 163.50 L410.72 163.50 L403.41 163.50 L397.20 163.50 L391.92 163.50 L387.43 163.50 L383.62 163.50 L380.38 163.50 L377.62 163.50 L375.28 163.50 L373.28 163.50 L371.59 163.50 L370.15 163.50 L368.93 163.50 L367.89 163.50 L367.01 163.50 L366.26 163.50 L365.62 163.50 L365.07 163.50 L364.61 163.50 L364.22 163.50 L363.89 163.50 L363.61 163.50 L363.36 163.50 L363.16 163.50 L362.99 163.50 L362.84 163.50 L362.71 163.50 L362.61 163.50 L362.51 163.50 L362.44 163.50 L362.37 163.50 L362.32 163.50 L362.27 163.50 L362.23 163.50 L362.19 163.50 L362.16 163.50 L362.14 163.50 L362.12 163.50"
+                    fill="none" stroke="#b15d2d" stroke-width="2.2" />
+                  <circle cx="540.8" cy="92.75" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="513.98" cy="156.42499999999998" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="491.183" cy="162.79250000000002" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="471.80555000000004" cy="163.42925" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="455.3347175" cy="163.49292499999999" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="441.33450987500004" cy="163.4992925" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="429.43433339375" cy="163.49992924999998" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="419.3191833846875" cy="163.49999292500002" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="410.72130587698433" cy="163.4999992925" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="403.4131099954367" cy="163.49999992924998" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="397.2011434961212" cy="163.499999992925" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="391.920971971703" cy="163.4999999992925" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="387.4328261759476" cy="163.49999999992923" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="383.61790224955547" cy="163.49999999999292" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="380.37521691212214" cy="163.4999999999993" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="377.61893437530375" cy="163.49999999999994" r="2" fill="#b15d2d"
+                    opacity="0.7" />
+                  <circle cx="375.2760942190082" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="373.284680086157" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="371.59197807323346" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="370.1531813622484" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="368.9302041579112" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="367.8906735342245" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="367.0070725040908" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="366.2560116284772" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="365.6176098842056" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="365.0749684015748" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="364.61372314133854" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="364.2216646701378" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="363.8884149696171" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="363.60515272417456" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="363.3643798155484" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="363.15972284321606" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.98576441673373" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.83789975422366" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.7122147910901" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.60538257242655" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.5145751865626" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.4373889085782" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.3717805722914" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.31601348644773" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.2686114634806" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.22831974395854" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.1940717823647" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.16496101501" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.1402168627585" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="362.1191843333447" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                  <circle cx="540.8" cy="92.75" r="5" fill="#106858" opacity="0.7" />
+                  <circle cx="362" cy="163.5" r="5" fill="#18312e" opacity="0.7" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">u
+                  (unitless)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                  text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">v
+                  (unitless)</text>
+              </svg></div>
+            <p class="legend">Large green point: start · Orange line and points: path · Dark point:
+              minimum · Pale ellipses: loss contours</p>
+          </div>
+          <div class="plot-panel">
+            <h2>Loss per iteration</h2>
+            <div id="secondary-plot" class="graph-scroll" tabindex="0"
+              aria-label="Secondary graph; horizontal scrolling available"><svg
+                xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+                aria-labelledby="gd-loss-title">
+                <title id="gd-loss-title">Base-10 logarithm of loss over iterations</title>
+                <defs>
+                  <clippath id="gd-loss-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-5.699</text>
+                <path d="M183.2 22V305 M64 248.39999999999998H660" stroke="#e4e9e0" fill="none" />
+                <text x="183.2" y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">9</text><text x="54" y="252.39999999999998" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-4.276</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">18</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-2.852</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">27</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">-1.429</text>
+                <path d="M540.8 22V305 M64 78.60000000000002H660" stroke="#e4e9e0" fill="none" />
+                <text x="540.8" y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">36</text><text x="54" y="82.60000000000002" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-0.006</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">45</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">1.417</text>
+                <g clip-path="url(#gd-loss-clip)">
+                  <path
+                    d="M64.00 29.95 L77.24 57.38 L90.49 63.61 L103.73 69.23 L116.98 74.85 L130.22 80.46 L143.47 86.07 L156.71 91.69 L169.96 97.30 L183.20 102.91 L196.44 108.53 L209.69 114.14 L222.93 119.75 L236.18 125.37 L249.42 130.98 L262.67 136.59 L275.91 142.21 L289.16 147.82 L302.40 153.44 L315.64 159.05 L328.89 164.66 L342.13 170.28 L355.38 175.89 L368.62 181.50 L381.87 187.12 L395.11 192.73 L408.36 198.34 L421.60 203.96 L434.84 209.57 L448.09 215.18 L461.33 220.80 L474.58 226.41 L487.82 232.02 L501.07 237.64 L514.31 243.25 L527.56 248.86 L540.80 254.48 L554.04 260.09 L567.29 265.71 L580.53 271.32 L593.78 276.93 L607.02 282.55 L620.27 288.16 L633.51 293.77 L646.76 299.39 L660.00 305.00"
+                    fill="none" stroke="#b15d2d" stroke-width="2.2" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e"
+                  font-family="sans-serif">Iteration</text><text x="15" y="163.5"
+                  transform="rotate(-90 15 163.5)" text-anchor="middle" font-size="12"
+                  fill="#18312e" font-family="sans-serif">log10(loss)</text>
+              </svg></div>
+          </div>
+          <div id="experiment-details"></div>
+          <p id="status" class="experiment-status" role="status" aria-live="polite">Iteration limit
+            reached · Paths outside the coordinate window are clipped. The loss graph includes every
+            executed step.</p><noscript>
+            <p class="note">JavaScript is disabled. The figures show calculations for the default
+              settings. Changing settings requires JavaScript.</p>
+          </noscript>
+        </div>
+      </div>
+      <section class="lab-notes">
+        <h2>Experiment conditions and how to read the results</h2>
+        <p>J(u,v) = (u²+κv²)/2. Without preconditioning, update [u,v] ← [u,v]−η[u,κv]. Global
+          convergence for this problem requires 0&lt;η&lt;2/max(1,κ). Axis preconditioning
+          multiplies the gradient by diag(1,1/κ), changing the convergence range to 0&lt;η&lt;2.</p>
+        <p>Coordinates and loss are dimensionless. Paths outside the original coordinate window are
+          clipped, but the log10 loss plot includes all executed steps. Stop as converged below loss
+          10⁻¹⁰, or as divergent above 10¹².</p>
+        <ol>
+          <li>At κ=6, compare η=.15 and .4.</li>
+          <li>Enable axis preconditioning with the same start and learning rate.</li>
+          <li>Start at the origin and interpret the stopping status.</li>
+        </ol><a class="callout-link" href="../chapters/03-optimization.html">Read related concepts
+          and derivations →</a>
+        <p class="sources"><a href="../assets/js/math-core.js" download>Download calculation
+            code</a> · <a href="../appendix/references.html#reproduce">Implementation and
+            verification</a></p>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>A study journal connecting concepts and checking them through calculation.<br>Synthetic
+          data · Original explanations and experiments</p><a
+          href="../appendix/references.html">References and credits ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

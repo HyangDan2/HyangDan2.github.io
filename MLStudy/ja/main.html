@@ -1,0 +1,192 @@
+<!doctype html>
+<html data-language="ja" lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="数学からモデルへ。HD2Labの個人的な機械学習の学習記録。">
+    <meta name="theme-color" content="#18312e">
+    <title>個人的な機械学習の学習 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <script defer src="assets/js/navigation.js"></script>
+    <script src="../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">本文へスキップ</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="main.html" aria-label="HD2Lab 学習ホーム"><i
+            aria-hidden="true"></i>HD2Lab<small>LEARNING ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="メインメニュー"><a href="main.html#curriculum">学習目次</a><a
+            href="main.html#labs">実験室</a><a href="appendix/references.html">参考資料</a><a
+            class="hq-link" href="../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="言語"><a href="../main.html" lang="en"
+              hreflang="en" data-language="en">English</a><a href="../ko/main.html" lang="ko"
+              hreflang="ko" data-language="ko">한국어</a><a href="../ja/main.html" lang="ja"
+              hreflang="ja" data-language="ja" aria-current="true">日本語</a></nav><button
+            type="button" class="theme-toggle" data-theme-toggle aria-pressed="false"
+            hidden>ダークモード</button>
+        </div>
+      </div>
+    </header>
+    <main tabindex="-1" id="content">
+      <section class="hero wrap">
+        <div class="hero-grid">
+          <div>
+            <div class="eyebrow">HD2Lab / Study collection 01</div>
+            <h1>個人的な<br>機械学習の学習<span style="color:var(--teal)">.</span></h1>
+            <p class="lead">数学からモデルへ、<br>説明と実験を通して学ぶ記録。</p>
+            <p class="muted">数式の意味を結び付け、発展事例と比較図で理解を確かめます。<br>予測 · 最適化 · 確率 · 圧縮 · クラスタリング · 分類</p>
+            <div class="hero-actions"><a class="button"
+                href="chapters/01-data-and-models.html">最初の章から読む <span
+                  aria-hidden="true">↗</span></a><a class="button secondary"
+                href="#labs">実験から始める</a></div>
+            <div class="stats">
+              <div><strong>07</strong><span>つながる学習章</span></div>
+              <div><strong>21</strong><span>発展計算事例</span></div>
+              <div><strong>28</strong><span>比較図</span></div>
+            </div>
+          </div>
+          <div class="hero-art">
+            <div class="eyebrow">From observation to understanding</div><svg viewbox="0 0 450 330"
+              role="img" aria-label="観測からモデルへ、実験結果から再び問いへ戻る学習構造">
+              <defs>
+                <pattern id="dots" width="22" height="22" patternunits="userSpaceOnUse">
+                  <circle cx="1" cy="1" r="1" fill="#3c574e" />
+                </pattern>
+              </defs>
+              <rect width="450" height="330" fill="url(#dots)" />
+              <path d="M70 150L225 85L380 150L225 250Z M70 150H380M225 85V250" stroke="#658a74"
+                fill="none" />
+              <ellipse cx="225" cy="160" rx="105" ry="65" fill="none" stroke="#99ba83"
+                transform="rotate(-25 225 160)" />
+              <ellipse cx="225" cy="160" rx="105" ry="65" fill="none" stroke="#577c68"
+                transform="rotate(25 225 160)" />
+              <g fill="#d5eb99">
+                <circle cx="70" cy="150" r="7" />
+                <circle cx="225" cy="85" r="7" />
+                <circle cx="380" cy="150" r="7" />
+                <circle cx="225" cy="250" r="7" />
+                <circle cx="225" cy="160" r="12" />
+              </g>
+              <g fill="#ebf3df" font-family="monospace" font-size="12" text-anchor="middle"><text
+                  x="70" y="130">DATA</text><text x="225" y="58">MATHEMATICS</text><text x="380"
+                  y="130">MODEL</text><text x="225" y="280">EXPERIMENT</text></g>
+            </svg>
+            <p>観測 → 数学的表現 → モデル → 実験 → 新たな問い</p>
+          </div>
+        </div>
+      </section>
+      <section id="curriculum" class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">01 / Learning path</div>
+              <h2>一つの問いから、次の概念へ。</h2>
+            </div>
+            <p>各章は基礎から三つの発展事例へ進みます。段階的な解説と四つの比較図で、失敗例、条件の変化、解釈の限界を考えます。</p>
+          </div>
+          <div class="card-grid"><a class="card" href="chapters/01-data-and-models.html"><span
+                class="num">CHAPTER 01</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>データから学習へ</h3>
+              <p>コンピュータは何を学習するのか？</p><span class="tags">ベクトル · 損失 · 汎化</span>
+            </a><a class="card" href="chapters/02-linear-regression.html"><span class="num">CHAPTER
+                02</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>予測を作る数学</h3>
+              <p>最もよく当てはまる直線をどう見つけるか？</p><span class="tags">行列 · 最小二乗法 · 多項式</span>
+            </a><a class="card" href="chapters/03-optimization.html"><span class="num">CHAPTER
+                03</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>モデルを改善する方法</h3>
+              <p>誤差を減らす方向をどう決めるか？</p><span class="tags">微分 · 連鎖律 · 勾配降下法</span>
+            </a><a class="card" href="chapters/04-probability-and-inference.html"><span
+                class="num">CHAPTER 04</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>不確実性を扱う方法</h3>
+              <p>観測と事前知識はどう結び付くか？</p><span class="tags">ベイズ · MLE · MAP</span>
+            </a><a class="card" href="chapters/05-pca-and-svd.html"><span class="num">CHAPTER
+                05</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>情報を圧縮する方法</h3>
+              <p>何を残し、何を捨てるか？</p><span class="tags">直交 · SVD · PCA</span>
+            </a><a class="card" href="chapters/06-gmm-and-em.html"><span class="num">CHAPTER
+                06</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>隠れた集団を見つける方法</h3>
+              <p>一つの観測の所属を確率で表せるか？</p><span class="tags">混合分布 · 負担率 · EM</span>
+            </a><a class="card" href="chapters/07-svm.html"><span class="num">CHAPTER 07</span><span
+                class="arrow" aria-hidden="true">↗</span>
+              <h3>分類境界を作る方法</h3>
+              <p>分離する境界の中でどれを選ぶか？</p><span class="tags">SVM · マージン · 分類</span>
+            </a><a class="card" href="appendix/mathematics.html"><span class="num">REFERENCE
+                NOTES</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>数学を振り返る</h3>
+              <p>基底と射影から行列分解、確率、制約付き最適化まで。</p><span class="tags">計算例 · 導出 · 復習</span>
+            </a><a class="card" href="appendix/glossary.html"><span class="num">LANGUAGE OF
+                MODELS</span><span class="arrow" aria-hidden="true">↗</span>
+              <h3>用語と記号</h3>
+              <p>同じ言葉の異なる意味を区別し、数式の記号を確認します。</p><span class="tags">25の用語 · 共通の表記</span>
+            </a></div>
+        </div>
+      </section>
+      <section id="labs" class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">02 / Interactive experiments</div>
+              <h2>設定を変えると、理解も変わります。</h2>
+            </div>
+            <p>計算はすべてこのブラウザで実行します。同じ設定は同じ結果を生み、観測条件と解釈の範囲を併記します。</p>
+          </div>
+          <div class="lab-grid"><a class="lab-card" href="labs/regression.html"><span
+                class="lab-icon" aria-hidden="true">ƒ</span>
+              <div>
+                <h3>回帰曲線実験室</h3>
+                <p>次数と正則化を変えて、訓練誤差と検証誤差を比較します。</p>
+              </div>
+            </a><a class="lab-card" href="labs/gradient-descent.html"><span class="lab-icon"
+                aria-hidden="true">∇</span>
+              <div>
+                <h3>勾配降下経路実験室</h3>
+                <p>学習率と曲率を変えて、収束と振動を観察します。</p>
+              </div>
+            </a><a class="lab-card" href="labs/pca.html"><span class="lab-icon"
+                aria-hidden="true">↗</span>
+              <div>
+                <h3>PCA圧縮実験室</h3>
+                <p>六つのチャネルを圧縮し、保持分散と再構成誤差を確認します。</p>
+              </div>
+            </a><a class="lab-card" href="labs/clustering.html"><span class="lab-icon"
+                aria-hidden="true">∴</span>
+              <div>
+                <h3>GMMクラスタリング実験室</h3>
+                <p>初期値と反復回数を変えて所属確率を観察します。</p>
+              </div>
+            </a><a class="lab-card" href="labs/svm.html"><span class="lab-icon"
+                aria-hidden="true">±</span>
+              <div>
+                <h3>SVM分類境界実験室</h3>
+                <p>Cとデータ条件を変えて、境界、マージン、サポートベクトルを確認します。</p>
+              </div>
+            </a></div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="wrap two-col">
+          <div>
+            <div class="eyebrow">03 / How to study</div>
+            <h2>まず予想し、<br>計算してから説明する。</h2>
+            <p class="muted">Pythonの配列の基礎が分かれば最初の章から始めましょう。数学に不慣れなら付録を参照し、結果が予想と違った理由を書き留めてください。</p>
+          </div>
+          <div class="note"><strong>この資料の構成</strong>
+            <p>
+              説明と例はこのサイト向けに作成しました。合成データでモデルを計算し、条件を変えて比較します。五つのブラウザ実験室と実行結果付きの発展Notebookに加え、観測条件、解釈の限界、参考文献、コード検証方法を提供します。
+            </p><a href="appendix/references.html">参考資料 · 制作と再現の情報 ↗</a>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>概念を結び付け、計算で確かめる学習記録。<br>合成データ · 独自の説明と実験</p><a href="appendix/references.html">参考資料と制作情報
+          ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

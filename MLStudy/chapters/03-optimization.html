@@ -1,0 +1,518 @@
+<!doctype html>
+<html data-language="en" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="How can we determine the way to reduce errors? We need to calculate the slopes and the chain rule, and observe the impact of the learning rate and the coordinate scale on the optimal path.">
+    <meta name="theme-color" content="#18312e">
+    <title>How to improve a model | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab learning home"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="Main navigation"><a
+            href="../main.html#curriculum">Curriculum</a><a href="../main.html#labs">Labs</a><a
+            href="../appendix/references.html">References</a><a class="hq-link"
+            href="../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="Language"><a
+              href="../chapters/03-optimization.html" lang="en" hreflang="en" data-language="en"
+              aria-current="true">English</a><a href="../ko/chapters/03-optimization.html" lang="ko"
+              hreflang="ko" data-language="ko">한국어</a><a href="../ja/chapters/03-optimization.html"
+              lang="ja" hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>Dark mode</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Chapter 03 / Optimization</div>
+        <h1>Improving a Model</h1>
+        <p>How can we determine the way to reduce errors? We need to calculate the slopes and the
+          chain rule, and observe the impact of the learning rate and the coordinate scale on the
+          optimal path.</p>
+        <div class="meta"><span>02 · Minimum Square Root</span><span>Differentiation · Chain rule ·
+            Gradient descent</span><span>3 advanced cases · 4 comparative figures</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>On this page</summary>
+        <ol>
+          <li><a href="#question">01 / Long and narrow valleys</a></li>
+          <li><a href="#gradient">02 / If we sum up all the differential equations, we get the
+              slope.</a></li>
+          <li><a href="#chain">The rate of change of the 03 / synthetic function</a></li>
+          <li><a href="#rate">Conditions for the stability of the learning rate: 04 /</a></li>
+          <li><a href="#scaling">05 / Coordinate adjustment and probabilistic renewal</a></li>
+          <li><a href="#review">The 06 / experiment and its validation</a></li>
+          <li><a href="#advanced-a">Advanced/Deeper A / Comparison of three optimization methods in
+              a rotated valley</a></li>
+          <li><a href="#advanced-b">Advanced B / Check the logistic gradient with central
+              differences</a></li>
+          <li><a href="#advanced-c">Predicting the noise floor of the advanced C / SGD using certain
+              methods</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="question">
+          <h2>01 / Long and narrow valleys</h2>
+          <p>Let’s consider the terrain that has a value of J = (u² + κv²)/2 for the two coordinates
+            u,v. If κ is large, then the slope in the direction of v will be steep, while the slope
+            in the direction of u will be gentle. If we move at the same step size, it’s possible to
+            cross the valleys in the steeper directions. Many of the difficulties in model training
+            arise from these different slopes.</p>
+          <aside class="note "><strong>Chapter goals</strong>
+            <p>A single renewal is calculated manually. The convergence conditions are described in
+              terms of the learning rate and the curvature. The roles of the “chain rule” and
+              Jacobian·SGD are also distinguished.</p>
+          </aside>
+          <nav class="study-route" aria-label="Jump to advanced cases"><strong>After the
+              fundamentals: 3 advanced cases · 4 comparative figures</strong><a
+              href="#advanced-a">Advanced/Deeper A / Comparison of three optimization methods in a
+              rotated valley</a><a href="#advanced-b">Advanced B / Check the logistic gradient with
+              central differences</a><a href="#advanced-c">Predicting the noise floor of the
+              advanced C / SGD using certain methods</a></nav>
+        </section>
+        <section id="gradient">
+          <h2>02 / If we sum up all the differential equations, we get the slope.</h2>
+          <p>Derivatives are the rates of change when one variable is fixed, and only one variable
+            changes. The slope is a vector that represents the derivatives of a function. The change
+            in the function with respect to a small displacement Δθ can be approximated by the slope
+            and the displacement itself.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>∇J(u,v) =
+            [u,κv]<sup>T</sup><br>J(θ + Δθ) ≈ J(θ) + ∇J(θ)<sup>T</sup>Δθ</div>
+          <p>For movements with the same Euclidean length, the direction of the negative slope that
+            minimizes the error in the approximation is the one corresponding to the 1th
+            approximation. If the distance between the points is too great, the approximation
+            becomes invalid. The slope that corresponds to 0 isn’t necessarily the minimum slope
+            either. The origin corresponding to u² − v² is a saddle point. The slope corresponding
+            to Hessian is a partial differential matrix of order 2. At the saddle point, it’s a
+            strict local minimum point.</p>
+        </section>
+        <section id="chain">
+          <h2>The rate of change of the 03 / synthetic function</h2>
+          <p>Let’s look at p = wx + b, L = (p − y)²/2. w goes through the predicted p before
+            entering the loss phase. By multiplying the rate of change for each connection, we can
+            obtain the final rate of change.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>∂L/∂p = p − y,   ∂p/∂w =
+            x<br>∂L/∂w = (p − y)x,   ∂L/∂b = p − y</div>
+          <p>x = 2, y = 5, w = 1, b = 0 The side losses are… 4.5, w The angle of inclination is… −6
+            It’s just that the learning rate… 0.1 Roads w,b If we renew them together, then… 1.6,0.3
+            And the losses are… 1.125 D.</p>
+          <p>The sum of the derivatives of the vector outputs is given by Jacobian. In this case,
+            the rows represent the outputs, and the columns represent the inputs. J<sub>f∘g</sub> =
+            J<sub>f</sub>J<sub>g</sub>It is valid. The backpropagation process starts from the loss
+            vector, instead of starting from the entire Jacobian. It then calculates the products of
+            each layer’s Jacobian with this loss vector, in reverse order.</p>
+        </section>
+        <section id="rate">
+          <h2>Conditions for the stability of the learning rate: 04 /</h2>
+          <p>In a second-order function, u becomes 1 − η times the result, and v becomes 1 − ηκ
+            times the result. Both absolute values must be less than 1 in order for the function to
+            converge back to the origin from any starting point.</p>
+          <div class="equation"><span class="eq-label">The exact conditions for the convergence of
+              this experiment</span>θ<sub>t+1</sub> = θ<sub>t</sub> −
+            η∇J(θ<sub>t</sub>)<br>u<sub>t+1</sub> = (1 − η)u<sub>t</sub><br>v<sub>t+1</sub> = (1 −
+            ηκ)v<sub>t</sub><br>0 &lt; η &lt; 2/max(1,κ)</div>
+          <p>κ = 6 On the other side η It’s… 1/3 It needs to be smaller. 0.15 And… 0.4 Let’s compare
+            them. At the boundary values, there may be oscillations that do not decrease. In
+            general, non-linear models make it difficult to determine the curvature at all points.
+            Therefore, it’s necessary to manage both the change in loss and the termination
+            conditions simultaneously.</p>
+        </section>
+        <section id="scaling">
+          <h2>05 / Coordinate adjustment and probabilistic renewal</h2>
+          <p>The “alignment correction” in the experiment involves dividing the angle in the
+            direction of v by κ. Both directions are reduced by the same ratio. This can be
+            understood through a proper coordinate transformation. Standardization of the
+            characteristics might also be useful, but it doesn’t always result in perfect alignment,
+            as seen in this example.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>θ<sub>t+1</sub> =
+            θ<sub>t</sub> − η diag(1,1/κ)∇J(θ<sub>t</sub>)</div>
+          <p>SGD It uses a small random sample to estimate the overall slope, thereby reducing the
+            computational cost. This approach results in a biased estimate under conditions like
+            uniform sampling. However, the loss at each individual step can increase. The batch size
+            and learning rate affect both the cost and variability.</p>
+          <pre><code>import numpy as np
+point = np.array([3., 2.])
+kappa, rate = 6., .15
+losses = []
+for step in range(45):
+    losses.append((point[0]**2 + kappa*point[1]**2)/2)
+    point -= rate*np.array([point[0], kappa*point[1]])
+print("final point:", point)
+print("loss decreased:", losses[-1] &lt; losses[0])</code></pre>
+        </section>
+        <section id="review">
+          <h2>The 06 / experiment and its validation</h2>
+          <figure class="figure" tabindex="0"
+            aria-label="The calculation results are shown in a graph. On a narrow screen, it’s possible to scroll left and right.">
+            <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+              aria-labelledby="gd-path-title">
+              <title id="gd-path-title">The isochars of the second-order losses, and the steeping
+                paths</title>
+              <defs>
+                <clippath id="gd-path-clip">
+                  <rect x="64" y="22" width="596" height="283" />
+                </clippath>
+              </defs>
+              <rect width="680" height="360" fill="white" />
+              <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-5</text><text x="54" y="309" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-4</text>
+              <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-3</text><text x="54" y="252.4" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-2.4</text>
+              <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-1</text><text x="54" y="195.8" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-0.8</text>
+              <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                font-family="sans-serif" font-size="11" fill="#526964">1</text><text x="54"
+                y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                fill="#526964">0.8</text>
+              <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">3</text><text x="54" y="82.6" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">2.4</text>
+              <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">5</text><text x="54" y="26" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">4</text>
+              <g clip-path="url(#gd-path-clip)">
+                <path
+                  d="M446.29 163.50 L446.17 162.43 L445.83 161.37 L445.25 160.31 L444.45 159.25 L443.42 158.21 L442.16 157.19 L440.69 156.18 L439.00 155.19 L437.10 154.23 L434.99 153.29 L432.69 152.38 L430.19 151.50 L427.50 150.65 L424.64 149.83 L421.60 149.06 L418.40 148.32 L415.04 147.63 L411.54 146.98 L407.91 146.37 L404.14 145.81 L400.27 145.30 L396.28 144.84 L392.21 144.43 L388.05 144.08 L383.82 143.77 L379.52 143.52 L375.19 143.33 L370.81 143.19 L366.41 143.10 L362.00 143.08 L357.59 143.10 L353.19 143.19 L348.81 143.33 L344.48 143.52 L340.18 143.77 L335.95 144.08 L331.79 144.43 L327.72 144.84 L323.73 145.30 L319.86 145.81 L316.09 146.37 L312.46 146.98 L308.96 147.63 L305.60 148.32 L302.40 149.06 L299.36 149.83 L296.50 150.65 L293.81 151.50 L291.31 152.38 L289.01 153.29 L286.90 154.23 L285.00 155.19 L283.31 156.18 L281.84 157.19 L280.58 158.21 L279.55 159.25 L278.75 160.31 L278.17 161.37 L277.83 162.43 L277.71 163.50 L277.83 164.57 L278.17 165.63 L278.75 166.69 L279.55 167.75 L280.58 168.79 L281.84 169.81 L283.31 170.82 L285.00 171.81 L286.90 172.77 L289.01 173.71 L291.31 174.62 L293.81 175.50 L296.50 176.35 L299.36 177.17 L302.40 177.94 L305.60 178.68 L308.96 179.37 L312.46 180.02 L316.09 180.63 L319.86 181.19 L323.73 181.70 L327.72 182.16 L331.79 182.57 L335.95 182.92 L340.18 183.23 L344.48 183.48 L348.81 183.67 L353.19 183.81 L357.59 183.90 L362.00 183.92 L366.41 183.90 L370.81 183.81 L375.19 183.67 L379.52 183.48 L383.82 183.23 L388.05 182.92 L392.21 182.57 L396.28 182.16 L400.27 181.70 L404.14 181.19 L407.91 180.63 L411.54 180.02 L415.04 179.37 L418.40 178.68 L421.60 177.94 L424.64 177.17 L427.50 176.35 L430.19 175.50 L432.69 174.62 L434.99 173.71 L437.10 172.77 L439.00 171.81 L440.69 170.82 L442.16 169.81 L443.42 168.79 L444.45 167.75 L445.25 166.69 L445.83 165.63 L446.17 164.57 L446.29 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M530.57 163.50 L530.34 161.36 L529.65 159.23 L528.50 157.11 L526.89 155.01 L524.83 152.93 L522.32 150.88 L519.38 148.86 L516.00 146.89 L512.20 144.96 L507.99 143.08 L503.38 141.25 L498.38 139.49 L493.01 137.79 L487.28 136.17 L481.20 134.62 L474.80 133.14 L468.09 131.76 L461.09 130.45 L453.81 129.24 L446.29 128.13 L438.53 127.10 L430.57 126.18 L422.41 125.37 L414.09 124.65 L405.63 124.04 L397.05 123.55 L388.37 123.16 L379.62 122.88 L370.82 122.71 L362.00 122.65 L353.18 122.71 L344.38 122.88 L335.63 123.16 L326.95 123.55 L318.37 124.04 L309.91 124.65 L301.59 125.37 L293.43 126.18 L285.47 127.10 L277.71 128.13 L270.19 129.24 L262.91 130.45 L255.91 131.76 L249.20 133.14 L242.80 134.62 L236.72 136.17 L230.99 137.79 L225.62 139.49 L220.62 141.25 L216.01 143.08 L211.80 144.96 L208.00 146.89 L204.62 148.86 L201.68 150.88 L199.17 152.93 L197.11 155.01 L195.50 157.11 L194.35 159.23 L193.66 161.36 L193.43 163.50 L193.66 165.64 L194.35 167.77 L195.50 169.89 L197.11 171.99 L199.17 174.07 L201.68 176.12 L204.62 178.14 L208.00 180.11 L211.80 182.04 L216.01 183.92 L220.62 185.75 L225.62 187.51 L230.99 189.21 L236.72 190.83 L242.80 192.38 L249.20 193.86 L255.91 195.24 L262.91 196.55 L270.19 197.76 L277.71 198.88 L285.47 199.90 L293.43 200.82 L301.59 201.63 L309.91 202.35 L318.37 202.96 L326.95 203.45 L335.63 203.84 L344.38 204.12 L353.18 204.29 L362.00 204.35 L370.82 204.29 L379.62 204.12 L388.37 203.84 L397.05 203.45 L405.63 202.96 L414.09 202.35 L422.41 201.63 L430.57 200.82 L438.53 199.90 L446.29 198.88 L453.81 197.76 L461.09 196.55 L468.09 195.24 L474.80 193.86 L481.20 192.38 L487.28 190.83 L493.01 189.21 L498.38 187.51 L503.38 185.75 L507.99 183.92 L512.20 182.04 L516.00 180.11 L519.38 178.14 L522.32 176.12 L524.83 174.07 L526.89 171.99 L528.50 169.89 L529.65 167.77 L530.34 165.64 L530.57 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M614.86 163.50 L614.51 160.29 L613.48 157.10 L611.75 153.92 L609.34 150.76 L606.25 147.64 L602.49 144.57 L598.07 141.54 L593.00 138.58 L587.30 135.68 L580.98 132.86 L574.07 130.13 L566.57 127.49 L558.51 124.94 L549.91 122.50 L540.80 120.17 L531.20 117.97 L521.13 115.88 L510.63 113.93 L499.72 112.11 L488.43 110.44 L476.80 108.91 L464.85 107.53 L452.62 106.30 L440.14 105.23 L427.45 104.32 L414.57 103.57 L401.56 102.98 L388.43 102.56 L375.23 102.31 L362.00 102.23 L348.77 102.31 L335.57 102.56 L322.44 102.98 L309.43 103.57 L296.55 104.32 L283.86 105.23 L271.38 106.30 L259.15 107.53 L247.20 108.91 L235.57 110.44 L224.28 112.11 L213.37 113.93 L202.87 115.88 L192.80 117.97 L183.20 120.17 L174.09 122.50 L165.49 124.94 L157.43 127.49 L149.93 130.13 L143.02 132.86 L136.70 135.68 L131.00 138.58 L125.93 141.54 L121.51 144.57 L117.75 147.64 L114.66 150.76 L112.25 153.92 L110.52 157.10 L109.49 160.29 L109.14 163.50 L109.49 166.71 L110.52 169.90 L112.25 173.08 L114.66 176.24 L117.75 179.36 L121.51 182.43 L125.93 185.46 L131.00 188.42 L136.70 191.32 L143.02 194.14 L149.93 196.87 L157.43 199.51 L165.49 202.06 L174.09 204.50 L183.20 206.83 L192.80 209.03 L202.87 211.12 L213.37 213.07 L224.28 214.89 L235.57 216.56 L247.20 218.09 L259.15 219.47 L271.38 220.70 L283.86 221.77 L296.55 222.68 L309.43 223.43 L322.44 224.02 L335.57 224.44 L348.77 224.69 L362.00 224.77 L375.23 224.69 L388.43 224.44 L401.56 224.02 L414.57 223.43 L427.45 222.68 L440.14 221.77 L452.62 220.70 L464.85 219.47 L476.80 218.09 L488.43 216.56 L499.72 214.89 L510.63 213.07 L521.13 211.12 L531.20 209.03 L540.80 206.83 L549.91 204.50 L558.51 202.06 L566.57 199.51 L574.07 196.87 L580.98 194.14 L587.30 191.32 L593.00 188.42 L598.07 185.46 L602.49 182.43 L606.25 179.36 L609.34 176.24 L611.75 173.08 L613.48 169.90 L614.51 166.71 L614.86 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M719.60 163.50 L719.11 158.97 L717.64 154.44 L715.20 149.94 L711.79 145.48 L707.42 141.07 L702.10 136.72 L695.85 132.45 L688.68 128.26 L680.62 124.16 L671.69 120.17 L661.91 116.31 L651.30 112.57 L639.91 108.97 L627.75 105.52 L614.86 102.23 L601.28 99.11 L587.04 96.16 L572.19 93.40 L556.76 90.83 L540.80 88.46 L524.35 86.29 L507.45 84.34 L490.15 82.60 L472.50 81.09 L454.55 79.80 L436.35 78.74 L417.94 77.92 L399.38 77.32 L380.72 76.97 L362.00 76.85 L343.28 76.97 L324.62 77.32 L306.06 77.92 L287.65 78.74 L269.45 79.80 L251.50 81.09 L233.85 82.60 L216.55 84.34 L199.65 86.29 L183.20 88.46 L167.24 90.83 L151.81 93.40 L136.96 96.16 L122.72 99.11 L109.14 102.23 L96.25 105.52 L84.09 108.97 L72.70 112.57 L62.09 116.31 L52.31 120.17 L43.38 124.16 L35.32 128.26 L28.15 132.45 L21.90 136.72 L16.58 141.07 L12.21 145.48 L8.80 149.94 L6.36 154.44 L4.89 158.97 L4.40 163.50 L4.89 168.03 L6.36 172.56 L8.80 177.06 L12.21 181.52 L16.58 185.93 L21.90 190.28 L28.15 194.55 L35.32 198.74 L43.38 202.84 L52.31 206.83 L62.09 210.69 L72.70 214.43 L84.09 218.03 L96.25 221.48 L109.14 224.77 L122.72 227.89 L136.96 230.84 L151.81 233.60 L167.24 236.17 L183.20 238.54 L199.65 240.71 L216.55 242.66 L233.85 244.40 L251.50 245.91 L269.45 247.20 L287.65 248.26 L306.06 249.08 L324.62 249.68 L343.28 250.03 L362.00 250.15 L380.72 250.03 L399.38 249.68 L417.94 249.08 L436.35 248.26 L454.55 247.20 L472.50 245.91 L490.15 244.40 L507.45 242.66 L524.35 240.71 L540.80 238.54 L556.76 236.17 L572.19 233.60 L587.04 230.84 L601.28 227.89 L614.86 224.77 L627.75 221.48 L639.91 218.03 L651.30 214.43 L661.91 210.69 L671.69 206.83 L680.62 202.84 L688.68 198.74 L695.85 194.55 L702.10 190.28 L707.42 185.93 L711.79 181.52 L715.20 177.06 L717.64 172.56 L719.11 168.03 L719.60 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M540.80 92.75 L513.98 156.42 L491.18 162.79 L471.81 163.43 L455.33 163.49 L441.33 163.50 L429.43 163.50 L419.32 163.50 L410.72 163.50 L403.41 163.50 L397.20 163.50 L391.92 163.50 L387.43 163.50 L383.62 163.50 L380.38 163.50 L377.62 163.50 L375.28 163.50 L373.28 163.50 L371.59 163.50 L370.15 163.50 L368.93 163.50 L367.89 163.50 L367.01 163.50 L366.26 163.50 L365.62 163.50 L365.07 163.50 L364.61 163.50 L364.22 163.50 L363.89 163.50 L363.61 163.50 L363.36 163.50 L363.16 163.50 L362.99 163.50 L362.84 163.50 L362.71 163.50 L362.61 163.50 L362.51 163.50 L362.44 163.50 L362.37 163.50 L362.32 163.50 L362.27 163.50 L362.23 163.50 L362.19 163.50 L362.16 163.50 L362.14 163.50 L362.12 163.50"
+                  fill="none" stroke="#b15d2d" stroke-width="2.2" />
+                <circle cx="540.8" cy="92.75" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="513.98" cy="156.42499999999998" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="491.183" cy="162.79250000000002" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="471.80555000000004" cy="163.42925" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="455.3347175" cy="163.49292499999999" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="441.33450987500004" cy="163.4992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="429.43433339375" cy="163.49992924999998" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="419.3191833846875" cy="163.49999292500002" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="410.72130587698433" cy="163.4999992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="403.4131099954367" cy="163.49999992924998" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="397.2011434961212" cy="163.499999992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="391.920971971703" cy="163.4999999992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="387.4328261759476" cy="163.49999999992923" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="383.61790224955547" cy="163.49999999999292" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="380.37521691212214" cy="163.4999999999993" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="377.61893437530375" cy="163.49999999999994" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="375.2760942190082" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="373.284680086157" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="371.59197807323346" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="370.1531813622484" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="368.9302041579112" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="367.8906735342245" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="367.0070725040908" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="366.2560116284772" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="365.6176098842056" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="365.0749684015748" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="364.61372314133854" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="364.2216646701378" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.8884149696171" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.60515272417456" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.3643798155484" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.15972284321606" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.98576441673373" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.83789975422366" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.7122147910901" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.60538257242655" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.5145751865626" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.4373889085782" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.3717805722914" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.31601348644773" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.2686114634806" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.22831974395854" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.1940717823647" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.16496101501" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.1402168627585" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.1191843333447" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="540.8" cy="92.75" r="5" fill="#106858" opacity="0.7" />
+                <circle cx="362" cy="163.5" r="5" fill="#18312e" opacity="0.7" />
+              </g>
+              <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">u
+                (unitless)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">v
+                (unitless)</text>
+            </svg>
+            <figcaption>It’s the result of the calculations that were done directly in the basic
+              settings. You can change the settings in the laboratory below.</figcaption>
+          </figure>
+          <p>Let’s check whether the curvature becomes smaller when 2,6,12 is used. We will also
+            compare the results before and after the axis calibration. Paths that are outside the
+            fixed coordinate frame will be truncated. If the loss exceeds 10¹², the iteration will
+            be stopped.</p>
+          <details class="answer">
+            <summary>How is the implementation of the slope mechanism verified?</summary>
+            <p>The difference between the functions obtained by adding and subtracting a small value
+              of h from each coordinate, divided by 2h, is compared with the mean difference. If h
+              is too small, the floating-point errors will become more significant.</p>
+          </details>
+          <details class="answer">
+            <summary>Does a very small learning rate solve all problems?</summary>
+            <p>The convergence can be slow. It doesn’t address all the issues related to saddle
+              points, local minima, and incorrect slopes.</p>
+          </details><a class="callout-link" href="../labs/gradient-descent.html">Gradient descent
+            experimental laboratory – Heating →</a>
+        </section>
+        <section id="advanced-a">
+          <h2>Advanced/Deeper A / Comparison of three optimization methods in a rotated valley</h2>
+          <div class="case-brief"><span class="pill">Advanced A · – Rotated curvature and
+              moments</span>
+            <p><strong>Problem to explore</strong> In a narrow valley that is not parallel to the
+              axis, which path will be taken by GD, and what will be the role of the moment of
+              inertia, Newton?</p>
+          </div>
+          <p>It’s a matrix of type J(w)=½wᵀHw, H=R diag(1,30) Rᵀ. The matrix R is a rotation matrix
+            of type 36°. The starting point is [3,−2]ᵀ], and the minimum value is the origin. After
+            80 iterations, the GD(η=0.06), heavy-ball moment (η=0.07, β=0.65), Newton(η=1)) is
+            compared. This is a deterministic experiment, and all coordinates are dimensionless.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>GD:
+            w<sub>t+1</sub>=(I−ηH)w<sub>t</sub><br>Momentum:
+            v<sub>t+1</sub>=βv<sub>t</sub>+Hw<sub>t</sub>,  
+            w<sub>t+1</sub>=w<sub>t</sub>−ηv<sub>t+1</sub><br>Newton: HΔ=∇J(w),   w←w−Δ</div>
+          <ol class="worked-steps">
+            <li>GD If we translate it into coordinates with a proper vector, the errors will be
+              each… 1−ηλ It’s multiplied by the same amount. η=0.06 In… λ=1 The direction is… 0.94,
+              λ=30 The direction is… −0.8 Next, there is a slow decrease in intensity, along with
+              accompanying vibrations.</li>
+            <li>The momentum accumulates over previous movements. Even if η is greater than the
+              upper limit 2/30 of GD, the same simple GD condition cannot be applied. It’s necessary
+              to check the magnitude of the characteristic equation r²−(1+β−ηλ)r+β=0 for each
+              individual direction.</li>
+            <li>After 80 epochs, the loss is GD 3.93e-05, and the momentum is 4.63e-15. These values
+              represent the results of the specified quadratic equations. It doesn’t mean that the
+              momentum increases rapidly across all losses.</li>
+            <li>Newton In this quadratic equation of the form of a linear function, there is a
+              precise solution. Hessian It’s possible to solve it all at once, back to the starting
+              point. In large models, the cost of solving linear equations is quite high.
+              Additionally, there are problems related to non-convex problems… Hessian They may not
+              have the same properties.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations
+                visually</span><strong>Valleys whose direction of slope is different from the
+                direction of the minimum points</strong><small class="scroll-hint">Scroll
+                horizontally to see the entire graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="A valley whose direction of slope is different from the direction of the minimum points. In a narrow screen, it scrolls horizontally to the left and right.">
+              <img src="../assets/images/advanced/03-paths.svg" width="940" height="450"
+                loading="lazy"
+                alt="Contours connect equal values of J(w). Paths show the first 24 updates, with line and marker styles distinguishing GD, momentum, and Newton. One Newton step reaches the origin from the starting point.">
+            </div>
+            <figcaption>Contours connect equal values of J(w). Paths show the first 24 updates, with
+              line and marker styles distinguishing GD, momentum, and Newton. One Newton step
+              reaches the origin from the starting point.<a
+                href="../assets/images/advanced/03-paths.svg" download>Download SVG ↗</a>
+            </figcaption>
+          </figure>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations visually</span><strong>Loss
+                reduction is compared using the same repetition count.</strong><small
+                class="scroll-hint">Scroll horizontally to see the entire graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="The reduction in loss is compared using the same repetition rate. In a narrow screen, the scroll can be done horizontally to the left or right.">
+              <img src="../assets/images/advanced/03-convergence.svg" width="940" height="450"
+                loading="lazy"
+                alt="The 0~80th loss of the three algorithms is represented on the logarithmic axis. Values of 0 or very small values are only shown as 10⁻¹⁶ on the graph. The calculated losses are not corrected according to this threshold.">
+            </div>
+            <figcaption>The 0~80th loss of the three algorithms is represented on the logarithmic
+              axis. Values of 0 or very small values are only shown as 10⁻¹⁶ on the graph. The
+              calculated losses are not corrected according to this threshold.<a
+                href="../assets/images/advanced/03-convergence.svg" download>Download SVG ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>Currently H If we multiply the diagonal component by its inverse, then… Newton
+              Is it the same as that?</summary>
+            <p>No. Rotation makes the off-diagonal entries nonzero. The reciprocal diagonal of H
+              only rescales coordinates and cannot remove coupling between axes. Newton solves the
+              full H linear system in this example.</p>
+          </details>
+        </section>
+        <section id="advanced-b">
+          <h2>Advanced B / Check the logistic gradient with central differences</h2>
+          <div class="case-brief"><span class="pill">Advanced B · Logarithmic Loss Gradient
+              Inspection</span>
+            <p><strong>Problem to explore</strong> Before trusting the directly differentiated
+              vector gradient, let’s check it using numerical differentiation.</p>
+          </div>
+          <p>The rows of the 6×3 design matrix, including the intercept, are [1,−2,.5], [1,−1,1],
+            [1,−.5,−1], [1,.5,.2], [1,1,−.7], [1,2,1.2]. Set y=[0,0,1,0,1,1] and check at
+            w=[.2,−.3,.4]. Use mean binary cross-entropy without regularization.</p>
+          <div class="equation"><span class="eq-label">Key equation</span>J(w) =
+            (1/N)Σ[log(1+exp(xᵢᵀw))−yᵢxᵢᵀw]<br>∇J =
+            Xᵀ(sigmoid(Xw)−y)/N<br>gⱼ<sup>FD</sup>=[J(w+heⱼ)−J(w−heⱼ)]/(2h)</div>
+          <ol class="worked-steps">
+            <li>If we simply calculate log(1+exp(z)), then it’s possible for z to exceed overflow.
+              The same value can be calculated stably using NumPy logaddexp(0,z).</li>
+            <li>The interpretive slope is [0.065, -0.534, 0.256]]. The magnitude of the heat vector
+              is 3, and the signs of each term indicate the direction of change in the loss as the
+              corresponding parameter increases.</li>
+            <li>Replace h with 10⁻¹~10⁻¹⁰ to represent the maximum absolute difference. The minimum
+              difference for this operation is 5.58e-12. A value too large as h would result in
+              truncation errors. A value too small as h would lead to additive errors between two
+              similar values.</li>
+            <li>It checks against multiple parameter points and input sizes. Just because there’s a
+              match at one point doesn’t mean that the entire learned code is correct.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations visually</span><strong>Is it
+                better if the spacing between elements is smaller?</strong><small
+                class="scroll-hint">Scroll horizontally to see the entire graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="Is it better if the buffer size is smaller? In a narrow screen width, the scroll can be done horizontally.">
+              <img src="../assets/images/advanced/03-gradient.svg" width="940" height="450"
+                loading="lazy"
+                alt="The horizontal axis represents the central difference h, while the vertical axis represents the maximum absolute error among the three slope components. Both axes are on a logarithmic scale. It can be seen that there is a phenomenon where the rounding error increases as h becomes smaller.">
+            </div>
+            <figcaption>The horizontal axis represents the central difference h, while the vertical
+              axis represents the maximum absolute error among the three slope components. Both axes
+              are on a logarithmic scale. It can be seen that there is a phenomenon where the
+              rounding error increases as h becomes smaller.<a
+                href="../assets/images/advanced/03-gradient.svg" download>Download SVG ↗</a>
+            </figcaption>
+          </figure>
+          <details class="worked-code">
+            <summary>Expand the core calculation code</summary>
+            <p>An excerpt from the corresponding advanced Python function. Full data generation and
+              helper functions are available in the downloads below.</p>
+            <pre><code>def loss(w):
+    z = X @ w
+    return np.mean(np.logaddexp(0, z) - y * z)
+p = 1 / (1 + np.exp(-(X @ w)))
+gradient = X.T @ (p - y) / len(y)
+h = 1e-5
+numeric = np.array([(loss(w+h*e)-loss(w-h*e))/(2*h)
+                    for e in np.eye(len(w))])
+print(np.max(np.abs(numeric - gradient)))</code></pre>
+          </details>
+        </section>
+        <section id="advanced-c">
+          <h2>Predicting the noise floor of the advanced C / SGD using certain methods</h2>
+          <div class="case-brief"><span class="pill">The noise floor of the advanced C · SGD
+              mode</span>
+            <p><strong>Problem to explore</strong> Let’s try to predict the formula that explains
+              why, even when using the correct slope, the loss doesn’t drop to 0.</p>
+          </div>
+          <p>Scalar losses J(w)=λw²/2, λ=4 It’s used for that purpose. The mini-configuration slope
+            is… g=λw+ξ, Eξ=0, Varξ=σg²/B It’s a model-based approach. σg=2, η=0.1 , Start w=2 It’s
+            actually a simple experiment where the Gaussian noise caused by the batch size is
+            directly generated, instead of using actual datasets as the basis for the analysis. It’s
+            a simplified approach. 2303 , each one B Each one 2,048 Average the individual
+            independent paths.</p>
+          <div class="equation"><span class="eq-label">Key
+              equation</span>w<sub>t+1</sub>=(1−ηλ)w<sub>t</sub>−ηξ<sub>t</sub><br>V<sub>∞</sub>=(1−ηλ)²V<sub>∞</sub>+η²σg²/B<br>E[J]<sub>∞</sub>=ησg²
+            / [2B(2−ηλ)]</div>
+          <ol class="worked-steps">
+            <li>The slope noise is independent of the current value w. Also, |1−ηλ|…&lt;If 1 is
+              finite, then a finite normal distribution can be obtained. In this case, it’s
+              1−ηλ=0.6.</li>
+            <li>Even after the effect of the initial values disappears, new noise signals continue
+              to appear. Therefore, the constant learning rate creates a certain level of loss
+              floor.</li>
+            <li>The theoretical loss function for B=1,16,64 is each 0.125, 0.0078125, 0.001953125.
+              If the batch size is increased by 16 times, the normal loss of this simple model
+              becomes 1/16.</li>
+            <li>Even if the learning rate is reduced, the noise floor will still decrease. However,
+              the initial convergence process will be slower. The computational cost associated with
+              increasing the batch size, as well as issues related to data correlation and
+              non-linear losses, mean that this formula cannot be used directly as a guarantee of
+              performance improvement.</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>Reading the calculations visually</span><strong>Let’s
+                try to align the results of the simulations with those of the normal distribution
+                calculations.</strong><small class="scroll-hint">Scroll horizontally to see the
+                entire graph.</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="Try to align the simulation results with the normal distribution calculations. In a narrow screen width, it’s possible to scroll left and right.">
+              <img src="../assets/images/advanced/03-noise.svg" width="940" height="450"
+                loading="lazy"
+                alt="Straight lines and curved lines are… B=1,16,64 And… 2,048 It’s the average loss per period. The horizontal lines represent the theoretical expected losses for each period. 120 In this section, we compare the initial decrease with the noise floor at the same time.">
+            </div>
+            <figcaption>Straight lines and curved lines are… B=1,16,64 And… 2,048 It’s the average
+              loss per period. The horizontal lines represent the theoretical expected losses for
+              each period. 120 In this section, we compare the initial decrease with the noise floor
+              at the same time.<a href="../assets/images/advanced/03-noise.svg" download>Download
+                SVG ↗</a></figcaption>
+          </figure>
+          <details class="answer">
+            <summary>If we keep η at its GD value, will there still be this loss floor?</summary>
+            <p>If σg=0, then the theoretical normal loss is 0. In the deterministic quadratic
+              equation of the learning rate, the initial error decreases exponentially. The current
+              “floor” is created by continuously injecting new gradients with a constant learning
+              rate.</p>
+          </details>
+          <div class="reproduce-box">
+            <h3>Reproduce the results and change conditions</h3>
+            <p>The figures are precomputed from this chapter's advanced Python experiments. The
+              notebook contains code for seven chapters and 28 figure outputs. Calculations require
+              NumPy; regenerating figures also requires Matplotlib.</p>
+            <div class="download-links"><a href="../downloads/advanced-experiments.ipynb"
+                download>Advanced notebook ↓</a><a href="../downloads/advanced-experiments.py"
+                download>Calculation Python ↓</a><a href="../downloads/advanced-figures.py"
+                download>Figure Python ↓</a><a href="../downloads/advanced-results.json"
+                download>Numeric results JSON ↓</a></div>
+            <p>Place both Python files in the same folder. The calculation script's
+              <code>--chapter 3</code> option runs just this chapter. The figure script's
+              <code>--output ./figures</code> option generates 28 SVG figures.
+            </p>
+          </div>
+        </section>
+        <p class="sources">Further reading: <a href="../appendix/references.html#mml">References for
+            related concepts</a> · <a href="../appendix/glossary.html">Terms and Notation</a></p>
+        <button class="print-button" type="button" data-print>Print this page / Save as PDF</button>
+        <nav class="next-prev" aria-label="Learning sequence"><a href="02-linear-regression.html">←
+            Previous: Mathematics of making predictions</a><a
+            href="04-probability-and-inference.html">Next: How to deal with uncertainty →</a></nav>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>A study journal connecting concepts and checking them through calculation.<br>Synthetic
+          data · Original explanations and experiments</p><a
+          href="../appendix/references.html">References and credits ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

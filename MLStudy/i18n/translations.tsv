@@ -1,0 +1,495 @@
+0	From mathematics to models: HD2Lab's personal machine learning studies.	数学からモデルへ。HD2Labの個人的な機械学習の学習記録。
+1	Personal Machine Learning Studies | HD2Lab	個人的な機械学習の学習 | HD2Lab
+2	Skip to content	本文へスキップ
+3	HD2Lab learning home	HD2Lab 学習ホーム
+4	Main navigation	メインメニュー
+5	Curriculum	学習目次
+6	Labs	実験室
+7	References	参考資料
+8	Personal	個人的な
+9	Machine Learning Studies	機械学習の学習
+10	From mathematics to models,	数学からモデルへ、
+11	learning through explanations and experiments.	説明と実験を通して学ぶ記録。
+12	Connect the meaning of formulas and test your understanding with advanced cases and comparative figures.	数式の意味を結び付け、発展事例と比較図で理解を確かめます。
+13	Prediction · Optimization · Probability · Compression · Clustering · Classification	予測 · 最適化 · 確率 · 圧縮 · クラスタリング · 分類
+14	Read the first chapter	最初の章から読む
+15	Start with an experiment	実験から始める
+16	Connected chapters	つながる学習章
+17	Advanced worked cases	発展計算事例
+18	Comparative figures	比較図
+19	A learning cycle connecting observations to models and back through experimental results	観測からモデルへ、実験結果から再び問いへ戻る学習構造
+20	Observations → Mathematical representation → Model → Experiment → New questions	観測 → 数学的表現 → モデル → 実験 → 新たな問い
+21	From one question to the next concept.	一つの問いから、次の概念へ。
+22	Each chapter progresses from fundamentals to three advanced cases. Step-by-step solutions and four comparative figures explore failure cases, changing conditions, and limits of interpretation.	各章は基礎から三つの発展事例へ進みます。段階的な解説と四つの比較図で、失敗例、条件の変化、解釈の限界を考えます。
+23	From Data to Learning	データから学習へ
+24	What does a computer learn?	コンピュータは何を学習するのか？
+25	Vectors · Loss · Generalization	ベクトル · 損失 · 汎化
+26	The Mathematics of Prediction	予測を作る数学
+27	How do we find the best-fitting line?	最もよく当てはまる直線をどう見つけるか？
+28	Matrices · Least squares · Polynomials	行列 · 最小二乗法 · 多項式
+29	Improving a Model	モデルを改善する方法
+30	How do we choose a direction that reduces error?	誤差を減らす方向をどう決めるか？
+31	Differentiation · Chain rule · Gradient descent	微分 · 連鎖律 · 勾配降下法
+32	Working with Uncertainty	不確実性を扱う方法
+33	How do observations meet prior knowledge?	観測と事前知識はどう結び付くか？
+34	Bayes · MLE · MAP	ベイズ · MLE · MAP
+35	Compressing Information	情報を圧縮する方法
+36	What should we keep, and what should we discard?	何を残し、何を捨てるか？
+37	Orthogonality · SVD · PCA	直交 · SVD · PCA
+38	Finding Hidden Groups	隠れた集団を見つける方法
+39	Can membership of an observation be expressed probabilistically?	一つの観測の所属を確率で表せるか？
+40	Mixtures · Responsibilities · EM	混合分布 · 負担率 · EM
+41	Building Classification Boundaries	分類境界を作る方法
+42	Which separating boundary should we choose?	分離する境界の中でどれを選ぶか？
+43	SVM · Margin · Classification	SVM · マージン · 分類
+44	Revisit the Mathematics	数学を振り返る
+45	From bases and projections to matrix decompositions, probability, and constrained optimization.	基底と射影から行列分解、確率、制約付き最適化まで。
+46	Worked examples · Derivations · Review	計算例 · 導出 · 復習
+47	Terms and Notation	用語と記号
+48	Distinguish different meanings of a term and check the symbols used in formulas.	同じ言葉の異なる意味を区別し、数式の記号を確認します。
+49	25 terms · Shared notation	25の用語 · 共通の表記
+50	Change the settings, deepen your understanding.	設定を変えると、理解も変わります。
+51	All calculations run in this browser. Identical settings produce identical results; observation conditions and limits of interpretation are shown together.	計算はすべてこのブラウザで実行します。同じ設定は同じ結果を生み、観測条件と解釈の範囲を併記します。
+52	Regression Curve Lab	回帰曲線実験室
+53	Compare training and validation error by changing polynomial degree and regularization.	次数と正則化を変えて、訓練誤差と検証誤差を比較します。
+54	Gradient Descent Lab	勾配降下経路実験室
+55	Observe convergence and oscillation as you change the learning rate and curvature.	学習率と曲率を変えて、収束と振動を観察します。
+56	PCA Compression Lab	PCA圧縮実験室
+57	Compress six channels and inspect retained variance and reconstruction error.	六つのチャネルを圧縮し、保持分散と再構成誤差を確認します。
+58	GMM Clustering Lab	GMMクラスタリング実験室
+59	Observe membership probabilities as you change initialization and iteration count.	初期値と反復回数を変えて所属確率を観察します。
+60	SVM Classification Lab	SVM分類境界実験室
+61	Inspect boundaries, margins, and support vectors by changing C and data conditions.	Cとデータ条件を変えて、境界、マージン、サポートベクトルを確認します。
+62	Predict first,	まず予想し、
+63	calculate, then explain.	計算してから説明する。
+64	If you know Python array basics, start with the first chapter. Keep the appendix nearby if the mathematics is unfamiliar, and write down why results differ from your expectations.	Pythonの配列の基礎が分かれば最初の章から始めましょう。数学に不慣れなら付録を参照し、結果が予想と違った理由を書き留めてください。
+65	About these materials	この資料の構成
+66	The explanations and examples were written for this site. Models are computed on synthetic data and compared under changing conditions. Five browser labs and an advanced notebook with execution outputs are included, alongside observation conditions, interpretation limits, references, and code verification methods.	説明と例はこのサイト向けに作成しました。合成データでモデルを計算し、条件を変えて比較します。五つのブラウザ実験室と実行結果付きの発展Notebookに加え、観測条件、解釈の限界、参考文献、コード検証方法を提供します。
+67	References · Credits and reproduction ↗	参考資料 · 制作と再現の情報 ↗
+68	A study journal connecting concepts and checking them through calculation.	概念を結び付け、計算で確かめる学習記録。
+69	Synthetic data · Original explanations and experiments	合成データ · 独自の説明と実験
+70	References and credits ↗	参考資料と制作情報 ↗
+71	What does a computer learn? Represent observations numerically, measure model error, and evaluate on unseen data.	コンピュータは何を学習するのか。観測を数値で表し、モデルの誤差を測り、未知のデータで評価する過程。
+72	From Data to Learning | HD2Lab	データから学習へ | HD2Lab
+73	Python array basics	Python配列の基礎
+74	3 advanced cases · 4 comparative figures	発展事例3件 · 比較図4点
+75	On this page	このページの流れ
+76	01 / Define the prediction time	01 / 予測時点を決める
+77	02 / Observations as vectors	02 / 観測をベクトルに
+78	03 / A model is a function with assumptions	03 / モデルは仮定を含む関数
+79	04 / Define a good prediction	04 / 良い予測の基準を作る
+80	05 / Separate learning from evaluation	05 / 学習と評価の間に境界を置く
+81	06 / Check your understanding	06 / 理解を確認する
+82	Advanced A / Design time features and evaluate the future	発展A / 時間特徴を設計し未来を評価する
+83	Advanced B / Find leakage in suspiciously good results	発展B / 良すぎる結果から漏洩を探す
+84	Advanced C / Choose thresholds by cost instead of accuracy	発展C / 正解率ではなく費用で閾値を選ぶ
+85	Suppose a fictional bicycle rental station predicts rentals over the next hour. Before choosing a model, define when the prediction is made and what is known then. At 8 a.m., the actual weather at 9 a.m. and returns over the next hour are unknown. Including these values just because they exist in the training data introduces future information.	架空の自転車貸出所で次の1時間の貸出数を予測するとします。モデルを選ぶ前に「いつ、何を知っているか」を決めます。午前8時には9時の実際の天候や次の1時間の返却数はまだ分かりません。訓練データに値があるというだけで入力すると未来の情報が混入します。
+86	These materials use no real operational data. Small synthetic examples illustrate data representation, learning, and validation. Experimental results are observations under synthetic conditions, not evidence of real service performance.	この資料は実運用データを使いません。小さな合成例でデータ表現、学習、検証の構造を調べます。実験結果は合成条件下の観察であり、実サービスの性能として解釈しません。
+87	Chapter goals	この章の目標
+88	Distinguish sample and feature axes, and parameters from hyperparameters. Plan evaluation using only inputs available at prediction time.	標本と特徴の軸、パラメータとハイパーパラメータを区別します。予測時点で利用可能な入力だけを使って評価を計画します。
+89	Jump to advanced cases	発展学習へ移動
+90	After the fundamentals: 3 advanced cases · 4 comparative figures	基礎の次は発展事例3件 · 比較図4点
+91	Represent one observation as a vector x and stack observations as rows of X. With N samples and D features, X is an N × D matrix. Each row has a corresponding target y. Reordering the rows requires reordering the targets as well.	一つの観測をベクトルxにまとめ、複数の観測を行列Xの行に並べます。標本数N、特徴数Dに対しXはN × D行列です。目標値yは各行に対応し、行の順番を変えるときは目標値の順番も変えます。
+92	Key equation	重要な式
+93	x = [temperature, forecast rain probability, available bicycles]	x = [気温, 予報降水確率, 利用可能な自転車数]
+94	Prediction time	予測時点
+95	Temperature (°C)	気温 (°C)
+96	Rain probability	降水確率
+97	Available bicycles	利用可能台数
+98	Subsequent rentals	その後の貸出数
+99	Numeric storage does not make distance meaningful. Station IDs 1 and 2 are not necessarily more similar than 1 and 9. Categorical variables need a representation such as one-hot encoding. Since time is cyclical, two coordinates can represent proximity across midnight.	数値で保存しても距離に意味があるとは限りません。貸出所番号1と2が1と9より似ているとは言えません。カテゴリ変数にはワンホット符号化などの表現が必要です。時刻は周期的なので、深夜0時の前後が近くなるよう二つの座標で表すこともできます。
+100	Cyclical time representation	周期的な時刻表現
+101	A model maps inputs to outputs. A linear model assumes additive feature contributions. A probabilistic model also represents uncertainty: the same input may produce different outputs. Neither representation captures reality completely.	モデルは入力を出力に変換する関数です。線形モデルは特徴の寄与を足し合わせると仮定します。確率モデルは同じ入力でも出力が変わる不確実性も表します。どちらも現実を完全には表せません。
+102	(x), or p(y | x, θ)	(x)、または p(y | x, θ)
+103	θ denotes parameters estimated from data. Polynomial degree, learning rate, and regularization strength are hyperparameters specifying the learning process. Learning selects parameters within a fixed function family according to an objective.	θはデータから推定するパラメータです。多項式の次数、学習率、正則化の強さは学習過程を定めるハイパーパラメータです。学習とは、決められた関数族の中で目的関数を基準にパラメータを選ぶ過程です。
+104	Learning setting	学習形態
+105	Given information	与えられる情報
+106	Question	問い
+107	Supervised learning	教師あり学習
+108	Inputs and targets	入力と目標値
+109	How many rentals? Which category?	貸出数はいくつか？どのカテゴリか？
+110	Unsupervised learning	教師なし学習
+111	Primarily input observations	主に入力の観測
+112	What structure, distribution, or compressed representation exists?	どのような構造、分布、圧縮表現があるか？
+113	Reinforcement learning	強化学習
+114	States and rewards following actions	行動後の状態と報酬
+115	Which actions increase long-term reward?	長期報酬を高める行動は何か？
+116	Dimensionality reduction and clustering are typical unsupervised tasks. These labs focus on supervised and unsupervised learning. Reinforcement learning adds an environment and sequential decisions and is only outlined here.	次元削減とクラスタリングは教師なし学習の代表例です。このサイトの実験は教師あり・教師なし学習に集中します。強化学習には環境と逐次意思決定が加わるため、ここでは概要だけを扱います。
+117	Loss quantifies the difference between targets and predictions. In regression, squared error weights large residuals more strongly; absolute error responds linearly to residual magnitude. Choose a loss according to the cost of mistakes.	損失は正解と予測の差を数値化します。回帰の二乗誤差は大きな残差を強く反映し、絶対誤差は残差の大きさに線形に反応します。損失は誤りの費用に応じて選びます。
+118	For residuals [1, −2, 3], MSE is 14/3 and MAE is 2. MSE has squared target units; RMSE restores the original units. Classification accuracy can hide failures on rare classes, so inspect a confusion matrix too.	残差が[1, −2, 3]ならMSEは14/3、MAEは2です。MSEの単位は目標値の単位の二乗で、RMSEは元の単位に戻ります。分類では正解率だけだと少数クラスの失敗を隠すため、混同行列も確認します。
+119	A starting point for comparison	比較の出発点
+120	Use a baseline that always predicts the mean training target. Compare complex models and this simple baseline on the same evaluation data.	訓練目標値の平均を常に予測する基準モデルを用意します。複雑なモデルと単純な基準を同じ評価データで比較します。
+121	Fit coefficients on training data, choose settings on validation data, and assess final performance on separate test data after selection. Repeated changes based on test results turn the test set into a validation set in practice.	訓練データで係数を求め、検証データで設定を選び、選択後に別のテストデータで最終性能を確認します。テスト結果を見て修正を繰り返すと、テストも実質的に検証データになります。
+122	When chronology matters, as with rentals, train on the past and validate on a later period. Random splits can leak future patterns into past predictions. Compute means, standard deviations, and imputation values only on training data. With independent samples, cross-validation measures variability across splits.	貸出数のように時間順が重要なら過去で学習し、その後の期間で検証します。無作為分割は未来のパターンを過去の予測に漏らす場合があります。平均、標準偏差、欠損補完値も訓練期間だけで計算します。独立標本では交差検証で分割間の性能変動を確認できます。
+124	Evaluation terminology in the labs	実験室での評価の呼び方
+125	Values repeatedly compared with sliders are validation errors, not final service or test performance.	スライダーで繰り返し比較する値は検証誤差です。最終サービス性能やテスト性能とは呼びません。
+126	Does having more samples than features guarantee a good model?	標本数が特徴数より多ければ必ず良いモデルか？
+127	No. Sample diversity, available information, leakage, distribution shift, and model assumptions also matter. Sample count alone cannot guarantee generalization.	いいえ。標本の多様性、入力情報、漏洩、分布変化、モデルの仮定も重要です。標本数だけでは汎化性能を保証できません。
+128	Can we standardize the entire dataset before splitting?	全データを標準化してから分割してよいか？
+129	For evaluation, estimate the mean and standard deviation from the training partition. The entire dataset includes information about the evaluation distribution.	評価のための分割では、訓練部分から平均と標準偏差を推定します。全データには評価部分の分布情報が含まれます。
+130	Takeaway:	学習のまとめ：
+131	Define observation units, prediction time, and evaluation criteria before model selection. The next chapter computes a linear model by minimizing loss.	モデル選択の前に観測単位、予測時点、評価基準を定めます。次章では損失を最小化する線形モデルを計算します。
+132	Advanced A · Feature design and distribution shift	発展A · 特徴設計と分布変化
+133	Problem to explore	考える問題
+134	Compare raw numeric time with periodic features. Does a model that explains the past remain valid in the next period?	時刻をそのまま数値化したモデルと周期特徴を使うモデルを比較します。過去をよく説明するモデルは次の時間帯でも有効でしょうか？
+135	Generate 200 hourly request values for fictional equipment: t=0,…,199, h=t mod 24, and y=30+8sin(2πh/24)+6·1[t≥140]+ε, ε~N(0,1.5²). Requests are a continuous approximation without rounding. Use NumPy seed 2101. Fix training at 0–119, validation at 120–159, and test at 160–199.	架空の装置の時間別要求量を200個作ります。t=0,…,199、h=t mod 24、y=30+8sin(2πh/24)+6·1[t≥140]+ε、ε~N(0,1.5²)です。要求量は連続近似で丸めません。NumPyシード2101を使い、訓練0〜119、検証120〜159、テスト160〜199に固定します。
+136	Linear time features [1,h] place 23:00 far from 00:00. The sine and cosine coordinates place a day on a circle, making both sides of midnight neighbors.	線形時間特徴[1,h]は23時と0時を遠くに置きます。sinとcosの二座標は一日を円上に置き、深夜0時の両側も隣同士に表します。
+137	Fit both models by least squares using only the 120 training observations. Do not refit coefficients using the validation period.	両モデルとも訓練120件だけで最小二乗を解きます。検証期間を見て係数を再調整しません。
+138	Validation MSE falls from 35.405 with raw time to 20.596 with periodic features. This improves the fit but remains far above the generating noise variance, 2.25.	検証MSEは生の時刻特徴35.405から周期特徴20.596へ下がります。改善しても生成ノイズ分散2.25より大幅に大きい値です。
+139	The mean shifts by 6 at t=140. The periodic model cannot learn this change either, giving test MSE 34.592. Better representation and adaptation to distribution shift are separate issues.	t=140で平均が6移動します。周期モデルもこの変化を学べず、テストMSEは34.592です。表現の改善と分布変化への対応は別の問題です。
+140	Reading the calculations visually	計算を図で読む
+141	Numeric time and periodic time	時刻の数値と周期
+142	Scroll horizontally to see the entire graph.	左右にスクロールしてグラフ全体を確認してください。
+143	Numeric time and periodic time. Scroll horizontally on narrow screens	時刻の数値と周期。狭い画面では左右にスクロール
+144	The horizontal axis is hour of day (h); the vertical axis is synthetic requests. Dashes and markers distinguish the generating mean, raw-time regression, and sine/cosine regression. The figure compares predictions for the first day.	横軸は一日の時刻(h)、縦軸は合成要求量です。破線とマーカーで生成平均、生の時刻回帰、sin・cos回帰を区別します。図は最初の一日の予測を比較します。
+145	Download SVG ↗	SVGをダウンロード ↗
+146	Changing the evaluation period changes the question	評価期間を変えると問いも変わる
+147	Changing the evaluation period changes the question. Scroll horizontally on narrow screens	評価期間を変えると問いも変わる。狭い画面では左右にスクロール
+148	Background regions distinguish training, validation, and test along time. After the orange dashed line at t=140, mean requests increase by 6. Fixed predictions retain the daily cycle but miss the new mean.	時間軸の背景で訓練、検証、テストを区別しています。t=140のオレンジ色の破線以降、平均要求量が6増えます。固定予測は一日の周期を保ちますが、新しい平均に追随できません。
+149	Would adding trend t as a feature automatically fix this change?	特徴に傾向tを加えれば自動的に解決するか？
+150	Training contains no abrupt level shift, so a simple trend cannot reveal a future jump. Evaluate retraining rules, change-detection indicators, and post-detection performance on separate time periods.	訓練中に急な水準変化がないため、単純な傾向追加だけでは未来の跳躍を知ることはできません。再学習規則、変化検知指標、検知後の性能を別の時間期間で評価する必要があります。
+151	Advanced B · Diagnosing misleading performance	発展B · 誤った性能診断
+152	A model achieves MSE below 0.001. Is it excellent, or does it use information unavailable at prediction time?	MSEが0.001未満のモデルができました。優秀なのか、それとも予測時点で分からない情報が入っているのでしょうか？
+153	Separate three mistakes on the same sample: mixing time periods, selecting a model using the test set, and including part of the target as a feature. To demonstrate the last mistake, create a post-request aggregate z=y+δ, δ~N(0,0.02²). This feature does not exist at prediction time.	同じ標本で三つの誤りを区別します。時間期間を混ぜる評価、テストを見てモデルを選ぶ評価、正解の一部を特徴に入れる評価です。最後を再現するため、要求終了後の集計値z=y+δ、δ~N(0,0.02²)を作ります。この特徴は予測時点には存在しません。
+154	List valid inputs as of prediction time. Earlier aggregates are usable; post-event aggregates for unfinished requests are not.	予測時点を基準に正しい入力一覧を作ります。過去の集計は使えますが、まだ終了していない要求の事後集計は使えません。
+155	Shuffling the first 160 observations into 120/40 gives the periodic model validation MSE 3.494. Compared with chronological validation MSE 20.596, this changes the difficulty of distribution shift. Since observations differ, this is not a pure comparison of model improvement.	最初の160件を混ぜて120/40に分けると周期モデルの検証MSEは3.494です。時間順の20.596とは分布移動の難しさが変わっています。観測が異なるため、純粋なモデル改善の比較ではありません。
+156	Adding z to the training features lowers future validation MSE to 0.000496. But the validation features contain the target itself, making this invalid predictive performance.	訓練特徴にzを加えると未来の検証MSEも0.000496まで下がります。しかし検証特徴自体に正解が含まれるため、有効な予測性能ではありません。
+157	Determine means, standard deviations, imputation, and feature selection on training observations only. Apply the fixed transformation to validation, and inspect the final test once after selection.	平均、標準偏差、欠損補完、特徴選択も訓練観測だけで決めます。検証には決めた変換を適用し、最終テストは選択後に一度確認します。
+158	Audit inputs and splits before celebrating low error	低い誤差を喜ぶ前に入力と分割を点検する
+159	Audit inputs and splits before celebrating low error. Scroll horizontally on narrow screens	低い誤差を喜ぶ前に入力と分割を点検する。狭い画面では左右にスクロール
+160	Each bar is MSE from a different evaluation procedure. Shuffled validation, future validation, and future test cover different periods. The last bar deliberately introduces target leakage and is invalid. Read the numeric values above the bars too.	各棒は異なる評価手順のMSEです。混合検証、未来の検証、未来のテストは評価時期が異なります。最後の棒は意図的に目標漏洩を入れた無効な結果です。棒の上の実数値も確認してください。
+161	Expand the core calculation code	計算コードの要点を開く
+162	An excerpt from the corresponding advanced Python function. Full data generation and helper functions are available in the downloads below.	発展Pythonの対応する関数から計算の流れを抜粋しています。完全なデータ生成と補助関数は以下のダウンロードにあります。
+164	Is it safe to split training and validation first, then create target-based features separately?	先に訓練と検証を分け、それぞれ正解由来の特徴を作れば安全か？
+165	No. Even without overlapping rows, using a target unknown at prediction time is target leakage. Check both row separation and temporal availability of features.	いいえ。行が重複していなくても予測時点で未知の正解を入力すれば目標漏洩です。行の分離と特徴の時間的な利用可能性を両方確認します。
+166	Advanced C · Imbalanced classification and cost	発展C · 不均衡分類と費用
+167	With a 2% equipment failure rate, does a high-accuracy threshold also reduce missed failures?	故障率2%の装置で正解率の高い閾値を選べば、見逃す故障も減るでしょうか？
+168	Use 10,000 separate synthetic validation observations: 200 failures and 9,800 normal cases. Scores are s=2y+ε, y∈{0,1}, ε~N(0,1). Raise an alarm when s≥τ. Since s is not a probability, threshold 0.5 has no special probabilistic meaning. Assume cost 25 for a missed failure (FN) and 1 for a false alarm (FP).	別の合成検証観測10,000件を故障200件、正常9,800件に分けます。スコアはs=2y+ε、y∈{0,1}、ε~N(0,1)です。s≥τで警報を出します。sは確率ではなく、閾値0.5に特別な確率的意味はありません。故障見逃し(FN)の費用25、誤警報(FP)の費用1と仮定します。
+169	Accuracy	正解率
+170	Precision / Recall	適合率 / 再現率
+171	Total cost	総費用
+172	Predicting every observation as normal gives 98% accuracy, 0% failure recall, and cost 5,000. Record this baseline first.	すべて正常と予測すると正解率98%、故障再現率0%、費用5,000です。まずこの基準を記録します。
+173	τ=2.5 appears good at 97.88% accuracy but misses 149 failures. τ=1.5 has lower accuracy yet lower cost, 2,351.	τ=2.5は正解率97.88%で良く見えますが、故障149件を見逃します。τ=1.5は正解率が低くても費用は2,351と小さくなります。
+174	Searching −1 to 4 in steps of 0.05 gives minimum validation cost at threshold 1.5. Claiming final performance on the same sample used to choose it introduces selection bias.	−1から4を0.05刻みで探索すると、この検証標本の最小費用閾値は1.5です。選択に使った標本で最終性能まで主張すると選択バイアスが生じます。
+175	Fix the selected threshold and check cost, precision, and recall on an independent test set. Reconsider the threshold if failure rates or costs change in operation.	選んだ閾値を固定し、独立したテストで費用、適合率、再現率を確認します。運用時に故障率や費用が変われば、同じ閾値が適切か再検討します。
+176	Tradeoffs between accuracy, recall, and cost	正解率・再現率・費用のトレードオフ
+177	Tradeoffs between accuracy, recall, and cost. Scroll horizontally on narrow screens	正解率・再現率・費用のトレードオフ。狭い画面では左右にスクロール
+178	Left: precision, recall, and accuracy against threshold. Right: 25×FN+FP. Horizontal scores are dimensionless, not probabilities. The minimum cost applies only to this synthetic validation set.	左は閾値に対する適合率、再現率、正解率、右は25×FN+FPです。横軸のスコアは無次元で確率ではありません。費用の最小値はこの合成検証集合に限ったものです。
+179	If FN cost rises from 25 to 100, which way would you move the threshold?	FN費用が25から100に増えたら閾値をどちらに動かしたいですか？
+180	Since missed failures cost more, first consider lower thresholds that allow more alarms. Determine the value by recalculating the validation cost curve with the new costs.	故障を見逃す費用が増えるため、まず警報を多く許容する低い閾値を検討します。新しい費用で検証費用曲線を再計算し、値を決めます。
+181	Reproduce the results and change conditions	結果を再現して条件を変える
+182	The figures are precomputed from this chapter's advanced Python experiments. The notebook contains code for seven chapters and 28 figure outputs. Calculations require NumPy; regenerating figures also requires Matplotlib.	図はこの章の発展Python実験の事前計算結果です。Notebookには7章分の実行コードと28点の図出力があります。計算にはNumPy、図の再生成にはMatplotlibも必要です。
+183	Advanced notebook ↓	発展Notebook ↓
+184	Calculation Python ↓	計算用Python ↓
+185	Figure Python ↓	作図用Python ↓
+186	Numeric results JSON ↓	数値結果JSON ↓
+187	Place both Python files in the same folder. The calculation script's	Pythonファイル二つを同じフォルダに置いてください。計算ファイルの
+188	option runs just this chapter. The figure script's	オプションでこの章だけを実行できます。作図ファイルの
+189	option generates 28 SVG figures.	オプションは28点のSVGを生成します。
+190	Further reading:	参考文献：
+191	References for related concepts	関連概念の参考資料
+192	Print this page / Save as PDF	このページを印刷 / PDF保存
+193	Learning sequence	学習順序
+194	← Previous: Full curriculum	← 前：全体目次
+195	Next: The Mathematics of Prediction →	次：予測を作る数学 →
+196	How do we find the best-fitting line? From simultaneous equations to least squares, from lines to curves. Explore flexibility alongside validation error.	最もよく当てはまる直線をどう見つけるか。連立方程式から最小二乗法へ、直線から曲線へ。柔軟性と検証誤差を一緒に考えます。
+197	The Mathematics of Prediction | HD2Lab	予測を作る数学 | HD2Lab
+198	01 · Data and models	01 · データとモデル
+205	Advanced A / Explain unstable coefficients with SVD and Ridge	発展A / 不安定な係数をSVDとRidgeで説明する
+206	Advanced B / Select degree and regularization together	発展B / 次数と正則化を同時に選ぶ
+207	Advanced C / Distinguish bootstrap intervals from prediction intervals	発展C / ブートストラップ区間と予測区間を区別する
+208	Response latency increases when requests crowd a fictional storage device. Load x is dimensionless, between 0 and 1; latency y is measured in ms. The generating process adds zero-mean Gaussian noise to 3 + 2x + 7x³. These are synthetic data for exploring nonlinearity, not system measurements.	架空のストレージ装置に要求が集中すると応答遅延が増えます。負荷xは0から1の無次元値で、遅延yの単位はmsです。生成過程は3 + 2x + 7x³に平均0のガウスノイズを加えます。実測値ではなく、非線形性を観察するための合成データです。
+209	The experiment fits regression equations of different degrees rather than using the generating equation. Comparing training error, validation error, and predictions outside the data range reveals the difference between fitting a curve and predicting new observations well.	実験では生成式の代わりに複数の次数の回帰式を学習します。訓練誤差、検証誤差、データ範囲外の予測を比較すると、曲線をよく当てはめることと新しい観測をよく予測することの違いが分かります。
+210	Derive the normal equations and explain why a model nonlinear in its inputs may still be linear in its coefficients. Explore how degree and regularization affect predictions.	正規方程式を導出し、入力に非線形でも係数に関して線形になり得る理由を説明します。次数と正則化が予測をどう変えるか確認します。
+225	Limits of interpretation	解釈の限界
+260	Coefficients may fluctuate while their sum remains stable	係数が変動しても、その和は安定する場合がある
+272	Find a good degree–α combination on an error map	誤差マップで適切な次数とαの組み合わせを探す
+273	Find a good degree–α combination on an error map. Scroll horizontally on narrow screens	誤差マップで適切な次数とαの組み合わせを探す。狭い画面では左右にスクロール
+277	Compare 30 training points with degree-1, degree-3, and degree-9 regression at α=0. Gray shading marks the extrapolation interval x∉[−1,1]. Large oscillations require a vertical display range of −8~7; the calculations themselves are not truncated.	訓練点30個とα=0の1次・3次・9次回帰を比較します。灰色の網掛けはx∉[−1,1]の外挿区間です。大きな振動のため縦の表示範囲を−8~7に制限しましたが、計算自体は切り詰めていません。
+280	Does a narrow 95% interval around a curve also contain 95% of new observations?	曲線の周囲の95%区間が狭ければ、新しい観測も95%がその中に入るでしょうか？
+305	Advanced B / Check the logistic gradient with central differences	発展B / ロジスティック勾配を中心差分で検証する
+336	Contours connect equal values of J(w). Paths show the first 24 updates, with line and marker styles distinguishing GD, momentum, and Newton. One Newton step reaches the origin from the starting point.	等高線はJ(w)が等しい点を結びます。経路は最初の24回の更新を示し、線と点の形でGD、モメンタム、Newtonを区別します。開始点からNewtonの1回の移動で原点に達します。
+341	No. Rotation makes the off-diagonal entries nonzero. The reciprocal diagonal of H only rescales coordinates and cannot remove coupling between axes. Newton solves the full H linear system in this example.	いいえ。回転により非対角成分がゼロではありません。diag(H)の逆数は座標ごとの大きさを調整するだけで、軸間の結合を除けません。この例のNewton法はH全体の線形方程式を解きます。
+344	The rows of the 6×3 design matrix, including the intercept, are [1,−2,.5], [1,−1,1], [1,−.5,−1], [1,.5,.2], [1,1,−.7], [1,2,1.2]. Set y=[0,0,1,0,1,1] and check at w=[.2,−.3,.4]. Use mean binary cross-entropy without regularization.	切片を含む6×3計画行列の行は[1,−2,.5]、[1,−1,1]、[1,−.5,−1]、[1,.5,.2]、[1,1,−.7]、[1,2,1.2]です。y=[0,0,1,0,1,1]、検査点w=[.2,−.3,.4]とします。正則化なしの平均二値交差エントロピーを使います。
+380	Distinguish probability mass from density, and likelihood from posterior distributions. Explain the conditions linking a Gaussian prior to L2 regularization.	確率質量と密度、尤度と事後分布を区別します。ガウス事前分布とL2正則化が結び付く条件を説明します。
+414	Assume request failures are conditionally independent Bernoulli(p) observations. The prior is Beta(2,18), with mean 0.1. Observing 2 failures among the first 20 gives Beta(4,36); adding 7 failures among the next 80 gives Beta(11,109). These are fixed fictional aggregate counts, not randomly varied counts.	要求の失敗を条件付き独立なBernoulli(p)と仮定します。事前分布はBeta(2,18)、平均0.1です。最初の20件で失敗2件を観測するとBeta(4,36)、続く80件で失敗7件を加えるとBeta(11,109)になります。固定された架空の集計で、乱数によって集計を変えません。
+417	Use the previous posterior as the prior for the next block. The final parameters are a=2+2+7=11, b=18+18+73=109. Processing all 100 observations at once gives the same result.	前の事後分布を次のブロックの事前分布に使います。最終パラメータはa=2+2+7=11、b=18+18+73=109です。100件を一度に処理しても同じ結果です。
+418	The posterior mean is 9.2%, also the predictive probability of failure for the next observation. The 95% equal-tailed credible interval for the failure probability p itself is approximately 4.7%~14.9%.	事後平均は9.2%で、次の1件が失敗する予測確率も同じです。失敗確率p自体の95%等裾信用区間は約4.7%~14.9%です。
+419	The interval endpoints are the 2.5%·97.5% quantiles of the CDF obtained by numerically integrating the posterior density. Interpret it as a 95% posterior probability that p lies in this interval, conditional on this model and these observations. It differs from an interval for the number of failures in the next 100 trials.	区間の端点は事後密度を数値積分した累積分布の2.5%・97.5%分位点です。「このモデルと観測を条件として、pがこの区間内にある事後確率が95%」と読みます。次の100件の失敗回数の区間とは異なります。
+434	Assume a fictional inspection system with failure prevalence π=2%, sensitivity 90%, and specificity 96%. Among 10,000 expected cases, 180 of 200 failures trigger alarms, while 392 of 9,800 normal cases trigger false alarms. These are model-based expected counts, separate from the random-score sample in Chapter 1.	架空の点検システムで故障率π=2%、感度90%、特異度96%と仮定します。10,000件の期待回数で考えると、故障200件中180件が警報、正常9,800件中392件が誤警報です。これはモデルによる期待回数で、第1章の乱数スコア標本とは別の計算です。
+524	x₁ takes 100 equally spaced grid values from −8~8. At each x₁, include one observation for each label y=−1,+1, giving 200 observations in total. Set x₂=0.2y. x₁ varies widely but is independent of the label; x₂ varies little but determines the label completely. This is a symmetric construction without randomness.	x₁は−8~8を等間隔に分けた100個の格子値です。各x₁にラベルy=−1,+1の観測を一つずつ置き、合計200件を作ります。x₂=0.2yとします。x₁は大きく変わりますがラベルと独立で、x₂は少ししか変わらなくてもラベルを完全に決めます。乱数を使わない対称な構成です。
+635	Analytical SVM example: boundary x1=0 and margins x1=±1	解析的SVM例：境界x1=0とマージンx1=±1
+642	Training observations and linear SVM boundary, margins, and support vectors	訓練観測と線形SVMの決定境界、マージン、サポートベクトル
+669	If the training sample is doubled from the same distribution, does the same C retain exactly the same regularization effect?	同じ分布から訓練標本を2倍に増やしても、同じCの正則化効果はまったく同じでしょうか？
+701	← Previous: Finding Hidden Groups	← 前：隠れた集団を見つける方法
+702	Next: Mathematics appendix →	次：数学付録 →
+703	GMM Clustering Lab | HD2Lab	GMMクラスタリング実験室 | HD2Lab
+704	Synthetic data	合成データ
+705	Browser calculations	ブラウザ計算
+706	Reproducible settings	再現可能な設定
+707	Experiment settings	実験設定
+708	Components K	成分数 K
+709	Maximum EM updates	EM更新の上限
+710	Initialization seed	初期化シード
+711	Reset to defaults	既定の設定に戻す
+712	Precomputed results at default settings	既定設定の事前計算結果
+713	Log likelihood	対数尤度
+714	Update count	更新回数
+715	Maximum membership probability < 0.7	最大所属確率 < 0.7
+716	Component ellipses and membership	成分の楕円と所属
+717	Scroll horizontally to read graph axes and values.	グラフを左右にスクロールして軸と値を読めます。
+718	Primary graph; horizontal scrolling available	主グラフ、左右にスクロール可能
+719	Color and circle/square: maximum-responsibility component · Ellipse: Mahalanobis distance 2 · Component numbering is arbitrary	色・丸/四角：最大負担率の成分 · 楕円：各成分のMahalanobis距離2 · 成分番号は任意
+720	EM log likelihood	EM対数尤度
+721	Secondary graph; horizontal scrolling available	補助グラフ、左右にスクロール可能
+722	Observed log likelihood over EM iterations	EM反復に伴う観測の対数尤度
+723	Requested iterations completed · Component 1: weight 0.263 / 2: weight 0.281 / 3: weight 0.455	指定反復が完了 · 成分1：混合比0.263 / 2：混合比0.281 / 3：混合比0.455
+724	JavaScript is disabled. The figures show calculations for the default settings. Changing settings requires JavaScript.	JavaScriptが無効です。図は既定設定の計算結果です。設定の変更にはJavaScriptが必要です。
+725	Experiment conditions and how to read the results	実験条件と結果の読み方
+726	240 synthetic requests, data seed 812, and component proportions [.45,.35,.20]. For independent standard-normal a,b, generate components as [−1.4+.65a, −.5+.5a+.6b], [1.2+.7a,1.1−.35a+.45b], and [.7+.4a,−1.35+.7b]. Coordinates are dimensionless, representing standardized request features.	合成要求240件、データシード812、成分比率[.45,.35,.20]です。独立標準正規a,bを用い、各成分を[−1.4+.65a, −.5+.5a+.6b]、[1.2+.7a,1.1−.35a+.45b]、[.7+.4a,−1.35+.7b]から生成します。座標は標準化された要求特徴を想定する無次元値です。
+727	Choose initial means from observations; initialize covariances to the full-sample covariance and mixture weights uniformly. Use full-covariance EM with 10⁻⁶ added to the diagonal. Stop when the absolute log-likelihood gain is below 10⁻⁶. Reject the update and stop if likelihood decreases by more than 10⁻⁵ or a nonfinite value occurs.	初期平均は観測から選び、初期共分散は全標本の共分散、初期混合比は均等にします。完全共分散EMを使い、対角に10⁻⁶を加えます。対数尤度増加量の絶対値が10⁻⁶未満で終了します。減少が10⁻⁵を超えるか非有限値が出たら、更新せず停止します。
+728	Color indicates the component with the largest responsibility, not a definitive assignment. The count of observations with maximum responsibility below 0.7 is also shown. This is an observational threshold, not model accuracy. Log likelihood measures fit to the current observations, not final predictive performance.	最大負担率の成分で色分けしますが、所属を確定したわけではありません。最大負担率0.7未満の観測数も表示します。この基準は観察用で、モデルの正解率を表しません。対数尤度は現在の観測への適合度であり、最終的な予測性能ではありません。
+729	Read related concepts and derivations →	関連する概念と導出を読む →
+730	Download calculation code	計算コードをダウンロード
+731	Implementation and verification	実装と検証の情報
+732	Gradient Descent Lab | HD2Lab	勾配降下経路実験室 | HD2Lab
+733	Learning rate η	学習率 η
+734	Curvature κ along v	v方向の曲率 κ
+735	Initial u	開始 u
+736	Initial v	開始 v
+737	Maximum updates	最大更新回数
+738	Axis preconditioning	軸の補正
+739	Final loss	最終損失
+740	Updates performed	実行した更新
+741	η upper bound before preconditioning	補正前のη上限
+742	Movement on the loss landscape	損失地形上の移動
+743	Large green point: start · Orange line and points: path · Dark point: minimum · Pale ellipses: loss contours	大きな緑点：開始 · オレンジの線と点：経路 · 濃い点：最小点 · 薄い楕円：等損失線
+744	Loss per iteration	反復ごとの損失
+745	Base-10 logarithm of loss over iterations	反復に伴う損失の常用対数
+746	Iteration limit reached · Paths outside the coordinate window are clipped. The loss graph includes every executed step.	反復上限に到達 · 座標範囲外の経路は切り取っています。損失グラフは実行した全ステップを含みます。
+747	J(u,v) = (u²+κv²)/2. Without preconditioning, update [u,v] ← [u,v]−η[u,κv]. Global convergence for this problem requires 0<η<2/max(1,κ). Axis preconditioning multiplies the gradient by diag(1,1/κ), changing the convergence range to 0<η<2.	J(u,v) = (u²+κv²)/2です。補正なしの更新は[u,v] ← [u,v]−η[u,κv]です。この問題の大域収束範囲は0<η<2/max(1,κ)です。軸の補正は勾配にdiag(1,1/κ)を掛けるため、収束範囲が0<η<2に変わります。
+748	Coordinates and loss are dimensionless. Paths outside the original coordinate window are clipped, but the log10 loss plot includes all executed steps. Stop as converged below loss 10⁻¹⁰, or as divergent above 10¹².	座標と損失は無次元です。元の座標範囲外の経路は切り取りますが、log10軸の損失グラフには全実行ステップを含めます。損失が10⁻¹⁰未満で収束、10¹²を超えたら発散として停止します。
+749	At κ=6, compare η=.15 and .4.	κ=6でη=.15と.4を比較してください。
+750	Enable axis preconditioning with the same start and learning rate.	同じ開始点と学習率で軸の補正を有効にしてください。
+751	Start at the origin and interpret the stopping status.	原点から始め、終了状態の意味を確認してください。
+752	PCA Compression Lab | HD2Lab	PCA圧縮実験室 | HD2Lab
+753	Components to retain	残す成分数
+754	Channel noise σ	チャネルノイズ σ
+755	Latent-factor correlation ρ	潜在因子の相関 ρ
+756	Retained variance	保持分散
+757	Error per observation	観測当たりの誤差
+758	Identity discrepancy	恒等式の差
+759	Observations and reconstructions · First two channels	観測と再構成 · 最初の2チャネル
+760	Gray circles: observations · Green squares: reconstructions · Orange point below: selected component count	灰色の丸：観測 · 緑の四角：再構成 · 下のオレンジ点：選択成分数
+761	Component count and reconstruction error	成分数と再構成誤差
+762	Reconstruction error per observation versus component count	成分数に対する観測当たりの再構成誤差
+763	The first two channels of a six-channel compression/reconstruction are shown. This is within-sample reconstruction, not an evaluation of denoising performance.	6チャネルで圧縮・再構成した結果のうち最初の2チャネルを表示します。標本内の再構成であり、ノイズ除去性能の評価ではありません。
+764	Seed 431; 180 observations. With independent standard-normal a,b, set z₁=a, z₂=ρa+√(1−ρ²)b and generate xⱼ=2Aⱼ₁z₁+Aⱼ₂z₂+σεⱼ. Rows of A are [1,.1], [.8,.4], [−.4,.9], [.2,−.8], [.6,.6], [−.7,.2]. Each εⱼ is independent standard normal; all values are dimensionless.	シード431、観測180件です。独立標準正規a,bからz₁=a、z₂=ρa+√(1−ρ²)bを作り、xⱼ=2Aⱼ₁z₁+Aⱼ₂z₂+σεⱼを生成します。Aの行は[1,.1]、[.8,.4]、[−.4,.9]、[.2,−.8]、[.6,.6]、[−.7,.2]です。εⱼは独立標準正規で、すべて無次元値です。
+765	Decompose the centered 6×6 covariance using symmetric Jacobi eigendecomposition. Covariance uses denominator N; displayed error is summed squared feature error per observation. Compare the orange-point error with the sum of discarded eigenvalues. Only the first two channels of the full six-channel reconstruction are plotted.	中心化した6×6共分散を対称Jacobi固有分解で解きます。共分散の分母はN、表示誤差は観測当たりの特徴誤差の二乗和です。オレンジ点の誤差と捨てた固有値の和を比較します。6チャネル全体の再構成結果のうち最初の2チャネルだけを描きます。
+766	Compare one component and two components.	1成分と2成分を比較してください。
+767	Check reconstruction error with all six components.	6成分で再構成誤差を確認してください。
+768	Increase noise and consider whether high explained variance guarantees recovery of a clean signal.	ノイズを増やし、大きな説明分散がきれいな信号の復元を保証するか考えてください。
+769	Regression Curve Lab | HD2Lab	回帰曲線実験室 | HD2Lab
+770	Polynomial degree	多項式の次数
+771	Training samples	訓練標本数
+772	Noise standard deviation (ms)	ノイズの標準偏差 (ms)
+773	Regularization α	正則化 α
+774	Training MSE · ms²	訓練MSE · ms²
+775	Validation MSE · ms²	検証MSE · ms²
+776	Training samples	訓練標本
+777	Prediction curve and observations	予測曲線と観測
+778	● Training observations · Orange solid line: fitted curve · Gray dashed line: generating function · Shading: extrapolation	● 訓練観測 · オレンジ実線：学習曲線 · 灰色破線：生成式 · 網掛け：外挿
+779	Inspect the residuals	残差で見直す
+780	Training residuals versus load	負荷に対する訓練残差
+781	Calculation complete · Curve display range -2~17 ms. Shading marks extrapolation; curves outside this range are clipped.	計算完了 · 曲線表示範囲-2~17 ms。網掛けは外挿区間で、範囲外の曲線は切り取っています。
+782	Synthetic load x ~ Uniform(0,1), latency y = 3 + 2x + 7x³ + ε, ε ~ N(0,σ²). Training seed 1729; validation seed 1730; 120 validation observations. The browser uses Mulberry32 and Box–Muller random generation.	合成負荷x ~ Uniform(0,1)、遅延y = 3 + 2x + 7x³ + ε、ε ~ N(0,σ²)です。訓練シード1729、検証シード1730、検証観測120件です。ブラウザはMulberry32とBox–Mullerの乱数生成を使います。
+783	The basis contains powers 0 through d of z=2x−1. Householder QR minimizes the residual sum of squares + αΣθⱼ², excluding the intercept from the penalty. Validation error is measured only on 0≤x≤1. Shaded regions contain no data and represent extrapolation.	基底はz=2x−1の0次からd次までです。Householder QRで残差二乗和 + αΣθⱼ²を最小化し、切片は罰則から除きます。検証誤差は0≤x≤1でのみ測ります。網掛け領域にはデータがなく、外挿を表します。
+784	With 12 samples, compare degrees 1, 3, and 9.	標本12個で1次、3次、9次を比較してください。
+785	Increase α on the same data and check whether validation error improves.	同じデータでαを増やし、検証誤差が改善するか確認してください。
+786	Inspect whether more observations make extrapolation safe.	観測が増えれば外挿が安全になるか曲線を確認してください。
+787	SVM Classification Lab | HD2Lab	SVM分類境界実験室 | HD2Lab
+788	C = 10 raised to this power	C = 10の指数
+789	Class overlap σ	クラスの重なり σ
+790	Second-feature scale	第2特徴の倍率
+791	Data seed	データシード
+792	Standardize using training data	訓練データで標準化
+793	Add an outlier	外れ値を追加
+794	Precomputed default results · Convergence verified	既定設定の事前計算結果 · 収束を確認
+795	Training accuracy	訓練正解率
+796	Margin width · Training coordinates	マージン幅 · 学習座標
+797	Support vectors	サポートベクトル
+798	Training observations and decision boundary	訓練観測と決定境界
+799	Green circles: −1 · Orange squares: +1 · Dark solid line: decision boundary · Dashed lines: f=±1 · Outlined points: support vectors · Purple outline: added outlier	緑の丸：−1 · オレンジの四角：+1 · 濃い実線：決定境界 · 破線：f=±1 · 輪郭：サポートベクトル · 紫の輪郭：追加外れ値
+800	Primal/dual objectives and convergence	主・双対目的値と収束
+801	SVM primal and dual objectives over dual updates	SVM双対更新ごとの主目的値と双対目的値
+802	Validation confusion matrix · 160 observations	検証混同行列 · 160件
+803	Actual / Predicted	実際 / 予測
+804	Predicted −1	−1と予測
+805	Predicted +1	+1と予測
+806	Actual −1	実際−1
+807	Actual +1	実際+1
+808	The graph shows training observations only. Validation observations use an independent seed and are not used for training or standardization.	グラフは訓練観測だけを表示します。検証観測は独立したシードで生成し、学習や標準化には使いません。
+809	Convergence verified · 10 dual updates · Primal/dual gap 0 · KKT violation 0 · Standardized using training statistics · Objective plot: orange solid line is primal; green dashed line is dual.	収束を確認 · 双対更新10回 · 主・双対ギャップ0 · KKT違反0 · 訓練統計で標準化 · 目的値グラフ：オレンジ実線が主目的値、緑の破線が双対目的値です。
+810	The linear soft-margin SVM objective is ½‖w‖² + CΣmax(0,1−yᵢ(wᵀxᵢ+b)). The intercept is not penalized. C ranges from .01~10; the slider controls log10(C). No kernel is used.	線形ソフトマージンSVMの目的関数は½‖w‖² + CΣmax(0,1−yᵢ(wᵀxᵢ+b))です。切片には罰則を与えません。Cは.01~10で、スライダーはlog10(C)を調整します。カーネルは使いません。
+811	Train on 24 observations for each balanced label −1,+1 and validate on 160 observations from an independent seed. With independent standard-normal a,b, generate x₁=1.15y+σa and x₂=s(.55y+.3a+.8b). All features are dimensionless and synthetic. The training seed is selected; the validation seed is that value+10000. Enabling the outlier adds one training point at [−2.6,−1.6s] with label +1.	均衡ラベル−1,+1を各24件使って訓練し、独立シードの160件で検証します。独立標準正規a,bからx₁=1.15y+σa、x₂=s(.55y+.3a+.8b)を生成します。すべて無次元の合成特徴です。訓練シードは選択値、検証シードはその値+10000です。外れ値を有効にすると座標[−2.6,−1.6s]、ラベル+1の訓練点を一つ加えます。
+812	Standardization uses only training means and standard deviations. For comparison, plots always convert back to the original feature coordinates. Margin width 2/‖w‖ is a distance in training coordinates, so values before and after standardization are not directly comparable in the same units. Check whether changing only feature scale while standardizing preserves predictions.	標準化には訓練観測の平均と標準偏差だけを使います。比較のためグラフは常に元の特徴座標に戻して表示します。マージン幅2/‖w‖は学習座標の距離なので、標準化の前後を同じ単位で直接比較できません。特徴倍率だけを変えて標準化した場合に予測が同じになるか確認してください。
+813	Update two dual coefficients together to preserve Σαᵢyᵢ=0 and 0≤αᵢ≤C. Allow at most 8000 updates; report convergence only when the relative primal-dual gap is ≤10⁻⁵ and KKT violation is ≤10⁻³. Unconverged results are current approximations. Outlines indicate observations with αᵢ>10⁻⁷; in soft-margin SVM these may include points inside the margin or misclassified observations.	二つの双対係数を同時に更新し、Σαᵢyᵢ=0と0≤αᵢ≤Cを維持します。最大8000回更新し、相対主・双対ギャップ≤10⁻⁵かつKKT違反≤10⁻³で収束と表示します。未収束の結果は現在の近似値です。輪郭はαᵢ>10⁻⁷の観測を示し、ソフトマージンではマージン内部や誤分類点も含まれます。
+814	Reduce overlap, then compare margins across C values.	重なりを減らし、Cによるマージンの違いを比較してください。
+815	Add an outlier and increase C to observe the boundary change.	外れ値を追加してCを大きくし、境界の変化を見てください。
+816	Increase the feature scale, then switch standardization on and off.	特徴の倍率を上げ、標準化をオン・オフしてください。
+817	Read accuracy together with the confusion matrix. Repeatedly compared validation accuracy is not final test performance.	正解率と混同行列を一緒に読んでください。繰り返し比較する検証正解率は最終テスト性能ではありません。
+818	A small dictionary for revisiting unfamiliar terms.	読んでいて立ち止まった言葉を確認する小さな辞典。
+819	Terms and Notation | HD2Lab	用語と記号 | HD2Lab
+820	25 terms	25の用語
+821	Shared notation	共通の記号
+822	Glossary	用語辞典
+823	Symbol	記号
+824	Meaning	意味
+825	Number of samples; number of features	標本数、特徴数
+826	Observation matrix; column vector for observation i	観測行列、i番目の観測の列ベクトル
+827	Model parameters; weights; scalar intercept	モデルパラメータ、重み、スカラー切片
+828	Design matrix after basis transformation	基底変換を適用した計画行列
+829	Mean; covariance; variance	平均、共分散、分散
+830	Eigenvalue or multiplier depending on context; jth singular value	文脈により固有値または乗数、j番目の特異値
+831	Learning rate; regression penalty; SVM violation cost	学習率、回帰の罰則、SVM違反費用
+832	Mixture component count; selected PCA component count	混合成分数、PCAで選択した成分数
+833	Transpose; Frobenius norm	転置、Frobeniusノルム
+834	Read symbols in context	記号を文脈とともに読む
+835	Σ can denote a covariance matrix or resemble a summation symbol. Check the definition in each equation. In SVD, Σ is the singular-value matrix.	Σは共分散行列を表したり、総和記号と似た形で使われたりします。各式の定義を確認してください。SVDのΣは特異値行列です。
+836	Term	用語
+837	Explanation	説明
+838	Sample	標本 / Sample
+839	One unit of observation; here, one row of the data matrix.	分析における一つの観測単位。このサイトではデータ行列の一行です。
+840	Feature	特徴 / Feature
+841	An input attribute used for prediction or structural analysis.	予測や構造分析に使う入力属性。
+842	Parameter	パラメータ / Parameter
+843	A value estimated through learning within a specified model.	定めたモデルの中で学習によって推定する値。
+844	Hyperparameter	ハイパーパラメータ
+845	A value specifying the learning setup, such as degree, learning rate, or component count.	次数、学習率、成分数のように学習の設定を定める値。
+846	Loss	損失 / Loss
+847	The cost between observations and predictions, defined for the task.	観測と予測の間の費用。目的に応じて定義します。
+848	Generalization	汎化 / Generalization
+849	The ability to work usefully on observations not used in training.	学習に使わなかった観測でも有用に働く性質。
+850	Bias and variance	バイアスと分散
+851	Systematic error from modeling assumptions and variability of estimates across samples.	モデルの仮定による系統的な誤差と、標本の変化による推定の変動。
+852	Rank	ランク / Rank
+853	The number of linearly independent columns or rows of a matrix.	行列の線形独立な列または行の数。
+854	Basis	基底 / Basis
+855	A linearly independent set of vectors spanning a space.	空間を張る線形独立なベクトル集合。
+856	Orthogonal projection	正射影 / Orthogonal projection
+857	The closest projection whose residual is orthogonal to the subspace.	残差が部分空間に直交する最も近い射影。
+858	Eigenvalue	固有値 / Eigenvalue
+859	The scale factor along a direction that a transformation preserves.	変換が特定の方向を保ちながら伸縮させる倍率。
+860	Singular value	特異値 / Singular value
+861	A nonnegative scale along an orthogonal direction in SVD.	SVDにおける直交方向ごとの非負の尺度。
+862	The matrix of first partial derivatives of a vector output with respect to its inputs.	ベクトル出力の各入力に対する1階偏微分の行列。
+863	The matrix of second partial derivatives of a scalar function.	スカラー関数の2階偏微分の行列。
+864	Likelihood	尤度 / Likelihood
+865	The observation model's value viewed as a function of parameters while observations are fixed.	観測を固定し、パラメータを変えて見た観測モデルの値。
+866	Posterior	事後分布 / Posterior
+867	A distribution of parameters or latent variables updated with observations.	観測を反映したパラメータまたは潜在変数の分布。
+868	Precision	精度 / Precision
+869	In distributions, inverse variance or the inverse covariance matrix. Distinguish this from classification precision.	分布の文脈では分散の逆数または共分散行列の逆行列。分類評価の適合率とは区別します。
+870	Explained variance	説明分散
+871	Input variance retained along the selected PCA directions, not a fraction of predictive information.	選択したPCA方向に保持される入力の分散。予測情報の割合ではありません。
+872	Responsibility	負担率 / Responsibility
+873	The posterior probability of each component for an observation under the current mixture model.	現在の混合モデルで、一つの観測に対する各成分の事後確率。
+874	The logarithm of likelihood; contributions from conditionally independent observations add together.	尤度の対数。条件付き独立な複数の観測の寄与を和で表します。
+875	Margin	マージン / Margin
+876	The geometric clearance between an SVM boundary and nearby observations.	SVM境界と近くの観測の間の幾何学的な余裕。
+877	An observation with a nonzero SVM dual coefficient. Soft-margin support vectors can lie inside the margin.	SVMの双対係数がゼロでない観測。ソフトマージンでは内部の点も含みます。
+878	Kernel	カーネル / Kernel
+879	A function computing an inner product in feature space, subject to an appropriate positive-semidefinite condition.	特徴空間の内積を計算する関数。適切な半正定値条件が必要です。
+880	Regularization	正則化 / Regularization
+881	A method that adds a penalty, for example on model complexity. Distinguish it from standardization.	モデルの複雑さなどに罰則を加える方法。標準化とは区別します。
+882	Standardization	標準化 / Standardization
+883	Preprocessing that transforms feature coordinates using means and scales obtained from training data.	訓練データから得た平均と尺度で特徴座標を変換する前処理。
+884	Review the mathematics from the chapters with small calculations, checking assumptions and conditions as you read.	本文の数学を小さな計算とともに整理します。仮定と条件を確認しながら読んでください。
+885	Revisit the Mathematics | HD2Lab	数学を振り返る | HD2Lab
+886	6 mathematical topics	6つの数学テーマ
+887	Review questions	復習問題
+888	Linear algebra · Solutions and spaces	線形代数 · 解と空間
+889	Geometry · Norms and orthogonal projection	幾何 · ノルムと正射影
+890	Matrix decompositions · Reveal structure	行列分解 · 構造を明らかにする
+891	Differentiation · Chain rule and backpropagation	微分 · 連鎖律と誤差逆伝播
+892	Probability · Sums, conditionals, and covariance	確率 · 和、条件付き確率、共分散
+893	Optimization · Constraints and linear programming	最適化 · 制約と線形計画
+911	The gradient of f(x,y)=x²y+sin y is [2xy, x²+cos y]ᵀ. The Jacobian of g(x,y)=[x²+y,xy]ᵀ is [[2x,1],[y,x]]. Both input and output have dimension 2, making it 2×2 here; in general its shape is number of outputs × number of inputs.	f(x,y)=x²y+sin yの勾配は[2xy, x²+cos y]ᵀです。ベクトル関数g(x,y)=[x²+y,xy]ᵀのJacobianは[[2x,1],[y,x]]です。入力と出力がともに2次元なので2×2ですが、一般には出力数 × 入力数の形になります。
+930	References and Credits	参考資料と制作情報
+931	Official literature	公式文献
+932	Reproduction details	再現情報
+933	Mathematical background	数学的背景
+934	Evaluation and data leakage	評価とデータ漏洩
+935	Probability distributions and numerical checks	確率分布と数値確認
+936	Regression and regularization	回帰と正則化
+937	PCA and matrix decompositions	PCAと行列分解
+938	Mixture models and EM	混合モデルとEM
+939	Classification and margins	分類とマージン
+940	Credits and reproduction	制作と再現
+941	Mathematics for Machine Learning — authors' official site	Mathematics for Machine Learning — 著者の公式サイト
+943	scikit-learn official documentation: Common pitfalls	scikit-learn公式文書：Common pitfalls
+944	and	と
+946	SciPy official documentation: Beta distribution	SciPy公式文書：Beta distribution
+948	scikit-learn official documentation: Linear Models	scikit-learn公式文書：Linear Models
+950	scikit-learn official documentation: PCA	scikit-learn公式文書：PCA
+952	scikit-learn official documentation: Gaussian mixture models	scikit-learn公式文書：Gaussian mixture models
+954	scikit-learn official documentation: Support Vector Machines	scikit-learn公式文書：Support Vector Machines
+957	The browser has no external runtime dependencies. Formulas use HTML superscripts, subscripts, and Unicode; graphs are SVG. Experiments run locally without transmitting or saving inputs. Only language and theme preferences are saved. With JavaScript disabled, precomputed results for the default settings remain visible.	ブラウザに外部ランタイム依存関係はありません。数式はHTMLの上付き・下付き文字とUnicode、グラフはSVGです。実験はローカルで実行し、入力を送信・保存しません。言語とテーマの設定だけを保存します。JavaScriptが無効でも、既定設定の事前計算結果を表示します。
+958	Download Python examples for seven chapters	7章分のPython例をダウンロード
+959	Download Jupyter Notebook	Jupyter Notebookをダウンロード
+960	Browser numerical code	ブラウザ数値計算コード
+961	Advanced notebook · 28 figure outputs	発展Notebook · 28点の図出力
+962	Advanced calculation Python	発展計算Python
+963	Figure regeneration Python	図の再生成Python
+964	Advanced numerical results	発展数値結果
+966	Matplotlib license	Matplotlibライセンス
+967	NumPy license	NumPyライセンス
+970	HD2Lab Learning Materials	HD2Lab学習資料
+971	Go to HD2Lab · Personal Machine Learning Studies	HD2Lab · 個人的な機械学習の学習へ
+972	Live calculation · Current settings	リアルタイム計算 · 現在の設定
+973	Calculation failed. Please reset the settings.	計算を完了できませんでした。設定を初期化してください。
+974	There are fewer observations than coefficients.	観測数が係数の数より少ないです。
+975	There are insufficient independent features.	独立した特徴が不足しています。
+976	Iteration limit reached	反復上限に到達
+977	Divergence: reduce the learning rate	発散：学習率を下げてください
+978	Converged	収束
+979	Loss increased: tending to diverge	損失増加：発散傾向
+980	Requested iterations completed	指定した反復が完了
+981	Stopped due to a numerical error	数値エラーにより停止
+982	Updates stopped to preserve stability	安定性を保つため更新を停止
+983	Calculation complete · Curve display range	計算完了 · 曲線の表示範囲
+984	ms. Shading marks extrapolation; curves outside the display range are clipped.	ms。網掛けは外挿区間で、表示範囲外の曲線は切り取っています。
+985	· Paths outside the coordinate window are clipped. The loss graph includes every executed step.	· 座標範囲外の経路は切り取っています。損失グラフは実行した全ステップを含みます。
+986	Maximum membership probability	最大所属確率
+987	· Component	· 成分
+988	: mixture weight	：混合比
+989	Convergence verified	収束を確認
+990	Not converged · Iteration limit or numerical stagnation	未収束 · 反復上限または数値的停滞
+991	· Dual updates	· 双対更新
+992	updates · Primal/dual gap	回 · 主・双対ギャップ
+993	· KKT violation	· KKT違反
+994	Standardized using training statistics	訓練統計で標準化
+995	No standardization	標準化なし
+996	· Objective plot: orange solid line is primal; green dashed line is dual.	· 目的値グラフ：オレンジの実線が主目的値、緑の破線が双対目的値です。
+997	Not converged · Approximate result	未収束 · 近似結果
+998	Undefined	定義できません
+1156	For PCA, specify centering and the covariance denominator, and use matching normalization for reconstruction error and the sum of eigenvalues.	PCAでは中心化と共分散の分母を明記し、再構成誤差と固有値の和の正規化を一致させます。
+1222	Approved extension: three advanced cases and four comparative figures in each of seven chapters, totaling 21 cases and 28 SVGs. Combined with the original 42 foundation sections, there are 63 content sections.	承認済みの拡張は7章それぞれ発展事例3件と比較図4点、合計21事例・28 SVGです。既存の基礎42節と合わせ、本文は63節です。
+1256	MLStudy/chapters/: 7 chapters, 63 content sections (42 foundation + 21 advanced), equations, examples, and comprehension checks.	MLStudy/chapters/：7学習章、本文63節（基礎42 + 発展21）、数式、例、理解確認。
+1309	216 SVM settings verified: 210 converged, and 6 correctly marked unconverged. Maximum relative primal-dual gap was approximately 0.000456. Finite values and dual constraints were checked in every setting.	SVM設定216件を検証し、210件が収束、6件を正しく未収束と表示しました。最大相対主・双対ギャップは約0.000456です。全設定で有限値と双対制約を確認しました。
+1324	All 9 advanced notebook code cells executed; stored values matched rerun results; 28 SVG outputs were regenerated: passed. Environment: NumPy 2.2.6, Matplotlib 3.10.5.	発展Notebookの全9コードセル実行、保存値と再実行結果の一致、SVG出力28点の再生成：合格。環境はNumPy 2.2.6、Matplotlib 3.10.5です。
+1348	Partial derivatives · Gradient · Chain rule · Jacobian · Gradient descent · SGD	偏微分 · 勾配 · 連鎖律 · Jacobian · 勾配降下法 · SGD
+1353	Check posterior normalization, MLE/MAP conditions, and the derivation of the regularization coefficient	事後分布の正規化、MLE・MAPの条件、正則化係数の導出を確認する
+1393	PCA: generate 180 observations across 6 channels from 2 latent factors. Seed 431; correlation 0~.95; noise 0~1. Covariance denominator N; Jacobi eigendecomposition; 1~6 components. Report within-sample reconstruction error.	PCA：2潜在因子から6チャネル・180観測を生成します。シード431、相関0~.95、ノイズ0~1です。共分散分母N、Jacobi固有分解、成分数1~6を使い、標本内再構成誤差を表示します。
+1479	Rows are observations and columns are components. Values are log(pi_k) + log N(x_i).	行は観測、列は成分です。値はlog(pi_k) + log N(x_i)です。
+267	Generate new independent samples with x~Uniform(−1,1), y=1+1.8x−2x²+2.5x³+ε, ε~N(0,0.45²): 30 training, 240 validation, and 400 test observations. Compare 54 candidates from degrees 1~9 and α∈{0,0.0001,0.01,0.1,1,10} on the same validation set. Reproduce the sequential random draws with seed 2202 in regression_experiment.	新しい独立標本でx~Uniform(−1,1)、y=1+1.8x−2x²+2.5x³+ε、ε~N(0,0.45²)を生成します。訓練30件、検証240件、テスト400件です。次数1~9とα∈{0,0.0001,0.01,0.1,1,10}の54候補を同じ検証集合で比較します。乱数の順序はregression_experiment関数のシード2202で再現します。
+573	With seed 2606, generate 210 training and 400 independent validation observations. Mixture weights are [.4,.35,.25]; means are [−1.2,0], [1.1,.7], [.3,−.9]. For each component use x=μ+Lz, z~N(0,I₂), with L equal to [[.7,0],[.35,.55]], [[.7,0],[−.2,.5]], or [[.45,0],[0,.6]]. Covariances are LLᵀ, and the three groups overlap partially.	シード2606で訓練210件と独立検証400件を生成します。混合比は[.4,.35,.25]、平均は[−1.2,0]、[1.1,.7]、[.3,−.9]です。各成分をx=μ+Lz、z~N(0,I₂)で生成し、Lは[[.7,0],[.35,.55]]、[[.7,0],[−.2,.5]]、[[.45,0],[0,.6]]です。共分散はLLᵀで、三つの集団は一部重なります。
+690	Generate 18 observations around each center [−1,−1], [−1,1], [1,−1], [1,1] by adding independent N(0,0.16²I₂) noise. Corresponding labels are +1,−1,−1,+1. Generate these after the preceding experiment using the same seed 2707 in svm_experiment. Fit a linear SVM with C=1 to basic features [x₁,x₂] and expanded features [x₁,x₂,x₁x₂]. Do not standardize features in this comparison.	中心[−1,−1]、[−1,1]、[1,−1]、[1,1]の各点に独立N(0,0.16²I₂)ノイズを加えて18件ずつ生成します。ラベルは順に+1,−1,−1,+1です。svm_experiment関数で同じシード2707を使い、前の実験の後に生成します。基本特徴[x₁,x₂]と拡張特徴[x₁,x₂,x₁x₂]に、それぞれC=1の線形SVMを適合します。この比較では特徴を標準化しません。
+1334	Foundation and advanced expansion implemented, verified, and packaged on 2026-09-08. Each chapter contains 6 foundation and 3 advanced sections, experimental conditions, worked calculations, and comprehension checks. Detailed prose lives in tools/content.py, tools/content_more.py, and tools/content_advanced.py; generating formulas and input ranges are maintained in the lab HTML and tools/render_site.py. See docs/localization.md for the subsequent language/theme update.	基礎と発展拡張は2026-09-08に実装・検証・パッケージ化しました。各章は基礎6節と発展3節、実験条件、計算例、理解確認で構成します。詳細本文はtools/content.py、tools/content_more.py、tools/content_advanced.py、生成式と入力範囲は実験室HTMLとtools/render_site.pyで管理します。その後の言語・テーマ更新はdocs/localization.mdを参照してください。
+1450	For prose-only edits, run render_site.py → validation → package_site.py. If advanced calculations or figures change, first run enrich_site.py to update all 28 SVGs, the results JSON, and the notebook together. That authoring step requires NumPy and Matplotlib; the public site does not. Replace HTML and assets together. Per-file hashes are in manifest.json.	本文のみの編集はrender_site.py → 検証 → package_site.pyの順に実行します。発展計算や図を変えた場合は、先にenrich_site.pyで28 SVG、結果JSON、Notebookをまとめて更新します。この制作工程にはNumPyとMatplotlibが必要ですが、公開サイトには不要です。HTMLとアセットをまとめて置き換えます。ファイルごとのハッシュはmanifest.jsonにあります。
+862	The matrix of 1st-order partial derivatives of a vector output with respect to its inputs.	ベクトル出力の各入力に対する1階偏微分の行列。
+863	The matrix of 2nd-order partial derivatives of a scalar function.	スカラー関数の2階偏微分の行列。
+877	An observation whose SVM dual coefficient differs from 0. Soft-margin support vectors can lie inside the margin.	SVMの双対係数が0でない観測。ソフトマージンでは内部の点も含みます。
+920	Allocate throughput between two fictional jobs	架空の二つの作業への処理量の配分
+654	Using seed 2707, generate 18 observations for each class −1,+1 with x₁=y+0.6ε₁, x₂=0.4y+0.7ε₂ and independent standard-normal noise. Add a training outlier [−2.2,−1.2] labeled +1, giving 37 training observations. Use 400 independent observations from the outlier-free generating process for validation. Estimate means and standard deviations only from training data, including the outlier.	シード2707でクラス−1,+1を各18件生成します。x₁=y+0.6ε₁、x₂=0.4y+0.7ε₂で、独立標準正規ノイズを使います。訓練にラベル+1の外れ値[−2.2,−1.2]を加えて37件とし、外れ値のない生成式による独立観測400件を検証に使います。平均と標準偏差は外れ値を含む訓練データだけから求めます。
+1001	**17 static HTML pages were implemented per edition:** seven chapters, five labs, three appendices, and main/entry pages. Beyond the foundation explanations, there are **21 advanced cases (three per chapter) and 28 comparative figures (four per chapter)**. Each case includes a problem, assumptions, step-by-step calculations, actual results, and interpretation questions. All data are synthetic.	**各版に17の静的HTMLページを実装しました。**7学習章、5実験室、3付録、メイン・入口ページで構成します。基礎説明に加え、**発展事例21件（各章3件）、比較図28点（各章4点）**があります。各事例は問題、仮定、段階的計算、実際の結果、解釈の問いで構成し、データはすべて合成です。

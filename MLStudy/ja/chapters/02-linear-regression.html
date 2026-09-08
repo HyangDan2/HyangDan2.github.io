@@ -1,0 +1,484 @@
+<!doctype html>
+<html data-language="ja" lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="最もよく当てはまる直線をどう見つけるか。連立方程式から最小二乗法へ、直線から曲線へ。柔軟性と検証誤差を一緒に考えます。">
+    <meta name="theme-color" content="#18312e">
+    <title>予測を作る数学 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">本文へスキップ</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab 学習ホーム"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="メインメニュー"><a href="../main.html#curriculum">学習目次</a><a
+            href="../main.html#labs">実験室</a><a href="../appendix/references.html">参考資料</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="言語"><a
+              href="../../chapters/02-linear-regression.html" lang="en" hreflang="en"
+              data-language="en">English</a><a href="../../ko/chapters/02-linear-regression.html"
+              lang="ko" hreflang="ko" data-language="ko">한국어</a><a
+              href="../../ja/chapters/02-linear-regression.html" lang="ja" hreflang="ja"
+              data-language="ja" aria-current="true">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>ダークモード</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Chapter 02 / Linear regression</div>
+        <h1>予測を作る数学</h1>
+        <p>最もよく当てはまる直線をどう見つけるか。連立方程式から最小二乗法へ、直線から曲線へ。柔軟性と検証誤差を一緒に考えます。</p>
+        <div class="meta"><span>01 · データとモデル</span><span>行列 · 最小二乗法 · 多項式</span><span>発展事例3件 ·
+            比較図4点</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>このページの流れ</summary>
+        <ol>
+          <li><a href="#question">01 /の負荷が増えるほど、発生する遅延も増えます。</a></li>
+          <li><a href="#linear">02 /のデータが多い場合、方程式は成り立たなくなります。</a></li>
+          <li><a href="#derive">03 /を微分し、投影によって読み取る。</a></li>
+          <li><a href="#basis">04 / 線形モデルを使って曲線を作成する</a></li>
+          <li><a href="#regularization">05 / 正規化と過剰なフィット</a></li>
+          <li><a href="#experiment">06 /の実験と理解の確認</a></li>
+          <li><a href="#advanced-a">発展A / 不安定な係数をSVDとRidgeで説明する</a></li>
+          <li><a href="#advanced-b">発展B / 次数と正則化を同時に選ぶ</a></li>
+          <li><a href="#advanced-c">発展C / ブートストラップ区間と予測区間を区別する</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="question">
+          <h2>01 /の負荷が増えるほど、発生する遅延も増えます。</h2>
+          <p>架空のストレージ装置に要求が集中すると応答遅延が増えます。負荷xは0から1の無次元値で、遅延yの単位はmsです。生成過程は3 + 2x +
+            7x³に平均0のガウスノイズを加えます。実測値ではなく、非線形性を観察するための合成データです。</p>
+          <p>
+            実験では生成式の代わりに複数の次数の回帰式を学習します。訓練誤差、検証誤差、データ範囲外の予測を比較すると、曲線をよく当てはめることと新しい観測をよく予測することの違いが分かります。
+          </p>
+          <aside class="note "><strong>この章の目標</strong>
+            <p>正規方程式を導出し、入力に非線形でも係数に関して線形になり得る理由を説明します。次数と正則化が予測をどう変えるか確認します。</p>
+          </aside>
+          <nav class="study-route" aria-label="発展学習へ移動"><strong>基礎の次は発展事例3件 · 比較図4点</strong><a
+              href="#advanced-a">発展A / 不安定な係数をSVDとRidgeで説明する</a><a href="#advanced-b">発展B /
+              次数と正則化を同時に選ぶ</a><a href="#advanced-c">発展C / ブートストラップ区間と予測区間を区別する</a></nav>
+        </section>
+        <section id="linear">
+          <h2>02 /のデータが多い場合、方程式は成り立たなくなります。</h2>
+          <p>直線 y = b + wx 観測値に代入すると、 b, w そこで、連立方程式が生じます。3つの観測値です。 0,2), (1,3), (2,5)
+            それは、一つの直線上に正確に位置するわけではありません。すべての方程式を満たす代わりに、残差の二乗和を最小化します。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>Φ = [1, x],   θ = [b,
+            w]<sup>T</sup><br>θ̂ = arg min<sub>θ</sub> ‖Φθ − y‖²</div>
+          <p>3つの点の最小二乗誤差の解は、 b = 11/6, w = 3/2 予測は、[ 11/6, 10/3, 29/6] 、ジャンカ y − ŷ は [ 1/6, −1/3,
+            1/6] つまり、傾きや切断面を少し変えても、二乗和がさらに小さくならない点です。</p>
+          <aside class="note "><strong>ランクとハイの唯一性</strong>
+            <p>
+              もし、Φの列が線形独立である場合、係数は一意です。特徴が重複している場合や、すべてのxが同じである場合には、係数が一意ではない可能性があります。予測値の一意性と、係数の一意性は区別して考える必要があります。
+            </p>
+          </aside>
+        </section>
+        <section id="derive">
+          <h2>03 /を微分し、投影によって読み取る。</h2>
+          <p>J = (Φθ − y)ᵀ(Φθ − y)を展開すると、θᵀΦᵀΦθ − 2θᵀΦᵀy + yᵀyが得られる。θを微分した結果の傾きを0で表すと、正常な方程式が得られる。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>∇J = 2Φ<sup>T</sup>(Φθ − y) =
+            0<br>Φ<sup>T</sup>Φθ̂ = Φ<sup>T</sup>y<br>θ̂ =
+            (Φ<sup>T</sup>Φ)<sup>−1</sup>Φ<sup>T</sup>y   (列が線形独立である場合</div>
+          <p>最初の式は、ジャンカがΦのすべての列と直交するということを意味します。予測ベクトルは、yをΦの列空間に正射影した結果です。この観点は、PCAへの射影とも関連しています。
+          </p>
+          <p>実装において、直接行列を計算する必要はありません。ΦᵀΦは、条件数を二乗することで数値的な誤差を増大させることができます。ブラウザの実装では、Householder
+            QRを使って計算し、Pythonの例では、NumPyの最小二乗法を利用しています。</p>
+        </section>
+        <section id="basis">
+          <h2>04 / 線形モデルを使って曲線を作成する</h2>
+          <p>
+            入力を[1,x,x²,…,xᵈ]に拡張すると、係数の線形結合によって曲線を作成することができます。ここでの「線形」というのは、学習に使用されるパラメータがどのように作用するかを意味します。特徴変換とは、モデルが使用する関数の構造を決定するものです。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>z = 2x − 1,   φ(x) =
+            [1,z,z²,…,z<sup>d</sup>]<sup>T</sup><br>ŷ = Σ<sub>j=0</sub><sup>d</sup>
+            θ<sub>j</sub>z<sup>j</sup></div>
+          <p>
+            実験では、入力値を[−1,1]]に置き換え、基底の数値の大きさの違いを減らします。次数がdの項は、1~9の項に置き換わります。しかし、これでは高次多項式のすべての不安定さを解決することはできません。学習範囲外では、基底値が急速に増大する可能性があります。
+          </p>
+          <pre><code>import numpy as np
+rng = np.random.default_rng(1729)
+x = rng.uniform(0, 1, 32)
+y = 3 + 2*x + 7*x**3 + .7*rng.normal(size=x.size)
+Phi = np.polynomial.polynomial.polyvander(2*x - 1, 3)
+coef, _, rank, _ = np.linalg.lstsq(Phi, y, rcond=None)
+query = np.array([.25, .75, 1.15])
+pred = np.polynomial.polynomial.polyval(2*query - 1, coef)
+print("rank:", rank, "prediction (ms):", pred)</code></pre>
+        </section>
+        <section id="regularization">
+          <h2>05 / 正規化と過剰なフィット</h2>
+          <p>
+            観測点が少ないか、または特徴が類似している場合、係数は大きく変動します。L2の正規化により、係数の大きさにコストが課される。切片は除外されます。αが大きくなるほど、傾き係数への影響力も大きくなります。また、非常に大きなαの場合は、平均値に近くなります。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>J(θ) = ‖Φθ − y‖² +
+            αΣ<sub>j=1</sub><sup>d</sup>θ<sub>j</sub>²</div>
+          <p>
+            ブラウザは、√α倍のスケールの行列を下に配置した拡張最小二乗問題をQRで解くことになります。特徴スケールが変われば、同じαの意味も変わります。特徴変換が固定されている状態で比較を行う必要があります。
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">変更する</th>
+                  <th scope="col">確認する必要があります。</th>
+                  <th scope="col">解釈の限界</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>段位の昇格</td>
+                  <td>学習・検証における誤差の違い</td>
+                  <td>検証の誤差は、単調に変化しない。</td>
+                </tr>
+                <tr>
+                  <td>サンプル数の増加</td>
+                  <td>曲線の安定性</td>
+                  <td>同じ分布であるという前提が必要です。</td>
+                </tr>
+                <tr>
+                  <td>正規化の増加</td>
+                  <td>曲線・係数の変化</td>
+                  <td>過度になると、偏りが増大します。</td>
+                </tr>
+                <tr>
+                  <td>引き延ばし</td>
+                  <td>x &lt; 0またはx &gt; 1の曲線</td>
+                  <td>検証誤差は、[0,1]で測定されます。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="note warning"><strong>損失のスケール</strong>
+            <p>αは、残差の二乗和に加えられます。平均二乗誤差にペナルティを加えるという定義と比較するためには、係数をNに合わせて換算する必要があります。</p>
+          </aside>
+        </section>
+        <section id="experiment">
+          <h2>06 /の実験と理解の確認</h2>
+          <figure class="figure" tabindex="0" aria-label="計算結果のグラフです。狭い画面では、左右にスクロールできます。"><svg
+              xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+              aria-labelledby="reg-fit-title">
+              <title id="reg-fit-title">記憶装置の負荷に応じた学習の観測、方程式と回帰曲線</title>
+              <defs>
+                <clippath id="reg-fit-clip">
+                  <rect x="64" y="22" width="596" height="283" />
+                </clippath>
+              </defs>
+              <rect width="680" height="360" fill="white" />
+              <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-0.15</text><text x="54" y="309" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-2</text>
+              <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">0.11</text><text x="54" y="252.4" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">1.8</text>
+              <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">0.37</text><text x="54" y="195.8" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">5.6</text>
+              <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                font-family="sans-serif" font-size="11" fill="#526964">0.63</text><text x="54"
+                y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                fill="#526964">9.4</text>
+              <path d="M540.8 22V305 M64 78.60000000000002H660" stroke="#e4e9e0" fill="none" /><text
+                x="540.8" y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">0.89</text><text x="54" y="82.60000000000002" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">13.2</text>
+              <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">1.15</text><text x="54" y="26" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">17</text>
+              <g clip-path="url(#reg-fit-clip)">
+                <rect x="64" y="22" width="68.76923076923077" height="283" fill="#dcb688"
+                  opacity=".2" />
+                <rect x="591.2307692307693" y="22" width="68.76923076923072" height="283"
+                  fill="#dcb688" opacity=".2" />
+                <circle cx="176.25716266179313" cy="250.05470042697314" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="583.7251326645223" cy="101.97590966701253" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="411.14235519961676" cy="187.96205466104357" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="320.0290572646146" cy="198.30424104538847" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="436.6422858120731" cy="191.26257040062941" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="260.0922256739667" cy="216.58993408389358" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="462.3740318212659" cy="183.61860598210268" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="230.74123663569875" cy="202.93483028959247" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="292.915045276141" cy="217.29714232604113" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="371.74580910128475" cy="203.49569393536098" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="557.6103961778663" cy="132.1990282070142" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="350.56573091031845" cy="204.98640309567034" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="190.48385887865265" cy="227.71258245435746" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="276.66530321380844" cy="218.5850490175324" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="559.557074772194" cy="119.51571797638096" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="398.83037130305405" cy="199.4797342571036" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="584.2359753220987" cy="109.91847617372511" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="418.57933612067546" cy="181.86269159792192" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="590.5095928516239" cy="84.39768352846812" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="171.0643428681562" cy="225.2147680021941" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="472.674590119519" cy="169.06058112875021" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="473.3673017446239" cy="163.86885542049993" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="311.29579118409987" cy="220.61446753020817" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="579.7277016725678" cy="89.09344453013642" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="457.9870959854184" cy="159.56865367933656" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="335.9357699210255" cy="210.95259538307891" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="464.4256398779556" cy="183.28810843728644" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="306.8914002662955" cy="225.59815066340235" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="314.5452231909507" cy="220.96990400063183" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="573.2096348591149" cy="108.07268256809957" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="306.289398108824" cy="199.47881177649572" r="3" fill="#106858"
+                  opacity="0.7" />
+                <circle cx="291.8984883646839" cy="235.75574335981395" r="3" fill="#106858"
+                  opacity="0.7" />
+                <path
+                  d="M64.00 235.35 L70.02 234.87 L76.04 234.41 L82.06 233.96 L88.08 233.53 L94.10 233.10 L100.12 232.69 L106.14 232.28 L112.16 231.87 L118.18 231.48 L124.20 231.08 L130.22 230.69 L136.24 230.30 L142.26 229.91 L148.28 229.51 L154.30 229.12 L160.32 228.71 L166.34 228.30 L172.36 227.89 L178.38 227.46 L184.40 227.02 L190.42 226.57 L196.44 226.11 L202.46 225.63 L208.48 225.14 L214.51 224.62 L220.53 224.09 L226.55 223.54 L232.57 222.97 L238.59 222.37 L244.61 221.75 L250.63 221.10 L256.65 220.42 L262.67 219.71 L268.69 218.98 L274.71 218.21 L280.73 217.41 L286.75 216.57 L292.77 215.70 L298.79 214.79 L304.81 213.84 L310.83 212.85 L316.85 211.82 L322.87 210.74 L328.89 209.62 L334.91 208.46 L340.93 207.24 L346.95 205.98 L352.97 204.67 L358.99 203.30 L365.01 201.88 L371.03 200.41 L377.05 198.88 L383.07 197.30 L389.09 195.65 L395.11 193.94 L401.13 192.18 L407.15 190.35 L413.17 188.45 L419.19 186.49 L425.21 184.46 L431.23 182.37 L437.25 180.20 L443.27 177.96 L449.29 175.65 L455.31 173.26 L461.33 170.80 L467.35 168.26 L473.37 165.64 L479.39 162.94 L485.41 160.16 L491.43 157.30 L497.45 154.35 L503.47 151.32 L509.49 148.20 L515.52 144.99 L521.54 141.69 L527.56 138.30 L533.58 134.82 L539.60 131.24 L545.62 127.56 L551.64 123.79 L557.66 119.93 L563.68 115.96 L569.70 111.89 L575.72 107.71 L581.74 103.43 L587.76 99.05 L593.78 94.56 L599.80 89.96 L605.82 85.25 L611.84 80.43 L617.86 75.50 L623.88 70.45 L629.90 65.29 L635.92 60.01 L641.94 54.61 L647.96 49.10 L653.98 43.46 L660.00 37.70"
+                  fill="none" stroke="#8b948b" stroke-width="2.2" stroke-dasharray="6 5" />
+                <path
+                  d="M64.00 264.56 L67.72 263.02 L71.45 261.52 L75.18 260.05 L78.90 258.63 L82.63 257.24 L86.35 255.89 L90.08 254.58 L93.80 253.30 L97.53 252.05 L101.25 250.84 L104.98 249.66 L108.70 248.52 L112.43 247.40 L116.15 246.32 L119.88 245.26 L123.60 244.23 L127.33 243.24 L131.05 242.27 L134.78 241.32 L138.50 240.40 L142.23 239.51 L145.95 238.64 L149.68 237.80 L153.40 236.98 L157.13 236.18 L160.85 235.40 L164.58 234.64 L168.30 233.91 L172.03 233.19 L175.75 232.49 L179.48 231.81 L183.20 231.15 L186.93 230.50 L190.65 229.87 L194.38 229.25 L198.10 228.64 L201.83 228.05 L205.55 227.48 L209.28 226.91 L213.00 226.35 L216.73 225.81 L220.45 225.27 L224.18 224.75 L227.90 224.23 L231.63 223.72 L235.35 223.21 L239.08 222.71 L242.80 222.22 L246.53 221.73 L250.25 221.24 L253.98 220.76 L257.70 220.28 L261.43 219.80 L265.15 219.32 L268.88 218.84 L272.60 218.35 L276.33 217.87 L280.05 217.39 L283.77 216.90 L287.50 216.40 L291.23 215.91 L294.95 215.40 L298.68 214.89 L302.40 214.38 L306.13 213.85 L309.85 213.32 L313.58 212.78 L317.30 212.23 L321.03 211.66 L324.75 211.09 L328.48 210.50 L332.20 209.90 L335.93 209.29 L339.65 208.66 L343.38 208.02 L347.10 207.36 L350.83 206.69 L354.55 205.99 L358.28 205.28 L362.00 204.55 L365.73 203.80 L369.45 203.03 L373.18 202.24 L376.90 201.42 L380.63 200.58 L384.35 199.72 L388.08 198.84 L391.80 197.93 L395.53 196.99 L399.25 196.03 L402.98 195.04 L406.70 194.02 L410.43 192.98 L414.15 191.90 L417.88 190.80 L421.60 189.66 L425.33 188.49 L429.05 187.29 L432.78 186.05 L436.50 184.79 L440.23 183.48 L443.95 182.14 L447.68 180.77 L451.40 179.36 L455.13 177.91 L458.85 176.42 L462.58 174.89 L466.30 173.32 L470.03 171.71 L473.75 170.06 L477.48 168.37 L481.20 166.63 L484.93 164.85 L488.65 163.03 L492.38 161.16 L496.10 159.24 L499.83 157.28 L503.55 155.27 L507.28 153.21 L511.00 151.11 L514.73 148.95 L518.45 146.74 L522.18 144.49 L525.90 142.17 L529.63 139.81 L533.35 137.39 L537.08 134.92 L540.80 132.40 L544.53 129.81 L548.25 127.18 L551.98 124.48 L555.70 121.73 L559.42 118.91 L563.15 116.04 L566.88 113.11 L570.60 110.11 L574.33 107.06 L578.05 103.94 L581.78 100.76 L585.50 97.51 L589.23 94.20 L592.95 90.83 L596.68 87.38 L600.40 83.87 L604.13 80.30 L607.85 76.65 L611.58 72.94 L615.30 69.15 L619.03 65.30 L622.75 61.37 L626.48 57.37 L630.20 53.30 L633.93 49.15 L637.65 44.93 L641.38 40.63 L645.10 36.26 L648.83 31.81 L652.55 27.28 L656.28 22.68 L660.00 17.99"
+                  fill="none" stroke="#b15d2d" stroke-width="2.2" />
+              </g>
+              <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Load
+                (unitless)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Latency
+                (ms)</text>
+            </svg>
+            <figcaption>基本設定で直接計算された結果です。以下の実験室では、設定を変更することができます。</figcaption>
+          </figure>
+          <ol>
+            <li>基本的な3次のモデルにおいて、生成された方程式と予測される曲線との違いを確認します。</li>
+            <li>サンプル数を12に減らし、1次元、3次元、9次元を比較します。また、傾向も見てみます。</li>
+            <li>同じデータを用いて、規格化された値を高くし、学習誤差と検証誤差を比較する。</li>
+          </ol>
+          <p>検証用のデータは、別のシードで用意されています。 120
+            これは観測に基づくものです。同じ設定であれば、同じデータが得られます。この探索によって、最終的なテスト性能を保証するわけではありません。</p>
+          <details class="answer">
+            <summary>3次の生成式であり、3次のモデルです。しかし、検証誤差が0ではないのはなぜでしょうか？</summary>
+            <p>
+              係数は、有限のノイズを伴うサンプルとして推定されます。また、検証の対象となる目標値にもノイズが存在します。生成式が正確であっても、観測される目標値に対する期待値の誤差は、ノイズの分散に相当する量が残ります。
+            </p>
+          </details>
+          <details class="answer">
+            <summary>学習の誤差は、学習の段階が上がるほど、必ず厳然と減少するのでしょうか？</summary>
+            <p>
+              正則化を行わずに、正確な最小二乗解を求める場合、重なり合う基底上での最小値は変化しません。しかし、正則化された解や数値誤差には、この記述をそのまま適用することはできません。
+            </p>
+          </details><a class="callout-link" href="../labs/regression.html">回帰曲線の実験室を開けてください。→</a>
+        </section>
+        <section id="advanced-a">
+          <h2>発展A / 不安定な係数をSVDとRidgeで説明する</h2>
+          <div class="case-brief"><span class="pill">発展版：A · 多変量性、およびSVD</span>
+            <p><strong>考える問題</strong>
+              ほぼ同じセンサーを2つ使用したところ、シータの符号や大きさが大きく乱れてしまいました。予測ももう不可能な状態になってしまったのでしょうか？</p>
+          </div>
+          <p>2202, N=70からx₁~N(0,1), x₂=x₁+0.015ε₂,
+            y=1+2x₁+0.4εᵧまでの範囲で、シードを作成します。ノイズは独立した標準正規分布に従います。切片には点を与えません。ほぼ同じ値を持つ列は、複数の係数の組み合わせによって説明できます。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>X<sub>c</sub>=UΣVᵀ ⇒
+            w<sub>ridge</sub>=V diag(σⱼ/(σⱼ²+α)) Uᵀy<sub>c</sub><br>σⱼ²/(σⱼ²+α): OLSに対する、その方向での縮小率
+          </div>
+          <ol class="worked-steps">
+            <li>中心化された2つの特徴の特異値は、12.460, 0.093です。OLSは、小さい特異値の方向にある雑音を、1/σだけ増幅します。</li>
+            <li>同じです。 X 維持すること。 y 標準偏差 0.05 小さな雑音を 120 これは、サンプルバスティングではなく、回答者の干渉に対する条件付き感度に関する実験です。
+            </li>
+            <li>OLS その他 w₁ 標準偏差は、 0.417, Ridge α=1 では、 0.004 ええ。 OLS そこでも w₁+w₂ 標準偏差は、 0.006 小さいです。
+            </li>
+            <li>
+              観測点が位置するx₁≈x₂方向では、各係数の合計値が予測に影響を与えます。各係数を原因効果として解釈したり、x₁とx₂の値が大きく異なる領域に外挿すると、問題が明らかになります。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>係数が変動しても、その和は安定する場合がある</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="係数は揺れますが、係数の合計は安定していることがあります。狭い画面では、左右にスクロールすることができます。"><img
+                src="../../assets/images/advanced/02-ridge.svg" width="940" height="450"
+                loading="lazy"
+                alt="左側は、 α それに基づく2つの係数と、その合計です。右側は、同じ設計行列における応答雑音です。 120 追加された係数の分布です。 OLS 点が反対方向に長く広がっている。 Ridge α=1 すべての変数は無次元です。">
+            </div>
+            <figcaption>左側は、 α それに基づく2つの係数と、その合計です。右側は、同じ設計行列における応答雑音です。 120 追加された係数の分布です。 OLS
+              点が反対方向に長く広がっている。 Ridge α=1 すべての変数は無次元です。<a
+                href="../../assets/images/advanced/02-ridge.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>Ridgeの小さな特異値の方向を減らすことで、真の信号がなくなる可能性があるかどうか。</summary>
+            <p>
+              そうなることもあります。正則化を行うことで、分散は減少しますが、一方でバイアスは増加します。つまり、小さなパラメータ値が必ずしも無意味であるという意味ではありません。αは、検証の性能や必要とされる解釈に応じて選ばれます。
+            </p>
+          </details>
+        </section>
+        <section id="advanced-b">
+          <h2>発展B / 次数と正則化を同時に選ぶ</h2>
+          <div class="case-brief"><span class="pill">発展されたB ·の複雑さと、正則化の両方の選択</span>
+            <p><strong>考える問題</strong>
+              階層を高めた後、αのみを比較するのではなく、階層×αの格子を比較してみましょう。そして、選択されなかったテスト結果を残しておきます。</p>
+          </div>
+          <p>
+            新しい独立標本でx~Uniform(−1,1)、y=1+1.8x−2x²+2.5x³+ε、ε~N(0,0.45²)を生成します。訓練30件、検証240件、テスト400件です。次数1~9とα∈{0,0.0001,0.01,0.1,1,10}の54候補を同じ検証集合で比較します。乱数の順序はregression_experiment関数のシード2202で再現します。
+          </p>
+          <ol class="worked-steps">
+            <li>基準値は[1,x,…,xᵈ]]に固定します。各候補者については、訓練データのみを用いて評価を行い、その結果をMSEという行列に記入します。</li>
+            <li>この実行の最小値は、次数3, α=0と、検証結果MSE 0.216です。正則化が必ず必要だとは限りません。そのため、α=0も候補として考慮されます。</li>
+            <li>選択したモデルをそのまま固定し、独立テストにおいてMSE 0.240を得る。ここでは、検証を加えて再学習を行っていないため、図とテスト結果は同じ係数に対応している。
+            </li>
+            <li>訓練範囲外での予測は、点線で表される生成式と比較されますが、実際の問題ではその生成式を知ることはできません。検証性能が良くても、外挿の信頼性を保証することはできません。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>誤差マップで適切な次数とαの組み合わせを探す</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="誤差マップで適切な次数とαの組み合わせを探す。狭い画面では左右にスクロール"><img
+                src="../../assets/images/advanced/02-selection.svg" width="940" height="450"
+                loading="lazy"
+                alt="各セルに表示される数字は、MSEであり、色はlog10(MSE)です。横軸αはカテゴリーごとに均等に配置されており、縦軸は度数です。小さい数字ほど良い候補となりますが、このテストではこのマップは使用されていません。">
+            </div>
+            <figcaption>
+              各セルに表示される数字は、MSEであり、色はlog10(MSE)です。横軸αはカテゴリーごとに均等に配置されており、縦軸は度数です。小さい数字ほど良い候補となりますが、このテストではこのマップは使用されていません。<a
+                href="../../assets/images/advanced/02-selection.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>高さの曲線が、観測点の外側で作る仮定</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="高さの曲線が、観察の外側で形成されるという仮定です。狭い画面では、左右にスクロールされます。"><img
+                src="../../assets/images/advanced/02-curves.svg" width="940" height="450"
+                loading="lazy"
+                alt="訓練点30個とα=0の1次・3次・9次回帰を比較します。灰色の網掛けはx∉[−1,1]の外挿区間です。大きな振動のため縦の表示範囲を−8~7に制限しましたが、計算自体は切り詰めていません。">
+            </div>
+            <figcaption>
+              訓練点30個とα=0の1次・3次・9次回帰を比較します。灰色の網掛けはx∉[−1,1]の外挿区間です。大きな振動のため縦の表示範囲を−8~7に制限しましたが、計算自体は切り詰めていません。<a
+                href="../../assets/images/advanced/02-curves.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="worked-code">
+            <summary>計算コードの要点を開く</summary>
+            <p>発展Pythonの対応する関数から計算の流れを抜粋しています。完全なデータ生成と補助関数は以下のダウンロードにあります。</p>
+            <pre><code>degrees = range(1, 10)
+alphas = [0, .0001, .01, .1, 1, 10]
+errors = np.empty((9, 6))
+for i, degree in enumerate(degrees):
+    train_basis = np.polynomial.polynomial.polyvander(xp, degree)
+    valid_basis = np.polynomial.polynomial.polyvander(xv, degree)
+    for j, alpha in enumerate(alphas):
+        w = ridge(train_basis, yp, alpha)
+        errors[i, j] = np.mean((yv - valid_basis @ w) ** 2)
+# errorsは、最も小さい候補者を選び出し、その後でテストを一度だけ評価する。</code></pre>
+          </details>
+        </section>
+        <section id="advanced-c">
+          <h2>発展C / ブートストラップ区間と予測区間を区別する</h2>
+          <div class="case-brief"><span class="pill">発展されたC ·のブートストラップと、予測不可能性</span>
+            <p><strong>考える問題</strong> 曲線の周囲の95%区間が狭ければ、新しい観測も95%がその中に入るでしょうか？</p>
+          </div>
+          <p>先に選ばれた順番と、 α 固定する。訓練行を復元抽出し、 30 一人ずつ 350 再構築し、毎回新しいモデルに設定する。各… x そこから 350 予測のための
+            2.5%·97.5% 雰囲気を計算すると、平均関数推定のブートストラッピング区間が得られます。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>Var(y<sub>new</sub>D) =
+            Var(平均関数の推定 | D) + σ²<br>ここでは、σ=0.45を知るための合成実験について説明しています。</div>
+          <ol class="worked-steps">
+            <li>各ブートストラップでは、xᵢ,yᵢ)を行単位で一緒に抽出します。xとyを別々に抽出すると、関係が破壊されてしまいます。</li>
+            <li>平均予測のバリアント区間は、係数推定における不安定さを示しています。新しい観測値には、ノイズも含まれています。</li>
+            <li>各ブートストラップの予測結果に、独立したノイズ成分N(0,0.45²)を加えた後で、再び中央値を計算します。これが、黄色い予測区間が一般的により広い理由です。</li>
+            <li>
+              この区間は、選択された周波数スケールαに応じて条件付けられています。モデルの選択の不確実性、誤った生成式、未知のノイズ分散は考慮されていません。また、350回の周波数スケールにおける推定値にもモンテカルロ誤差が存在します。周波数スケール95%における包含率については、検証されていません。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>平均曲線の区間と、次の観測値の区間との区別</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="平均曲線の区間と、次の観測値の区間を区別する。画面が狭い場合は、左右にスクロールして区別することができます。"><img
+                src="../../assets/images/advanced/02-bootstrap.svg" width="940" height="450"
+                loading="lazy"
+                alt="概要：灰色の部分は、行のブートストラップが350回行ったときの平均予測値です。オレンジ色の部分は、既知のノイズσ=0.45を加えた後の予測値です。x=±1より外側の部分は、外挿値です。これは、このサンプル・選択モデルにおける条件付き近似区間です。">
+            </div>
+            <figcaption>
+              概要：灰色の部分は、行のブートストラップが350回行ったときの平均予測値です。オレンジ色の部分は、既知のノイズσ=0.45を加えた後の予測値です。x=±1より外側の部分は、外挿値です。これは、このサンプル・選択モデルにおける条件付き近似区間です。<a
+                href="../../assets/images/advanced/02-bootstrap.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>350 季節を変える 3,500 回路を増やすと、平均関数自体の統計的不確実性も高くなります。 1/√10 減少するのでしょうか？</summary>
+            <p>
+              いや、そうではない。モンテカルロ誤差が減少したとしても、30個の訓練用サンプルが提供する情報量は変わらない。関数の推定における不確実性を減らすためには、より多くの観測データを収集するか、適切な仮定を加える必要がある。
+            </p>
+          </details>
+          <div class="reproduce-box">
+            <h3>結果を再現して条件を変える</h3>
+            <p>
+              図はこの章の発展Python実験の事前計算結果です。Notebookには7章分の実行コードと28点の図出力があります。計算にはNumPy、図の再生成にはMatplotlibも必要です。
+            </p>
+            <div class="download-links"><a href="../downloads/advanced-experiments.ipynb"
+                download>発展Notebook ↓</a><a href="../downloads/advanced-experiments.py"
+                download>計算用Python ↓</a><a href="../downloads/advanced-figures.py"
+                download>作図用Python ↓</a><a href="../downloads/advanced-results.json"
+                download>数値結果JSON ↓</a></div>
+            <p>Pythonファイル二つを同じフォルダに置いてください。計算ファイルの <code>--chapter 2</code>
+              オプションでこの章だけを実行できます。作図ファイルの <code>--output ./figures</code> オプションは28点のSVGを生成します。</p>
+          </div>
+        </section>
+        <p class="sources">参考文献： <a href="../appendix/references.html#linear">関連概念の参考資料</a> · <a
+            href="../appendix/glossary.html">用語と記号</a></p><button class="print-button" type="button"
+          data-print>このページを印刷 / PDF保存</button>
+        <nav class="next-prev" aria-label="学習順序"><a href="01-data-and-models.html">←
+            前のページ：データから学習まで</a><a href="03-optimization.html">次に、モデルを改善する方法について説明します。</a></nav>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>概念を結び付け、計算で確かめる学習記録。<br>合成データ · 独自の説明と実験</p><a
+          href="../appendix/references.html">参考資料と制作情報 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

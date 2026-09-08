@@ -1,0 +1,247 @@
+<!doctype html>
+<html data-language="en" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="A small dictionary for revisiting unfamiliar terms.">
+    <meta name="theme-color" content="#18312e">
+    <title>Terms and Notation | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab learning home"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="Main navigation"><a
+            href="../main.html#curriculum">Curriculum</a><a href="../main.html#labs">Labs</a><a
+            href="../appendix/references.html">References</a><a class="hq-link"
+            href="../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="Language"><a href="../appendix/glossary.html"
+              lang="en" hreflang="en" data-language="en" aria-current="true">English</a><a
+              href="../ko/appendix/glossary.html" lang="ko" hreflang="ko"
+              data-language="ko">한국어</a><a href="../ja/appendix/glossary.html" lang="ja"
+              hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>Dark mode</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Appendix / Glossary</div>
+        <h1>Terms and Notation</h1>
+        <p>A small dictionary for revisiting unfamiliar terms.</p>
+        <div class="meta"><span>25 terms</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>On this page</summary>
+        <ol>
+          <li><a href="#symbols">Shared notation</a></li>
+          <li><a href="#terms">Glossary</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="symbols">
+          <h2>Shared notation</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Symbol</th>
+                  <th scope="col">Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>N, D</td>
+                  <td>Number of samples; number of features</td>
+                </tr>
+                <tr>
+                  <td>X, xᵢ</td>
+                  <td>Observation matrix; column vector for observation i</td>
+                </tr>
+                <tr>
+                  <td>θ, w, b</td>
+                  <td>Model parameters; weights; scalar intercept</td>
+                </tr>
+                <tr>
+                  <td>Φ</td>
+                  <td>Design matrix after basis transformation</td>
+                </tr>
+                <tr>
+                  <td>μ, Σ, σ²</td>
+                  <td>Mean; covariance; variance</td>
+                </tr>
+                <tr>
+                  <td>λ, σⱼ</td>
+                  <td>Eigenvalue or multiplier depending on context; jth singular value</td>
+                </tr>
+                <tr>
+                  <td>η, α, C</td>
+                  <td>Learning rate; regression penalty; SVM violation cost</td>
+                </tr>
+                <tr>
+                  <td>K, k</td>
+                  <td>Mixture component count; selected PCA component count</td>
+                </tr>
+                <tr>
+                  <td>ᵀ, ‖·‖F</td>
+                  <td>Transpose; Frobenius norm</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="note "><strong>Read symbols in context</strong>
+            <p>Σ can denote a covariance matrix or resemble a summation symbol. Check the definition
+              in each equation. In SVD, Σ is the singular-value matrix.</p>
+          </aside>
+        </section>
+        <section id="terms">
+          <h2>Glossary</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Term</th>
+                  <th scope="col">Explanation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Sample</td>
+                  <td>One unit of observation; here, one row of the data matrix.</td>
+                </tr>
+                <tr>
+                  <td>Feature</td>
+                  <td>An input attribute used for prediction or structural analysis.</td>
+                </tr>
+                <tr>
+                  <td>Parameter</td>
+                  <td>A value estimated through learning within a specified model.</td>
+                </tr>
+                <tr>
+                  <td>Hyperparameter</td>
+                  <td>A value specifying the learning setup, such as degree, learning rate, or
+                    component count.</td>
+                </tr>
+                <tr>
+                  <td>Loss</td>
+                  <td>The cost between observations and predictions, defined for the task.</td>
+                </tr>
+                <tr>
+                  <td>Generalization</td>
+                  <td>The ability to work usefully on observations not used in training.</td>
+                </tr>
+                <tr>
+                  <td>Bias and variance</td>
+                  <td>Systematic error from modeling assumptions and variability of estimates across
+                    samples.</td>
+                </tr>
+                <tr>
+                  <td>Rank</td>
+                  <td>The number of linearly independent columns or rows of a matrix.</td>
+                </tr>
+                <tr>
+                  <td>Basis</td>
+                  <td>A linearly independent set of vectors spanning a space.</td>
+                </tr>
+                <tr>
+                  <td>Orthogonal projection</td>
+                  <td>The closest projection whose residual is orthogonal to the subspace.</td>
+                </tr>
+                <tr>
+                  <td>Eigenvalue</td>
+                  <td>The scale factor along a direction that a transformation preserves.</td>
+                </tr>
+                <tr>
+                  <td>Singular value</td>
+                  <td>A nonnegative scale along an orthogonal direction in SVD.</td>
+                </tr>
+                <tr>
+                  <td>Jacobian</td>
+                  <td>The matrix of 1st-order partial derivatives of a vector output with respect to
+                    its inputs.</td>
+                </tr>
+                <tr>
+                  <td>Hessian</td>
+                  <td>The matrix of 2nd-order partial derivatives of a scalar function.</td>
+                </tr>
+                <tr>
+                  <td>Likelihood</td>
+                  <td>The observation model's value viewed as a function of parameters while
+                    observations are fixed.</td>
+                </tr>
+                <tr>
+                  <td>Posterior</td>
+                  <td>A distribution of parameters or latent variables updated with observations.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Precision</td>
+                  <td>In distributions, inverse variance or the inverse covariance matrix.
+                    Distinguish this from classification precision.</td>
+                </tr>
+                <tr>
+                  <td>Explained variance</td>
+                  <td>Input variance retained along the selected PCA directions, not a fraction of
+                    predictive information.</td>
+                </tr>
+                <tr>
+                  <td>Responsibility</td>
+                  <td>The posterior probability of each component for an observation under the
+                    current mixture model.</td>
+                </tr>
+                <tr>
+                  <td>Log likelihood</td>
+                  <td>The logarithm of likelihood; contributions from conditionally independent
+                    observations add together.</td>
+                </tr>
+                <tr>
+                  <td>Margin</td>
+                  <td>The geometric clearance between an SVM boundary and nearby observations.</td>
+                </tr>
+                <tr>
+                  <td>Support vectors</td>
+                  <td>An observation whose SVM dual coefficient differs from 0. Soft-margin support
+                    vectors can lie inside the margin.</td>
+                </tr>
+                <tr>
+                  <td>Kernel</td>
+                  <td>A function computing an inner product in feature space, subject to an
+                    appropriate positive-semidefinite condition.</td>
+                </tr>
+                <tr>
+                  <td>Regularization</td>
+                  <td>A method that adds a penalty, for example on model complexity. Distinguish it
+                    from standardization.</td>
+                </tr>
+                <tr>
+                  <td>Standardization</td>
+                  <td>Preprocessing that transforms feature coordinates using means and scales
+                    obtained from training data.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <p class="sources">Further reading: <a href="../appendix/references.html#mml">References for
+            related concepts</a> · <a href="../appendix/glossary.html">Terms and Notation</a></p>
+        <button class="print-button" type="button" data-print>Print this page / Save as PDF</button>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>A study journal connecting concepts and checking them through calculation.<br>Synthetic
+          data · Original explanations and experiments</p><a
+          href="../appendix/references.html">References and credits ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

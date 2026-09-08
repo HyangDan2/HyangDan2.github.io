@@ -1,0 +1,1105 @@
+<!doctype html>
+<html data-language="ja" lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="何を残し、何を捨てるべきか？方向を決めるという問題について、圧縮の概念を理解し、保存の分散と再構成の誤差との関係を確認する。">
+    <meta name="theme-color" content="#18312e">
+    <title>情報を圧縮する方法 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">本文へスキップ</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab 学習ホーム"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="メインメニュー"><a href="../main.html#curriculum">学習目次</a><a
+            href="../main.html#labs">実験室</a><a href="../appendix/references.html">参考資料</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="言語"><a href="../../chapters/05-pca-and-svd.html"
+              lang="en" hreflang="en" data-language="en">English</a><a
+              href="../../ko/chapters/05-pca-and-svd.html" lang="ko" hreflang="ko"
+              data-language="ko">한국어</a><a href="../../ja/chapters/05-pca-and-svd.html" lang="ja"
+              hreflang="ja" data-language="ja" aria-current="true">日本語</a></nav><button
+            type="button" class="theme-toggle" data-theme-toggle aria-pressed="false"
+            hidden>ダークモード</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Chapter 05 / PCA &amp; SVD</div>
+        <h1>情報を圧縮する方法</h1>
+        <p>何を残し、何を捨てるべきか？方向を決めるという問題について、圧縮の概念を理解し、保存の分散と再構成の誤差との関係を確認する。</p>
+        <div class="meta"><span>02 ·行列 / 04 ·分散</span><span>直交 · SVD · PCA</span><span>発展事例3件 ·
+            比較図4点</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>このページの流れ</summary>
+        <ol>
+          <li><a href="#question">01 / 6つのセンサーに隠されている2つの要因</a></li>
+          <li><a href="#projection">02 /の長さ、角度、影</a></li>
+          <li><a href="#eigen">03 /の分散が大きい方向を見つけること</a></li>
+          <li><a href="#reconstruction">04 /の分散が復元誤差である理由</a></li>
+          <li><a href="#svd">05 / SVDで同じ方向から取得する</a></li>
+          <li><a href="#experiment">06 / の圧縮とノイズ除去の違い</a></li>
+          <li><a href="#advanced-a">発展部分 A /：信号の復元とノイズの復元を区別する必要があります。</a></li>
+          <li><a href="#advanced-b">B /単位の変化が、PCAの方向に与える影響</a></li>
+          <li><a href="#advanced-c">発展 C / 99.8%の分散保存によっても、分類に失敗する場合があります。</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="question">
+          <h2>01 / 6つのセンサーに隠されている2つの要因</h2>
+          <p>
+            仮想環境センサーが6つのチャンネルを持ち、それぞれのチャンネルが2つの潜在的要因を異なる比率で測定するとします。もし共通の原因が2つある場合、重要な変化はより低い次元で表されることになります。ただし、各センサーには独立したノイズが存在するため、正確な値は2つの値よりも大きくなります。
+          </p>
+          <aside class="note "><strong>この章の目標</strong>
+            <p>正規化を行い、固有分解を施し、SVDとPCAを結合します。分散を最大化し、復元誤差を最小化する際に、どのようにして同じ方向を選ぶかを理解する必要があります。</p>
+          </aside>
+          <nav class="study-route" aria-label="発展学習へ移動"><strong>基礎の次は発展事例3件 · 比較図4点</strong><a
+              href="#advanced-a">発展部分 A /：信号の復元とノイズの復元を区別する必要があります。</a><a href="#advanced-b">B
+              /単位の変化が、PCAの方向に与える影響</a><a href="#advanced-c">発展 C /
+              99.8%の分散保存によっても、分類に失敗する場合があります。</a></nav>
+        </section>
+        <section id="projection">
+          <h2>02 /の長さ、角度、影</h2>
+          <p>内側のベクトルxᵀbは、その方向を示します。bが単位ベクトルである場合、xᵀbはその方向の座標です。xᵀb)bは影を表します。直交する単位ベクトルをBの列にまとめると、BᵀB
+            = Iが得られます。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>‖x‖₂ = √(x<sup>T</sup>x),   cos θ
+            = x<sup>T</sup>b/(‖x‖₂‖b‖₂)<br>z = B<sup>T</sup>x,   x̂ = BB<sup>T</sup>x</div>
+          <p>x = [3,1]ᵀ を b = [1,1]ᵀ/√2 投影すると、[ 2,2]ᵀ ジャンカは、[ 1,−1]ᵀ ダ。ジャンカと b 内面は、… 0
+            したがって、元の長さの二乗は、投影された長さと残りの長さの二乗の合計に分けられます。</p>
+        </section>
+        <section id="eigen">
+          <h2>03 /の分散が大きい方向を見つけること</h2>
+          <p>各チャンネルごとの平均値を引いて、Xを求めます。<sub>c</sub>共分散行列 S = X<sub>c</sub>ᵀX<sub>c</sub>/ N 単位方向 b
+            投影された分散は、 bᵀSb また、単位長さの制約を組み合わせて微分すると、固有値問題になります。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>max<sub>b</sub> b<sup>T</sup>Sb  
+            subject to   b<sup>T</sup>b = 1<br>∇<sub>b</sub>[b<sup>T</sup>Sb−λ(b<sup>T</sup>b−1)] =
+            0<br>Sb = λb</div>
+          <p>最も大きな固有値の方向は、最初の主成分です。後方の方向は、前方の方向と直交しており、残りの分散を最大限に保持します。S =
+            [[4,2],[2,4]]の固有値は、6と2であり、その方向は斜めの2つの方向です。最初の成分は、全体の分散の75%を保持します。</p>
+          <aside class="note "><strong>平均値の除去と標準化</strong>
+            <p>
+              大きなスケールの特徴は、PCAに支配されることがあります。単位が異なるセンサーについては、標準化が適切かどうを判断する必要があります。この実験では、すべてのチャンネルで同じ無次元単位が使用されています。
+            </p>
+          </aside>
+        </section>
+        <section id="reconstruction">
+          <h2>04 /の分散が復元誤差である理由</h2>
+          <p>正規職員全体において、座標の二乗和は、観測期間の二乗に等しい。上位… k
+            成分を元に戻すと、残った座標しか存在しない。観測値の平均を取ると、無効な方向の分散が加算されることになる。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>X̂ =
+            X<sub>c</sub>B<sub>k</sub>B<sub>k</sub><sup>T</sup><br>(1/N)‖X<sub>c</sub>−X̂‖<sub>F</sub>²
+            = Σ<sub>j=k+1</sub><sup>D</sup>λ<sub>j</sub></div>
+          <p>
+            誤差とは、各観測点におけるすべての特徴の二乗誤差の合計平均値のことです。特徴ごとに平均した値MSEは、Dで割る必要があります。互いに偏りのない共分散を得るために、N−1を使います。そして、固有値の合計にもN−1)/Nを乗じることで、現在の定義と一致させることができます。また、標準化された空間における誤差と、元の単位で表される誤差も区別する必要があります。
+          </p>
+        </section>
+        <section id="svd">
+          <h2>05 / SVDで同じ方向から取得する</h2>
+          <p>X<sub>c</sub> =
+            UΣVᵀの場合、共分散はV(ΣᵀΣ/N)Vᵀです。Vの方向はPCAであり、σⱼ²/Nは分散です。共分散を最初に計算する必要はなく、SVDからPCAを求めることができます。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>X<sub>c</sub> = UΣV<sup>T</sup>,  
+            λ<sub>j</sub> = σ<sub>j</sub>²/N<br>X<sub>k</sub> =
+            U<sub>k</sub>Σ<sub>k</sub>V<sub>k</sub><sup>T</sup></div>
+          <p>
+            SVDは、与えられたランク以下でFrobeniusの誤差を最小限に抑える近似手法です。PCAは、この手法を中心化されたデータに適用します。固有値が同じ場合、その部分空間内の方向性は一意ではないかもしれません。固有ベクトルの符号が変わっても、投影や復元の結果は同じです。
+          </p>
+          <pre><code>import numpy as np
+rng = np.random.default_rng(431)
+latent = rng.normal(size=(180, 2))
+A = np.array([[1,.1],[.8,.4],[-.4,.9],[.2,-.8],[.6,.6],[-.7,.2]])
+X = latent @ A.T + .35*rng.normal(size=(180, 6))
+mu = X.mean(0)
+centered = X - mu
+U, s, Vt = np.linalg.svd(centered, full_matrices=False)
+k = 2
+restored = (centered @ Vt[:k].T) @ Vt[:k] + mu
+error = np.sum((X-restored)**2)/len(X)
+print(error, np.sum(s[k:]**2)/len(X))</code></pre>
+        </section>
+        <section id="experiment">
+          <h2>06 / の圧縮とノイズ除去の違い</h2>
+          <figure class="figure" tabindex="0" aria-label="計算結果のグラフです。狭い画面では、左右にスクロールできます。"><svg
+              xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+              aria-labelledby="pca-observation-title">
+              <title id="pca-observation-title">観測結果とPCAの復元における、最初の2つのチャンネルの比較</title>
+              <defs>
+                <clippath id="pca-observation-clip">
+                  <rect x="64" y="22" width="596" height="283" />
+                </clippath>
+              </defs>
+              <rect width="680" height="360" fill="white" />
+              <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-6.608</text><text x="54" y="309" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-6.608</text>
+              <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-3.965</text><text x="54" y="252.4" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-3.965</text>
+              <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-1.322</text><text x="54" y="195.8" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-1.322</text>
+              <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                font-family="sans-serif" font-size="11" fill="#526964">1.322</text><text x="54"
+                y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                fill="#526964">1.322</text>
+              <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">3.965</text><text x="54" y="82.6" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">3.965</text>
+              <path d="M660.0000000000001 22V305 M64 21.999999999999943H660" stroke="#e4e9e0"
+                fill="none" /><text x="660.0000000000001" y="328" text-anchor="middle"
+                font-family="sans-serif" font-size="11" fill="#526964">6.608</text><text x="54"
+                y="25.999999999999943" text-anchor="end" font-family="sans-serif" font-size="11"
+                fill="#526964">6.608</text>
+              <g clip-path="url(#pca-observation-clip)">
+                <circle cx="332.7141602673096" cy="181.56402263741808" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="465.2654707429518" cy="132.96216402169492" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="394.2997276301101" cy="148.89323617896395" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="536.2199743948872" cy="101.04685094738346" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="415.63468901487124" cy="119.36306088783547" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="255.40366259183844" cy="217.74649164212968" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="435.45787132343787" cy="141.76070270562042" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="373.60391726406215" cy="158.72569541984532" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="463.73045365309963" cy="125.34733514984677" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="482.82187284959383" cy="118.10391194588686" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="252.77662999305278" cy="221.04661600621588" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="379.806067549236" cy="166.41159889282045" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="417.12193557985404" cy="131.9298136733144" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="451.55072311672484" cy="134.9340102232487" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="457.50881507156396" cy="118.35942386782887" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="369.86116148477936" cy="159.90162320110815" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="238.19411864956447" cy="212.56126092887635" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="332.47735169659865" cy="168.18011524706407" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="251.62029365720068" cy="212.07913148051367" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="430.0707265793468" cy="133.0178190912045" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="235.32101648873754" cy="220.90604578425052" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="325.492699839083" cy="183.0232326281773" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="306.6878748213236" cy="183.70140836792046" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="323.52893964533706" cy="181.8359181179501" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="337.2483839600632" cy="164.0616549241217" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="190.1331360852827" cy="222.31511242323762" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="360.2164697103772" cy="154.0125615786669" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="285.5866628168991" cy="201.3955884199193" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="271.5083005477584" cy="187.7352840391957" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="363.2978248055611" cy="167.4626929922113" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="399.900630108395" cy="159.31286375776858" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="245.1896951031379" cy="197.48314111696055" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="389.1683340379104" cy="165.93692771842842" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="542.9456154030886" cy="63.61119765878826" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="293.9660723851271" cy="203.65027859493313" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="468.6780541259373" cy="123.37670424282922" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="449.7902203098099" cy="121.34784399597979" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="170.26487593794855" cy="256.5632373567506" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="463.50580468129857" cy="118.45156201024906" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="275.21039488133755" cy="203.85614046181982" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="497.7799937208879" cy="101.36507299826076" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="399.03145422084606" cy="142.22734060583218" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="276.7476456260356" cy="202.68289841777042" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="295.9516591150519" cy="199.85156870595156" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="480.2961783212513" cy="111.87739489571763" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="371.36839370051496" cy="150.07488866324823" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="401.45354522407973" cy="148.99424603226484" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="260.06105685530565" cy="207.02067956308375" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="427.0234761018414" cy="133.11764729842443" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="291.38336237844527" cy="184.77361599073163" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="403.9647289611572" cy="133.16775387752344" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="266.35119622311106" cy="220.8243817671522" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="218.15293323787094" cy="240.79215425756644" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="249.11112837746742" cy="193.36606535616554" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="410.2432806216566" cy="159.52274432533935" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="320.2751447942732" cy="193.55051736129596" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="466.18866520729455" cy="106.34585546055723" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="476.3941050336376" cy="113.26424199712545" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="206.13113937507626" cy="224.54637536377453" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="397.8552448320491" cy="147.037237110488" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="389.99142412268765" cy="155.140124835977" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="335.2608729216845" cy="160.43790858832594" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="298.6027003848542" cy="171.90935235999976" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="378.86823812153534" cy="153.3673278047562" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="359.3567948026559" cy="165.36363666157692" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="350.8797298925179" cy="163.56360830323794" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="377.28420981206546" cy="172.92234356282893" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="370.5300804460138" cy="151.53082545415936" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="312.6487378327689" cy="194.75648665332028" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="440.2683791241212" cy="140.3276760985404" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="425.6581975198564" cy="145.22771749973498" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="353.92446266079304" cy="176.8433062403469" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="342.616680409108" cy="168.31066950876607" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="344.3588812002088" cy="186.83483623122243" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="377.17019078140123" cy="175.8053476200111" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="461.04294009797127" cy="124.75920015995075" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="279.02510684274955" cy="213.70047431747037" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="352.12132225849524" cy="170.112134582319" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="325.4024223104754" cy="195.56142681833006" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="292.03213352611954" cy="202.0980607384105" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="347.8329159371805" cy="170.45733221751948" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="401.0174381288976" cy="136.01447031516614" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="582.8642339482424" cy="63.30086092813815" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="331.6232203080068" cy="186.17910332365975" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="319.67510812781245" cy="169.95935029040731" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="494.36917975302777" cy="110.65061053789927" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="489.1195788620598" cy="102.71916958097694" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="255.76442981259774" cy="193.17362454588732" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="184.41042951548965" cy="238.3355599418635" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="397.04714961620175" cy="138.04512292736186" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="364.32215815693934" cy="156.23342661999493" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="365.14257267454366" cy="157.12084721012815" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="351.931568738468" cy="164.35869163965629" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="375.25315819824834" cy="157.3507951963652" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="506.5367944680336" cy="96.86349394706616" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="249.375197793083" cy="197.49407130946162" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="315.710232988857" cy="160.31071256295274" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="373.77929151607395" cy="157.15439959209334" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="413.782467044686" cy="136.92071097550323" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="195.89136928402465" cy="235.12851576147085" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="254.9447069423186" cy="222.50669002981675" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="181.46116916310154" cy="226.26896544170373" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="482.1060283217957" cy="103.07370122831432" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="315.6642552848747" cy="166.67379079154352" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="597.8222312409691" cy="59.259115860114264" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="559.0678214517759" cy="67.48867711555701" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="298.7677942852289" cy="183.94503878212225" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="598.5296269397019" cy="54.950656240034846" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="125.83133680444338" cy="262.37694371366877" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="399.0641261929588" cy="147.81578802865926" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="91.09090909090912" cy="281.24484568974407" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="205.7921635372015" cy="236.19594000023167" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="327.46148934597176" cy="176.3317857562713" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="272.3584453922419" cy="195.07322413824147" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="406.96571320672285" cy="147.08981406572602" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="503.11109789129284" cy="105.90721166751422" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="365.5908069785139" cy="181.31181802237728" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="331.166625326902" cy="177.04128071534498" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="377.0753811735365" cy="172.9371177544847" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="402.36076403714594" cy="145.97738246626193" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="351.92189135835116" cy="175.95959787777795" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="353.0524312368557" cy="172.12074730218626" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="348.6059503072571" cy="161.64075362335936" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="420.1491874283351" cy="151.31776762815994" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="501.61417973785336" cy="100.16589280704036" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="519.7480942107768" cy="103.49396934714528" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="439.4257480714999" cy="135.21019357505534" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="250.45742722522635" cy="205.94246542866128" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="307.0339978038937" cy="183.63538761737237" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="276.78293697416245" cy="213.3480203755368" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="463.86059754981227" cy="126.03984723397446" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="350.46246277543815" cy="172.66992302662717" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="499.72752593143025" cy="108.51981652591331" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="391.7808176247312" cy="152.38687796678843" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="347.89234521700223" cy="174.96570056213625" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="299.8841355136873" cy="194.22124821380916" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="315.43899863148044" cy="184.03734317486484" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="371.82092380384324" cy="142.14274300600061" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="93.6082567585471" cy="282.88499131434924" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="457.3715946049432" cy="122.24970887669684" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="430.8982256165714" cy="126.40364349489207" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="485.30472409350233" cy="105.2019205488437" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="330.0902844551937" cy="186.2390134272422" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="204.59407259551335" cy="225.69455419457495" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="257.90689813194126" cy="202.17789750824699" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="355.15647494630866" cy="172.49925529806728" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="455.4769572908275" cy="134.0809498002755" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="235.7471627356326" cy="214.52375006837553" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="490.80876405438033" cy="109.71228946577509" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="167.5060310228576" cy="256.90720152540945" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="462.6083294330717" cy="103.10045126740732" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="453.18313341117454" cy="116.08364959436682" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="188.00513586000187" cy="225.01576836333942" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="257.080814512722" cy="212.31550375443632" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="250.83312516904928" cy="215.16546446414372" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="391.4300189580353" cy="137.19372682134448" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="367.4606018617877" cy="150.84125924453372" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="342.2822039108462" cy="163.25103524600837" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="160.8162783729315" cy="231.977588152169" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="280.63569814531434" cy="199.02250221679253" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="341.5338050290462" cy="161.60220615288304" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="451.05053764450145" cy="115.77980356942362" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="384.11388833273594" cy="148.0951836443627" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="404.996664674485" cy="126.4589007483309" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="283.13636662092244" cy="173.45973384305537" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="536.8998889540496" cy="108.31414517824103" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="417.7229387423656" cy="144.79895710022183" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="443.5226627271264" cy="131.52587016864095" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="496.17193911617176" cy="131.850550698575" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="306.8411823495182" cy="199.75229372237888" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="391.1280622078346" cy="168.23923693323707" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="224.31433700203573" cy="245.80785803460967" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="214.2513423926134" cy="211.70747732209827" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="339.6688194649577" cy="163.39460946953096" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="418.4627841084088" cy="147.946993102569" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="308.8085547218776" cy="163.56920812348096" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="278.1987916475914" cy="185.38103762200942" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="410.58692406925127" cy="153.5726158695064" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="377.8235898077614" cy="155.44948355374063" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <circle cx="313.50263268058825" cy="185.76920917567634" r="2.5" fill="#8a9f93"
+                  opacity="0.7" />
+                <rect x="326.667407100178" y="172.27975213591364" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="442.6149273674193" y="125.58188271362565" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="383.71954989083736" y="146.86209791655983" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="521.6343547532388" y="87.49286710490779" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="425.4828900074266" y="123.77766337759843" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="253.05490109765344" y="211.95053680135248" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="422.6468746350364" y="134.00277656299045" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="364.5717759744843" y="155.85925318449634" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="461.8786606212988" y="116.93535722043896" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="466.67989170646274" y="117.97762561944572" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="249.3678619734835" y="209.59504076122093" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="379.23376987318636" y="152.40279999387494" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="425.3016263725537" y="127.81367047162635" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="427.63459054423765" y="134.11299005489732" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="452.2661390073047" y="117.1852102960543" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="354.19956052476067" y="158.4227880363473" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="238.74440680215514" y="213.75465131023475" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="336.6770794214202" y="164.8362943329899" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="243.50748925670715" y="208.32081777009245" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="421.2803919000233" y="129.19650677006874" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="238.17264109121146" y="217.13459537881428" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="319.6498752221361" y="176.83961711604795" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="293.56941753213135" y="189.05198177932897" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="314.3758952169364" y="177.1610914003772" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="347.16699936734364" y="165.14307064027653" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="198.776348835048" y="231.3465226148707" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="368.08317117012336" y="152.4833402844668" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="282.9963599110541" y="198.58523683150256" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="269.2038293841589" y="194.367036632872" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="354.9003654372546" y="160.37549555562177" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="384.4115593476063" y="145.61018252064093" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="251.16958273550793" y="206.30245677911074" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="372.5196290886377" y="153.27866495599412" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="558.6115687850438" y="73.55370842077718" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="294.8139991855152" y="189.3629240250985" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="456.20703940101095" y="119.85994880696262" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="443.72866054355865" y="124.98839753312711" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="147.7495684573153" y="250.51759441251338" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="451.99610300242654" y="116.27489440193062" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="283.93353942318697" y="198.59152062599662" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="499.321474876081" y="99.2954840787796" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="415.0940765701038" y="143.46740668958782" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="264.01713017943035" y="203.65069498845338" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="286.3598055310364" y="191.92865722762383" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="473.49801462166107" y="108.43755184481824" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="378.88077630886966" y="149.8691079508643" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="408.12329626332155" y="145.4994472545437" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="255.08680945523736" y="204.441738440738" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="437.2708066441604" y="125.83069998617069" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="285.9387150259498" y="188.8599311272942" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="427.66524961400273" y="129.84231954939102" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="247.34098643908288" y="214.2312427858822" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="212.5584843633889" y="227.53849673611273" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="268.4656788642652" y="199.44198863080746" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="399.56941956503545" y="147.13291457254806" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="314.0976314691227" y="182.39678940762604" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="471.98789885322816" y="119.28123744956073" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="472.96609712899044" y="106.79755262829724" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="217.23651460051713" y="218.5973359389389" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="397.0454269209422" y="148.38474253001348" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="389.95530319415735" y="144.75659248704852" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="341.46123433242235" y="162.87043417980695" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="306.8963439476177" y="178.4389896435787" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="381.2210598474409" y="151.29188816206837" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="355.5266745122185" y="165.58645288787812" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="364.2223157443321" y="160.63824653234687" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="364.8418300150744" y="160.37714809713836" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="369.3132514318714" y="154.1229574945567" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="284.16551995396014" y="191.04615408944258" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="433.3192804011155" y="132.42788147158873" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="409.392902596063" y="138.6261353304448" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="339.305517109724" y="167.52576526626873" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="326.9433141652643" y="171.31090884400007" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="316.41163415960557" y="176.57113096616854" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="353.0906706020964" y="159.60719675654056" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="452.2474610765054" y="119.04597545184077" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="268.9751276467764" y="203.012575379368" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="340.1240661548703" y="164.21196432284026" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="304.5674474046049" y="185.75487337235072" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="273.8477975988608" y="202.19423959003643" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="346.3222028652665" y="167.30559088119514" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="407.71742451758416" y="138.01570105933516" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="583.8018024080812" y="64.16462699329585" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="318.78274948650744" y="175.97846908245288" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="336.9161918054697" y="168.2970193420586" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="492.9850421492724" y="106.36233099045438" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="488.77992895430873" y="101.01341847514459" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="258.91761547015165" y="194.294283041435" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="176.79029232696377" y="243.1893010212063" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="405.8459935760987" y="135.25468218724427" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="369.6091674416146" y="158.43703301382658" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="365.7713649440755" y="158.70921599162477" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="348.4196427626483" y="162.86214968880094" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="373.3570275422853" y="147.8663402766595" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="499.89947769289085" y="97.65589437857696" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="264.78237295882764" y="197.0610532860721" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="332.462732657142" y="169.8957650079229" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="370.04359351700776" y="156.7443890460183" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="413.2335722791026" y="138.25758593636198" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="195.52568419514824" y="233.54554296160285" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="248.92780268195042" y="204.66804350180468" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="205.4397412653957" y="226.08542643553375" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="496.5331914870877" y="102.62281290178586" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="334.30073668787225" y="168.66687674079895" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="576.9694546014737" y="56.16118900634635" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="571.2552871755713" y="72.06234033198032" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="303.92356513819936" y="187.7621187958918" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="590.2903114167016" y="58.741029572500025" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="136.2810681959117" y="259.2420619935058" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="400.73836351669127" y="143.86273964517622" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="94.8792305623611" y="273.0721807071892" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="189.37747244695268" y="234.89749721117056" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="316.5934776385724" y="173.62376294301743" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="269.40971721663817" y="203.72845307341652" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="396.4920519371946" y="147.86612192890624" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="502.38788481401843" y="102.39612132956924" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="337.64201657413304" y="168.3123099796418" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="324.47162600456477" y="166.89810300362592" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="369.44985434322103" y="160.03326043315863" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="391.07030515216445" y="147.95783439616105" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="336.96423732915935" y="167.84810905980078" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="352.7853221511976" y="166.64066994610283" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="354.6180694993721" y="161.68550532026524" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="409.57971771655997" y="139.49524260101867" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="483.56968781982573" y="99.22969477739454" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="503.313409241704" y="99.86383987752558" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="427.966760455573" y="130.68140297826994" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="246.59663793440725" y="209.36607158809636" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="303.2420576066918" y="184.79544884100432" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="264.619583989321" y="205.50812235172017" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="469.60669732283117" y="118.10875927276734" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="339.925057250343" y="169.4289986119871" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="486.8099446557501" y="106.481268981845" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="379.55651952084696" y="151.85597247736717" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="329.33468113242867" y="169.2439834010092" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="280.2587693665326" y="191.1309438293056" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="314.99812956385415" y="176.82166277169836" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="387.47197895209297" y="144.74695178384192" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="97.63836902136032" y="276.90551043290515" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="470.2620593032354" y="113.86781188769632" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="432.13043116829584" y="129.33457630774157" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="490.5490462980351" y="105.68739415886924" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="311.8722211282558" y="173.49475585347372" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="203.64751498976995" y="226.86750387694127" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="260.90937876531484" y="201.33697866502345" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="347.29605574062987" y="166.7814726891844" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="435.10151074294737" y="132.54088071411596" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="241.02059196238466" y="216.05078876916423" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="493.19940498953724" y="105.61659051455439" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="161.23204596197814" y="249.84982371672191" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="484.05667693695415" y="109.25909036558116" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="455.45516342599416" y="119.56331359081449" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="191.6400498014017" y="223.84294388260156" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="237.81134131386403" y="213.8839037007466" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="251.4226586258284" y="211.4395771077219" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="401.66002872103564" y="140.456163983151" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="388.50274210951756" y="146.8214065394819" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="363.0181646171784" y="157.49474665979346" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="172.896706029705" y="240.30042099909966" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="268.2814758718618" y="195.8428090217957" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="357.76850602287703" y="158.47156337325552" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="463.7323997771056" y="110.91424635389882" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="398.1094896505023" y="148.76752032673312" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="409.4377214784611" y="135.77531176250162" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="298.4130439851658" y="178.03017010116196" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="527.312115942115" y="90.09153620298744" width="6" height="6" fill="#106858"
+                  opacity=".65" />
+                <rect x="416.16187616622864" y="133.93080310111992" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="447.0752899289521" y="122.50095839904876" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="461.79576750803307" y="114.16652473896193" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="279.5828865418266" y="194.0156973131044" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="371.4067279631881" y="159.84203714790135" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="201.83176293524295" y="230.46954816166752" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="226.76614654394388" y="213.54278444081103" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="354.24970015906644" y="162.40403972560844" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="402.6887307406206" y="141.81201626539956" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="321.79108336945603" y="175.8202186920094" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="286.6296852475292" y="189.14538251448863" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="384.86021087713544" y="151.00783706655622" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="367.34360437275245" y="152.4345638750535" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+                <rect x="307.74156911016064" y="180.6096139727441" width="6" height="6"
+                  fill="#106858" opacity=".65" />
+              </g>
+              <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Channel
+                1 (unitless)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Channel
+                2 (unitless)</text>
+            </svg>
+            <figcaption>基本設定で直接計算された結果です。以下の実験室では、設定を変更することができます。</figcaption>
+          </figure>
+          <p>
+            実験では、180個の観測値と6チャンネルを使用します。成分の数、潜在因子間の相関関係、雑音の大きさを変えながら、保存される分散と誤差を比較します。同じデータに対しては、PCAを適用して復元するため、これはサンプル内の圧縮誤差です。
+          </p>
+          <p>
+            ノイズを除去する性能を評価するには、クリーンな信号や独立した評価が必要です。成分が多いほど、観測される復元誤差は減少しますが、それがクリーンな信号に近づくとは限りません。観測される復元と、潜在的な信号の復元を区別する必要があります。
+          </p>
+          <details class="answer">
+            <summary>全体の成分を使った場合は、どうなるのでしょうか？</summary>
+            <p>数値の誤差を除外すれば、観測結果はそのまま復元されます。また、観測結果に含まれる雑音も一緒に復元されます。</p>
+          </details>
+          <details class="answer">
+            <summary>説明の分散が95%の場合、分類情報も95%残っているのでしょうか？</summary>
+            <p>いや、小さな分散方向においても、目標を区別するための情報があるかもしれない。その後、その成果をもって評価するべきだ。</p>
+          </details><a class="callout-link" href="../labs/pca.html">PCA 圧縮実験室を開けてください →</a>
+        </section>
+        <section id="advanced-a">
+          <h2>発展部分 A /：信号の復元とノイズの復元を区別する必要があります。</h2>
+          <div class="case-brief"><span class="pill">発展部分のA ·成分の数と、ノイズの除去</span>
+            <p><strong>考える問題</strong> PCA の復元誤差がずっと減少していったら、純粋な信号もより正確に復元されるのでしょうか？</p>
+          </div>
+          <p>シード2505から、2つの潜在因子z~N(0,I₂), 6、そしてチャンネルx=Az+ε, ε~N(0,0.55²I₆)が生成される。Aの行は[1,.2],
+            [.8,−.4], [−.6,.7], [.2,1], [.7,.5],
+            [−.5,−.8]である。訓練には180個の特徴があり、独立した評価には400個の特徴がある。すべての特徴は無次元量である。平均や基底は、訓練データのみで推定される。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>λⱼ=σⱼ²/N,  
+            B<sub>k</sub>=V[:,1:k]<br>x̂=(x−μ<sub>train</sub>)B<sub>k</sub>B<sub>k</sub>ᵀ+μ<sub>train</sub>
+          </div>
+          <ol class="worked-steps">
+            <li>
+              訓練に焦点を当てた行列のSVDを求める。大きな2つの固有値は共通の要因を表している。残りの値は主に観測されるノイズを反映しているが、有限なサンプルでは、これらの値を正確に区別することはできない。
+            </li>
+            <li>
+              k=0は、すべての入力信号を訓練時の平均値に復元するための基準線です。k=1~6を増やすことで、訓練時に観測されるノイズ、独立したノイズ、そして独立したクリーンな信号に対する二乗平均誤差をそれぞれ計算できます。
+            </li>
+            <li>この実行において、クリーンな信号の誤差は、 k=2 最小限の量で十分です。 k=2 その誤差は… 0.601, k=6 銀 1.768
+              もちろん、全体の成分を正確に再現することができます。</li>
+            <li>
+              正確な答えは、合成実験によって得られるものです。実際のセンサーデータからこの指標をそのまま使用することはできません。そのため、繰り返し測定を行ったり、信頼性の高い基準信号を設定したり、後続の作業の性能などを評価する必要があります。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>固有値と累積説明分散は、訓練データの要約を示しています。</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="固有値と累積説明分散は、訓練データの要約です。狭い画面では、左右にスクロールできます。"><img
+                src="../../assets/images/advanced/05-spectrum.svg" width="940" height="450"
+                loading="lazy"
+                alt="左側は、共分散分母がN=180の場合における6個の固有値です。右側は、累積説明分散率です。90%の点線は、参考の基準点であり、最適な成分数を自動的に保証する規則ではありません。">
+            </div>
+            <figcaption>
+              左側は、共分散分母がN=180の場合における6個の固有値です。右側は、累積説明分散率です。90%の点線は、参考の基準点であり、最適な成分数を自動的に保証する規則ではありません。<a
+                href="../../assets/images/advanced/05-spectrum.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>観測を復元するという目標、および信号を復元するという目標</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="観測を復元するという目標、そして信号を復元するという目標です。狭い画面では、左右にスクロールします。"><img
+                src="../../assets/images/advanced/05-reconstruction.svg" width="940" height="450"
+                loading="lazy"
+                alt="3つの曲線は、それぞれ6個の特徴量の残差二乗和の平均値である。雑音の観測値に対する誤差は、kが増えるほど減少するが、純粋な独立信号に対する誤差は、k=2以降増加する。k=0は、訓練データの平均値のみを返す。">
+            </div>
+            <figcaption>
+              3つの曲線は、それぞれ6個の特徴量の残差二乗和の平均値である。雑音の観測値に対する誤差は、kが増えるほど減少するが、純粋な独立信号に対する誤差は、k=2以降増加する。k=0は、訓練データの平均値のみを返す。<a
+                href="../../assets/images/advanced/05-reconstruction.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>訓練によって失われた固有値の合計は、独立した評価の誤差と正確に同じですか？</summary>
+            <p>
+              この等式は、基底を求めた後の、中心化処理が行われた後の復元誤差に関して成り立ちます。他の観測値の共分散や平均値は変わる可能性があるため、独立した評価の誤差については、同じ数値の等式が成り立つとは一般的に言えません。
+            </p>
+          </details>
+        </section>
+        <section id="advanced-b">
+          <h2>B /単位の変化が、PCAの方向に与える影響</h2>
+          <div class="case-brief"><span class="pill">発展：B ·単位の変更と標準化</span>
+            <p><strong>考える問題</strong> チャンネル 3 表示単位のみです。 20 交換してみたんですが、最初の成分が変わってしまいました。 PCA
+              それは、間違っているのでしょうか？</p>
+          </div>
+          <p>
+            前述の訓練結果から、チャンネル3を20倍に変更しただけです。情報内容は同じですが、数値の単位が変わっています。中心化処理を行った後のPCA、および訓練時のチャンネル標準偏差で割った値であるPCAの最初の成分を比較します。図では、不確定性を排除するために、最初の固有ベクトルの二乗値を使用しています。
+          </p>
+          <ol class="worked-steps">
+            <li>中心化は、位置を移動させるだけで、尺度を合わせることはありません。一つの特徴を… 20 バーが増えると、その分散は… 400 また、他の特徴との相互相関も変化します。
+            </li>
+            <li>標準化されていない最初の成分において、チャンネル3の二乗値は99.7%に等しい。数値の大きさが大きいチャンネルは、選択される方向をほぼ支配している。</li>
+            <li>
+              訓練の結果から、平均値と標準偏差を基にしてZ=(X−μ)/sを算出し、その後PCAを適用します。推論の際にも、同じμ,sを使用します。これら2つのグラフのロードングは、それぞれ原始空間と標準化空間で定義された値です。
+            </li>
+            <li>
+              標準化というものは、常に正しいわけではありません。小さな分散が、正確な測定信号なのか、それともほぼ定数に近いノイズチャンネルなのかによって、単位分散として表される効果が異なります。物理的な意味や、その後の目的も考慮する必要があります。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading"><span>計算を図で読む</span><strong>PCA
+                最も保持される分散の単位を確認する。</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small></div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="PCAが最大限に保持する分散の単位を確認する。狭い画面では、左右にスクロールすることができます。"><img
+                src="../../assets/images/advanced/05-scaling.svg" width="940" height="450"
+                loading="lazy"
+                alt="横軸はチャンネル番号、縦軸は、最初の成分の固有ベクトルの二乗の要素です。どちらの方法でも、6個の値の合計は1になりますが、これらは異なる学習空間から得られた方向です。角度の棒は、訓練基準の標準化結果です。">
+            </div>
+            <figcaption>
+              横軸はチャンネル番号、縦軸は、最初の成分の固有ベクトルの二乗の要素です。どちらの方法でも、6個の値の合計は1になりますが、これらは異なる学習空間から得られた方向です。角度の棒は、訓練基準の標準化結果です。<a
+                href="../../assets/images/advanced/05-scaling.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="worked-code">
+            <summary>計算コードの要点を開く</summary>
+            <p>発展Pythonの対応する関数から計算の流れを抜粋しています。完全なデータ生成と補助関数は以下のダウンロードにあります。</p>
+            <pre><code>mu = X_train.mean(axis=0)
+sd = X_train.std(axis=0, ddof=0)
+sd = np.where(sd == 0, 1, sd)
+Z = (X_train - mu) / sd
+_, singular, Vt = np.linalg.svd(Z, full_matrices=False)
+B = Vt[:2].T
+scores = ((X_valid - mu) / sd) @ B
+restored = (scores @ B.T) * sd + mu
+# 単位単位での評価：np.mean(np.sum((X_valid-restored)**2, axis=1))</code></pre>
+          </details>
+          <details class="answer">
+            <summary>標準化空間において、最小の復元誤差というのは、元の単位の二乗誤差も最小になるということでしょうか？</summary>
+            <p>
+              一般的にはそうではありません。標準化された空間では、円柱座標の残差を、チャネル標準偏差の二乗で割った重み付けされた誤差が最小になります。単位の選択によって、最適化される距離の意味が変わります。
+            </p>
+          </details>
+        </section>
+        <section id="advanced-c">
+          <h2>発展 C / 99.8%の分散保存によっても、分類に失敗する場合があります。</h2>
+          <div class="case-brief"><span class="pill">発展されたC ·情報の保存の例外</span>
+            <p><strong>考える問題</strong> 分散を99%以上維持できているのですが、分類の精度がコインを投げるようなレベルにまで低下する可能性はあるのでしょうか？
+            </p>
+          </div>
+          <p>
+            x₁は−8~8を等間隔に分けた100個の格子値です。各x₁にラベルy=−1,+1の観測を一つずつ置き、合計200件を作ります。x₂=0.2yとします。x₁は大きく変わりますがラベルと独立で、x₂は少ししか変わらなくてもラベルを完全に決めます。乱数を使わない対称な構成です。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>Cov(x₁,x₂)=0,  
+            Var(x₂)=0.04<br>PC1方向 =[1,0]ᵀ ⇒ x̂₂=0</div>
+          <ol class="worked-steps">
+            <li>最初の成分が保持する分散は、99.8%です。大きなx₁方向への変動が残るため、圧縮指標だけを見ても、非常に良いと言えます。</li>
+            <li>
+              元々の空間では、すべてのラベルはsign(x₂)だけで決定されます。最初の成分を圧縮すると、同じx₁内で反対のラベルを持つ二つの要素が重なってしまいます。したがって、どんな決定的な分類法においても、このバランスの状態から50%を超えることはできません。
+            </li>
+            <li>この50%は、モデルが正しく学習されなかったために生じる数値ではありません。実際には、2つのラベルを区別するための情報が削除されたことで、限界が生じているのです。
+            </li>
+            <li>
+              ビジコンバージョンの目的は、Xの分散や復元です。地図学習において使用される表現としては、成分の数や前処理などを訓練過程で決定し、分類の目的に合った独立した評価も行う必要があります。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>大きく変わる方向性というのは、重要な正解情報を含むこととは関係がありません。</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="大きく変わる方向というのは、重要な正解情報を含むことではありません。狭い画面では、スクロールバーが左右に動くことになります。"><img
+                src="../../assets/images/advanced/05-counterexample.svg" width="940" height="450"
+                loading="lazy"
+                alt="左側は、x₂=±0.2に完全に分離された2つのラベルです。右側の実際の復元値x₂はすべて0ですが、重複する部分を見分けるために、各ラベルに対して±0.015の表示オフセットが与えられています。このオフセットは、データの処理や精度の計算には使用されません。">
+            </div>
+            <figcaption>
+              左側は、x₂=±0.2に完全に分離された2つのラベルです。右側の実際の復元値x₂はすべて0ですが、重複する部分を見分けるために、各ラベルに対して±0.015の表示オフセットが与えられています。このオフセットは、データの処理や精度の計算には使用されません。<a
+                href="../../assets/images/advanced/05-counterexample.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>説明の分散の目標を99%から99.9%に変更すると、この場合はどうなるでしょうか？</summary>
+            <p>
+              この構成では、最初の成分の比率が約99.8166%であるため、99.9%を満たすためには、2つの成分が必要です。しかし、一般的な分散閾値だけで、すべてのデータのラベル情報を保持できるという意味ではありません。
+            </p>
+          </details>
+          <div class="reproduce-box">
+            <h3>結果を再現して条件を変える</h3>
+            <p>
+              図はこの章の発展Python実験の事前計算結果です。Notebookには7章分の実行コードと28点の図出力があります。計算にはNumPy、図の再生成にはMatplotlibも必要です。
+            </p>
+            <div class="download-links"><a href="../downloads/advanced-experiments.ipynb"
+                download>発展Notebook ↓</a><a href="../downloads/advanced-experiments.py"
+                download>計算用Python ↓</a><a href="../downloads/advanced-figures.py"
+                download>作図用Python ↓</a><a href="../downloads/advanced-results.json"
+                download>数値結果JSON ↓</a></div>
+            <p>Pythonファイル二つを同じフォルダに置いてください。計算ファイルの <code>--chapter 5</code>
+              オプションでこの章だけを実行できます。作図ファイルの <code>--output ./figures</code> オプションは28点のSVGを生成します。</p>
+          </div>
+        </section>
+        <p class="sources">参考文献： <a href="../appendix/references.html#pca">関連概念の参考資料</a> · <a
+            href="../appendix/glossary.html">用語と記号</a></p><button class="print-button" type="button"
+          data-print>このページを印刷 / PDF保存</button>
+        <nav class="next-prev" aria-label="学習順序"><a href="04-probability-and-inference.html">←
+            前の内容：不確実性を扱う方法</a><a href="06-gmm-and-em.html">次に、見つけられない集団をどうやって探すかという方法です。</a></nav>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>概念を結び付け、計算で確かめる学習記録。<br>合成データ · 独自の説明と実験</p><a
+          href="../appendix/references.html">参考資料と制作情報 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

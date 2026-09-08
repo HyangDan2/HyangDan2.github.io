@@ -1,0 +1,447 @@
+<!doctype html>
+<html data-language="ja" lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="誤差をどのように減らすか、どうやって決定するのでしょうか？勾配や連鎖法則を計算し、学習率や座標スケールが最適化されたパスに与える影響を観察します。">
+    <meta name="theme-color" content="#18312e">
+    <title>モデルを改善する方法 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">本文へスキップ</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab 学習ホーム"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="メインメニュー"><a href="../main.html#curriculum">学習目次</a><a
+            href="../main.html#labs">実験室</a><a href="../appendix/references.html">参考資料</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="言語"><a href="../../chapters/03-optimization.html"
+              lang="en" hreflang="en" data-language="en">English</a><a
+              href="../../ko/chapters/03-optimization.html" lang="ko" hreflang="ko"
+              data-language="ko">한국어</a><a href="../../ja/chapters/03-optimization.html" lang="ja"
+              hreflang="ja" data-language="ja" aria-current="true">日本語</a></nav><button
+            type="button" class="theme-toggle" data-theme-toggle aria-pressed="false"
+            hidden>ダークモード</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Chapter 03 / Optimization</div>
+        <h1>モデルを改善する方法</h1>
+        <p>誤差をどのように減らすか、どうやって決定するのでしょうか？勾配や連鎖法則を計算し、学習率や座標スケールが最適化されたパスに与える影響を観察します。</p>
+        <div class="meta"><span>02 · 最小二乗法</span><span>微分 · 連鎖律 · 勾配降下法</span><span>発展事例3件 ·
+            比較図4点</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>このページの流れ</summary>
+        <ol>
+          <li><a href="#question">01 / 長くて狭い谷</a></li>
+          <li><a href="#gradient">02 / の微分を合計すると、傾きが得られます。</a></li>
+          <li><a href="#chain">03 / 合成関数の変化率の伝達</a></li>
+          <li><a href="#rate">04 / 学習率の安定性条件</a></li>
+          <li><a href="#scaling">05 / 座標の調整と確率的な更新</a></li>
+          <li><a href="#review">06 /実験と検証</a></li>
+          <li><a href="#advanced-a">深層のA /で回転する谷において、3つの最適化手法を比較する。</a></li>
+          <li><a href="#advanced-b">発展B / ロジスティック勾配を中心差分で検証する</a></li>
+          <li><a href="#advanced-c">深化 C / SGD そのノイズのレベルを予測する方法</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="question">
+          <h2>01 / 長くて狭い谷</h2>
+          <p>二つの座標u,vにおいて、J = (u² +
+            κv²)/2の地形があるとします。κが大きい場合、v方向は急であり、u方向は緩やかです。同じ歩幅で動く場合、急な方向では谷を越えることができます。モデルの学習における多くの困難は、このような異なる方向における曲率に起因しています。
+          </p>
+          <aside class="note "><strong>この章の目標</strong>
+            <p>一度の更新を手動で計算する。収束条件を学習率と勾配で表現し、連鎖法則やJacobian·SGDの役割を明確に区別する。</p>
+          </aside>
+          <nav class="study-route" aria-label="発展学習へ移動"><strong>基礎の次は発展事例3件 · 比較図4点</strong><a
+              href="#advanced-a">深層のA /で回転する谷において、3つの最適化手法を比較する。</a><a href="#advanced-b">発展B /
+              ロジスティック勾配を中心差分で検証する</a><a href="#advanced-c">深化 C / SGD そのノイズのレベルを予測する方法</a></nav>
+        </section>
+        <section id="gradient">
+          <h2>02 / の微分を合計すると、傾きが得られます。</h2>
+          <p>
+            偏微分とは、他の変数を固定し、ただ一つの変数のみを変動させたときの変化率のことです。傾きとは、偏微分をまとめたベクトルです。小さな変動Δθに対する関数の変化は、傾きと変動の内挿によって表されます。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>∇J(u,v) =
+            [u,κv]<sup>T</sup><br>J(θ + Δθ) ≈ J(θ) + ∇J(θ)<sup>T</sup>Δθ</div>
+          <p>
+            同じユークリッド長さを持つ移動経路において、負の傾きの方向で最も多くの近似が可能になるのは、1次の近似です。あまり遠くに移動すると、近似が崩れてしまいます。また、傾きが0の場合でも、最小点というわけではありません。u²
+            − v²の原点は、アンジュポイントです。Hessianは、2次の偏微分行列であり、正の向きの場合は、厳密な局所的最小点となります。</p>
+        </section>
+        <section id="chain">
+          <h2>03 / 合成関数の変化率の伝達</h2>
+          <p>p = wx + b, L = (p −
+            y)²/2を見てみましょう。wは、予測されたpを経て損失に至ります。各接続における変化率を掛け合わせることで、最終的な変化率が得られます。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>∂L/∂p = p − y,   ∂p/∂w =
+            x<br>∂L/∂w = (p − y)x,   ∂L/∂b = p − y</div>
+          <p>x = 2, y = 5, w = 1, b = 0の場合、損失は4.5,
+            wであり、傾きは−6です。学習率が0.1の場合、w,bを一緒に更新すると、結果は1.6,0.3となり、損失は1.125になります。</p>
+          <p>ベクトル出力の微分をまとめる Jacobian 出力は行であり、入力は列です。 J<sub>f∘g</sub> =
+            J<sub>f</sub>J<sub>g</sub>これが成り立つ。逆伝播法では、全てのJacobianを作るのではなく、損失から出発するベクトルと、各層のJacobianの積を逆に計算するのだ。
+          </p>
+        </section>
+        <section id="rate">
+          <h2>04 / 学習率の安定性条件</h2>
+          <p>二次の目的関数において、uは毎回1 − η倍、vは1 − ηκ倍の割合で変化します。二つの絶対値が1より小さい場合、すべての初期点から原点に収束します。</p>
+          <div class="equation"><span class="eq-label">この実験における正確な収束条件</span>θ<sub>t+1</sub> =
+            θ<sub>t</sub> − η∇J(θ<sub>t</sub>)<br>u<sub>t+1</sub> = (1 −
+            η)u<sub>t</sub><br>v<sub>t+1</sub> = (1 − ηκ)v<sub>t</sub><br>0 &lt; η &lt; 2/max(1,κ)
+          </div>
+          <p>κ =
+            6の場合、ηは1/3よりも小さくなければならない。0.15と0.4を比較してみよう。境界値では、減少しない振動が生じる可能性がある。一般的な非線形モデルでは、すべての点の曲率を知るのは困難であるため、損失の変化や終端条件を同時に管理する必要がある。
+          </p>
+        </section>
+        <section id="scaling">
+          <h2>05 / 座標の調整と確率的な更新</h2>
+          <p>
+            実験における「軸の補正」とは、v方向の傾きをκで割るという処理です。つまり、2つの方向が同じ比率で減少するということです。これは、適切な座標変換によって理解することができます。特徴量の標準化も有効かもしれませんが、いつもこのような完璧な補正ができるわけではありません。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>θ<sub>t+1</sub> = θ<sub>t</sub> −
+            η diag(1,1/κ)∇J(θ<sub>t</sub>)</div>
+          <p>SGD
+            小さなランダムな配置を用いて、全体の傾きを推定することで、計算コストを削減することができます。均一なサンプル抽出などの条件下では、不都合な推定量が生じますが、個々のステップでの損失は増加する可能性があります。配置のサイズや学習率は、コストと変動性の両方に影響を与えます。
+          </p>
+          <pre><code>import numpy as np
+point = np.array([3., 2.])
+kappa, rate = 6., .15
+losses = []
+for step in range(45):
+    losses.append((point[0]**2 + kappa*point[1]**2)/2)
+    point -= rate*np.array([point[0], kappa*point[1]])
+print("final point:", point)
+print("loss decreased:", losses[-1] &lt; losses[0])</code></pre>
+        </section>
+        <section id="review">
+          <h2>06 /実験と検証</h2>
+          <figure class="figure" tabindex="0" aria-label="計算結果のグラフです。狭い画面では、左右にスクロールできます。"><svg
+              xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+              aria-labelledby="gd-path-title">
+              <title id="gd-path-title">二次損失の等高線、および勾配下降曲線</title>
+              <defs>
+                <clippath id="gd-path-clip">
+                  <rect x="64" y="22" width="596" height="283" />
+                </clippath>
+              </defs>
+              <rect width="680" height="360" fill="white" />
+              <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-5</text><text x="54" y="309" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-4</text>
+              <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-3</text><text x="54" y="252.4" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-2.4</text>
+              <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">-1</text><text x="54" y="195.8" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">-0.8</text>
+              <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                font-family="sans-serif" font-size="11" fill="#526964">1</text><text x="54"
+                y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                fill="#526964">0.8</text>
+              <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">3</text><text x="54" y="82.6" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">2.4</text>
+              <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660" y="328"
+                text-anchor="middle" font-family="sans-serif" font-size="11"
+                fill="#526964">5</text><text x="54" y="26" text-anchor="end"
+                font-family="sans-serif" font-size="11" fill="#526964">4</text>
+              <g clip-path="url(#gd-path-clip)">
+                <path
+                  d="M446.29 163.50 L446.17 162.43 L445.83 161.37 L445.25 160.31 L444.45 159.25 L443.42 158.21 L442.16 157.19 L440.69 156.18 L439.00 155.19 L437.10 154.23 L434.99 153.29 L432.69 152.38 L430.19 151.50 L427.50 150.65 L424.64 149.83 L421.60 149.06 L418.40 148.32 L415.04 147.63 L411.54 146.98 L407.91 146.37 L404.14 145.81 L400.27 145.30 L396.28 144.84 L392.21 144.43 L388.05 144.08 L383.82 143.77 L379.52 143.52 L375.19 143.33 L370.81 143.19 L366.41 143.10 L362.00 143.08 L357.59 143.10 L353.19 143.19 L348.81 143.33 L344.48 143.52 L340.18 143.77 L335.95 144.08 L331.79 144.43 L327.72 144.84 L323.73 145.30 L319.86 145.81 L316.09 146.37 L312.46 146.98 L308.96 147.63 L305.60 148.32 L302.40 149.06 L299.36 149.83 L296.50 150.65 L293.81 151.50 L291.31 152.38 L289.01 153.29 L286.90 154.23 L285.00 155.19 L283.31 156.18 L281.84 157.19 L280.58 158.21 L279.55 159.25 L278.75 160.31 L278.17 161.37 L277.83 162.43 L277.71 163.50 L277.83 164.57 L278.17 165.63 L278.75 166.69 L279.55 167.75 L280.58 168.79 L281.84 169.81 L283.31 170.82 L285.00 171.81 L286.90 172.77 L289.01 173.71 L291.31 174.62 L293.81 175.50 L296.50 176.35 L299.36 177.17 L302.40 177.94 L305.60 178.68 L308.96 179.37 L312.46 180.02 L316.09 180.63 L319.86 181.19 L323.73 181.70 L327.72 182.16 L331.79 182.57 L335.95 182.92 L340.18 183.23 L344.48 183.48 L348.81 183.67 L353.19 183.81 L357.59 183.90 L362.00 183.92 L366.41 183.90 L370.81 183.81 L375.19 183.67 L379.52 183.48 L383.82 183.23 L388.05 182.92 L392.21 182.57 L396.28 182.16 L400.27 181.70 L404.14 181.19 L407.91 180.63 L411.54 180.02 L415.04 179.37 L418.40 178.68 L421.60 177.94 L424.64 177.17 L427.50 176.35 L430.19 175.50 L432.69 174.62 L434.99 173.71 L437.10 172.77 L439.00 171.81 L440.69 170.82 L442.16 169.81 L443.42 168.79 L444.45 167.75 L445.25 166.69 L445.83 165.63 L446.17 164.57 L446.29 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M530.57 163.50 L530.34 161.36 L529.65 159.23 L528.50 157.11 L526.89 155.01 L524.83 152.93 L522.32 150.88 L519.38 148.86 L516.00 146.89 L512.20 144.96 L507.99 143.08 L503.38 141.25 L498.38 139.49 L493.01 137.79 L487.28 136.17 L481.20 134.62 L474.80 133.14 L468.09 131.76 L461.09 130.45 L453.81 129.24 L446.29 128.13 L438.53 127.10 L430.57 126.18 L422.41 125.37 L414.09 124.65 L405.63 124.04 L397.05 123.55 L388.37 123.16 L379.62 122.88 L370.82 122.71 L362.00 122.65 L353.18 122.71 L344.38 122.88 L335.63 123.16 L326.95 123.55 L318.37 124.04 L309.91 124.65 L301.59 125.37 L293.43 126.18 L285.47 127.10 L277.71 128.13 L270.19 129.24 L262.91 130.45 L255.91 131.76 L249.20 133.14 L242.80 134.62 L236.72 136.17 L230.99 137.79 L225.62 139.49 L220.62 141.25 L216.01 143.08 L211.80 144.96 L208.00 146.89 L204.62 148.86 L201.68 150.88 L199.17 152.93 L197.11 155.01 L195.50 157.11 L194.35 159.23 L193.66 161.36 L193.43 163.50 L193.66 165.64 L194.35 167.77 L195.50 169.89 L197.11 171.99 L199.17 174.07 L201.68 176.12 L204.62 178.14 L208.00 180.11 L211.80 182.04 L216.01 183.92 L220.62 185.75 L225.62 187.51 L230.99 189.21 L236.72 190.83 L242.80 192.38 L249.20 193.86 L255.91 195.24 L262.91 196.55 L270.19 197.76 L277.71 198.88 L285.47 199.90 L293.43 200.82 L301.59 201.63 L309.91 202.35 L318.37 202.96 L326.95 203.45 L335.63 203.84 L344.38 204.12 L353.18 204.29 L362.00 204.35 L370.82 204.29 L379.62 204.12 L388.37 203.84 L397.05 203.45 L405.63 202.96 L414.09 202.35 L422.41 201.63 L430.57 200.82 L438.53 199.90 L446.29 198.88 L453.81 197.76 L461.09 196.55 L468.09 195.24 L474.80 193.86 L481.20 192.38 L487.28 190.83 L493.01 189.21 L498.38 187.51 L503.38 185.75 L507.99 183.92 L512.20 182.04 L516.00 180.11 L519.38 178.14 L522.32 176.12 L524.83 174.07 L526.89 171.99 L528.50 169.89 L529.65 167.77 L530.34 165.64 L530.57 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M614.86 163.50 L614.51 160.29 L613.48 157.10 L611.75 153.92 L609.34 150.76 L606.25 147.64 L602.49 144.57 L598.07 141.54 L593.00 138.58 L587.30 135.68 L580.98 132.86 L574.07 130.13 L566.57 127.49 L558.51 124.94 L549.91 122.50 L540.80 120.17 L531.20 117.97 L521.13 115.88 L510.63 113.93 L499.72 112.11 L488.43 110.44 L476.80 108.91 L464.85 107.53 L452.62 106.30 L440.14 105.23 L427.45 104.32 L414.57 103.57 L401.56 102.98 L388.43 102.56 L375.23 102.31 L362.00 102.23 L348.77 102.31 L335.57 102.56 L322.44 102.98 L309.43 103.57 L296.55 104.32 L283.86 105.23 L271.38 106.30 L259.15 107.53 L247.20 108.91 L235.57 110.44 L224.28 112.11 L213.37 113.93 L202.87 115.88 L192.80 117.97 L183.20 120.17 L174.09 122.50 L165.49 124.94 L157.43 127.49 L149.93 130.13 L143.02 132.86 L136.70 135.68 L131.00 138.58 L125.93 141.54 L121.51 144.57 L117.75 147.64 L114.66 150.76 L112.25 153.92 L110.52 157.10 L109.49 160.29 L109.14 163.50 L109.49 166.71 L110.52 169.90 L112.25 173.08 L114.66 176.24 L117.75 179.36 L121.51 182.43 L125.93 185.46 L131.00 188.42 L136.70 191.32 L143.02 194.14 L149.93 196.87 L157.43 199.51 L165.49 202.06 L174.09 204.50 L183.20 206.83 L192.80 209.03 L202.87 211.12 L213.37 213.07 L224.28 214.89 L235.57 216.56 L247.20 218.09 L259.15 219.47 L271.38 220.70 L283.86 221.77 L296.55 222.68 L309.43 223.43 L322.44 224.02 L335.57 224.44 L348.77 224.69 L362.00 224.77 L375.23 224.69 L388.43 224.44 L401.56 224.02 L414.57 223.43 L427.45 222.68 L440.14 221.77 L452.62 220.70 L464.85 219.47 L476.80 218.09 L488.43 216.56 L499.72 214.89 L510.63 213.07 L521.13 211.12 L531.20 209.03 L540.80 206.83 L549.91 204.50 L558.51 202.06 L566.57 199.51 L574.07 196.87 L580.98 194.14 L587.30 191.32 L593.00 188.42 L598.07 185.46 L602.49 182.43 L606.25 179.36 L609.34 176.24 L611.75 173.08 L613.48 169.90 L614.51 166.71 L614.86 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M719.60 163.50 L719.11 158.97 L717.64 154.44 L715.20 149.94 L711.79 145.48 L707.42 141.07 L702.10 136.72 L695.85 132.45 L688.68 128.26 L680.62 124.16 L671.69 120.17 L661.91 116.31 L651.30 112.57 L639.91 108.97 L627.75 105.52 L614.86 102.23 L601.28 99.11 L587.04 96.16 L572.19 93.40 L556.76 90.83 L540.80 88.46 L524.35 86.29 L507.45 84.34 L490.15 82.60 L472.50 81.09 L454.55 79.80 L436.35 78.74 L417.94 77.92 L399.38 77.32 L380.72 76.97 L362.00 76.85 L343.28 76.97 L324.62 77.32 L306.06 77.92 L287.65 78.74 L269.45 79.80 L251.50 81.09 L233.85 82.60 L216.55 84.34 L199.65 86.29 L183.20 88.46 L167.24 90.83 L151.81 93.40 L136.96 96.16 L122.72 99.11 L109.14 102.23 L96.25 105.52 L84.09 108.97 L72.70 112.57 L62.09 116.31 L52.31 120.17 L43.38 124.16 L35.32 128.26 L28.15 132.45 L21.90 136.72 L16.58 141.07 L12.21 145.48 L8.80 149.94 L6.36 154.44 L4.89 158.97 L4.40 163.50 L4.89 168.03 L6.36 172.56 L8.80 177.06 L12.21 181.52 L16.58 185.93 L21.90 190.28 L28.15 194.55 L35.32 198.74 L43.38 202.84 L52.31 206.83 L62.09 210.69 L72.70 214.43 L84.09 218.03 L96.25 221.48 L109.14 224.77 L122.72 227.89 L136.96 230.84 L151.81 233.60 L167.24 236.17 L183.20 238.54 L199.65 240.71 L216.55 242.66 L233.85 244.40 L251.50 245.91 L269.45 247.20 L287.65 248.26 L306.06 249.08 L324.62 249.68 L343.28 250.03 L362.00 250.15 L380.72 250.03 L399.38 249.68 L417.94 249.08 L436.35 248.26 L454.55 247.20 L472.50 245.91 L490.15 244.40 L507.45 242.66 L524.35 240.71 L540.80 238.54 L556.76 236.17 L572.19 233.60 L587.04 230.84 L601.28 227.89 L614.86 224.77 L627.75 221.48 L639.91 218.03 L651.30 214.43 L661.91 210.69 L671.69 206.83 L680.62 202.84 L688.68 198.74 L695.85 194.55 L702.10 190.28 L707.42 185.93 L711.79 181.52 L715.20 177.06 L717.64 172.56 L719.11 168.03 L719.60 163.50"
+                  fill="none" stroke="#c5d5c7" stroke-width="1" />
+                <path
+                  d="M540.80 92.75 L513.98 156.42 L491.18 162.79 L471.81 163.43 L455.33 163.49 L441.33 163.50 L429.43 163.50 L419.32 163.50 L410.72 163.50 L403.41 163.50 L397.20 163.50 L391.92 163.50 L387.43 163.50 L383.62 163.50 L380.38 163.50 L377.62 163.50 L375.28 163.50 L373.28 163.50 L371.59 163.50 L370.15 163.50 L368.93 163.50 L367.89 163.50 L367.01 163.50 L366.26 163.50 L365.62 163.50 L365.07 163.50 L364.61 163.50 L364.22 163.50 L363.89 163.50 L363.61 163.50 L363.36 163.50 L363.16 163.50 L362.99 163.50 L362.84 163.50 L362.71 163.50 L362.61 163.50 L362.51 163.50 L362.44 163.50 L362.37 163.50 L362.32 163.50 L362.27 163.50 L362.23 163.50 L362.19 163.50 L362.16 163.50 L362.14 163.50 L362.12 163.50"
+                  fill="none" stroke="#b15d2d" stroke-width="2.2" />
+                <circle cx="540.8" cy="92.75" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="513.98" cy="156.42499999999998" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="491.183" cy="162.79250000000002" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="471.80555000000004" cy="163.42925" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="455.3347175" cy="163.49292499999999" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="441.33450987500004" cy="163.4992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="429.43433339375" cy="163.49992924999998" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="419.3191833846875" cy="163.49999292500002" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="410.72130587698433" cy="163.4999992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="403.4131099954367" cy="163.49999992924998" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="397.2011434961212" cy="163.499999992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="391.920971971703" cy="163.4999999992925" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="387.4328261759476" cy="163.49999999992923" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="383.61790224955547" cy="163.49999999999292" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="380.37521691212214" cy="163.4999999999993" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="377.61893437530375" cy="163.49999999999994" r="2" fill="#b15d2d"
+                  opacity="0.7" />
+                <circle cx="375.2760942190082" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="373.284680086157" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="371.59197807323346" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="370.1531813622484" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="368.9302041579112" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="367.8906735342245" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="367.0070725040908" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="366.2560116284772" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="365.6176098842056" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="365.0749684015748" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="364.61372314133854" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="364.2216646701378" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.8884149696171" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.60515272417456" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.3643798155484" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="363.15972284321606" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.98576441673373" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.83789975422366" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.7122147910901" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.60538257242655" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.5145751865626" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.4373889085782" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.3717805722914" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.31601348644773" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.2686114634806" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.22831974395854" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.1940717823647" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.16496101501" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.1402168627585" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="362.1191843333447" cy="163.5" r="2" fill="#b15d2d" opacity="0.7" />
+                <circle cx="540.8" cy="92.75" r="5" fill="#106858" opacity="0.7" />
+                <circle cx="362" cy="163.5" r="5" fill="#18312e" opacity="0.7" />
+              </g>
+              <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">u
+                (unitless)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">v
+                (unitless)</text>
+            </svg>
+            <figcaption>基本設定で直接計算された結果です。以下の実験室では、設定を変更することができます。</figcaption>
+          </figure>
+          <p>
+            曲率を2,6,12に変更し、安定した学習率の範囲が狭くなるかを確認する。同じ設定で、軸の補正前後の結果を比較する。固定された座標軸の外側にある経路は表示されない。損失が10¹²を超えた場合は、繰り返しを中止する。
+          </p>
+          <details class="answer">
+            <summary>傾斜の実装は、どのようにして検証されるのでしょうか？</summary>
+            <p>各座標に小さなhを加算し、引いた値を2hで割った差を、中央値と比較します。hが小すぎると、浮動小数点数値の誤差が大きくなります。</p>
+          </details>
+          <details class="answer">
+            <summary>非常に小さい学習率では、すべての問題を解決できるのでしょうか？</summary>
+            <p>収束の速度が遅くなる可能性があり、また、アンチャウントポイントや局所的最小値、誤った傾きの問題もすべて解決されない。</p>
+          </details><a class="callout-link" href="../labs/gradient-descent.html">勾配下降路の実験室での熱の移動
+            →</a>
+        </section>
+        <section id="advanced-a">
+          <h2>深層のA /で回転する谷において、3つの最適化手法を比較する。</h2>
+          <div class="case-brief"><span class="pill">発展 A ·：回転後の曲率とモーメント</span>
+            <p><strong>考える問題</strong> 軸と平行ではない、狭い渓谷の中で、GDとNewtonはどのような経路を選ぶのでしょうか？</p>
+          </div>
+          <p>J(w)=½wᵀHw, H=R diag(1,30)
+            Rᵀであり、Rは36°の回転行列です。始点は[3,−2]ᵀ]であり、最小値は原点です。80回の更新を経て、GD(η=0.06),
+            heavy-ballのモーメントン(η=0.07, β=0.65), Newton(η=1))が比較されます。これは決定性実験であり、すべての座標は無次元です。</p>
+          <div class="equation"><span class="eq-label">重要な式</span>GD:
+            w<sub>t+1</sub>=(I−ηH)w<sub>t</sub><br>Momentum:
+            v<sub>t+1</sub>=βv<sub>t</sub>+Hw<sub>t</sub>,  
+            w<sub>t+1</sub>=w<sub>t</sub>−ηv<sub>t+1</sub><br>Newton: HΔ=∇J(w),   w←w−Δ</div>
+          <ol class="worked-steps">
+            <li>GD 固有ベクトル座標に変換すると、誤差はそれぞれ以下のようになります。 1−ηλ それだけに、倍増されます。 η=0.06 では、 λ=1 方向が 0.94,
+              λ=30 方向が −0.8 そして、ゆっくりとした減少と、振動が同時に現れます。</li>
+            <li>
+              モーメントは、過去の移動量を累積して計算されます。ηがGDの上限値2/30よりも大きくても、同じ単純な条件GDをそのまま適用することはできません。各固有方向の特性方程式r²−(1+β−ηλ)r+β=0の根の大きさを確認する必要があります。
+            </li>
+            <li>80回後には、損失はGD
+              3.93e-05となり、モーメントは4.63e-15です。この数値は、指定された二次式と設定の結果に基づくものです。ただし、これはすべての損失においてモーメントが速いという意味ではありません。
+            </li>
+            <li>Newton この二乗方程式から、正確な値を求めることができます。 Hessian
+              それを解いて、一度に元の位置に戻す。大規模なモデルでは、線形計画法の計算量が大きくなります。また、非凸問題の場合も同様です。 Hessian 同じ性質を持つとは限りません。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>傾きの方向と、最小点の方向が異なる谷</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="傾きの方向と最小点の方向が異なる谷。狭い画面では、左右にスクロールできます。"><img
+                src="../../assets/images/advanced/03-paths.svg" width="940" height="450"
+                loading="lazy"
+                alt="等高線はJ(w)が等しい点を結びます。経路は最初の24回の更新を示し、線と点の形でGD、モメンタム、Newtonを区別します。開始点からNewtonの1回の移動で原点に達します。">
+            </div>
+            <figcaption>
+              等高線はJ(w)が等しい点を結びます。経路は最初の24回の更新を示し、線と点の形でGD、モメンタム、Newtonを区別します。開始点からNewtonの1回の移動で原点に達します。<a
+                href="../../assets/images/advanced/03-paths.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>同じ繰り返し回数で比較した場合の損失の減少</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="同じ繰り返し回数で比較した場合の損失の減少。狭い画面では、左右にスクロールすることができます。"><img
+                src="../../assets/images/advanced/03-convergence.svg" width="940" height="450"
+                loading="lazy"
+                alt="3つのアルゴリズムの0~80倍の損失は、ログ軸上で表示されています。0や非常に小さい値の場合は、図に示される範囲内で10⁻¹⁶に移動させて表示されます。計算された損失は、この表示範囲を変更することはありません。">
+            </div>
+            <figcaption>
+              3つのアルゴリズムの0~80倍の損失は、ログ軸上で表示されています。0や非常に小さい値の場合は、図に示される範囲内で10⁻¹⁶に移動させて表示されます。計算された損失は、この表示範囲を変更することはありません。<a
+                href="../../assets/images/advanced/03-convergence.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>現在、Hに、対称成分の逆数を乗じた値は、Newtonと等しくなりますか？</summary>
+            <p>
+              いいえ。回転により非対角成分がゼロではありません。diag(H)の逆数は座標ごとの大きさを調整するだけで、軸間の結合を除けません。この例のNewton法はH全体の線形方程式を解きます。
+            </p>
+          </details>
+        </section>
+        <section id="advanced-b">
+          <h2>発展B / ロジスティック勾配を中心差分で検証する</h2>
+          <div class="case-brief"><span class="pill">発展 B · ロジスティック損失の傾きの検査</span>
+            <p><strong>考える問題</strong> 直接微分によって得られたベクトル勾配を信頼する前に、数値微分によって確認してみましょう。</p>
+          </div>
+          <p>
+            切片を含む6×3計画行列の行は[1,−2,.5]、[1,−1,1]、[1,−.5,−1]、[1,.5,.2]、[1,1,−.7]、[1,2,1.2]です。y=[0,0,1,0,1,1]、検査点w=[.2,−.3,.4]とします。正則化なしの平均二値交差エントロピーを使います。
+          </p>
+          <div class="equation"><span class="eq-label">重要な式</span>J(w) =
+            (1/N)Σ[log(1+exp(xᵢᵀw))−yᵢxᵢᵀw]<br>∇J =
+            Xᵀ(sigmoid(Xw)−y)/N<br>gⱼ<sup>FD</sup>=[J(w+heⱼ)−J(w−heⱼ)]/(2h)</div>
+          <ol class="worked-steps">
+            <li>log(1+exp(z))をそのまま計算すると、大きなzからoverflowまでの値が得られます。NumPy
+              logaddexp(0,z)についても、同じ値を安定して計算できます。</li>
+            <li>解釈可能な傾きは、[0.065, -0.534,
+              0.256]]です。熱ベクトルの大きさは3であり、各項の符号は、そのパラメータが増加する際の損失の変化の方向を示しています。</li>
+            <li>
+              hを10⁻¹~10⁻¹⁰に変えて、最大絶対差を求めます。この実行における最小絶対差は5.58e-12です。hがあまりにも大きすぎると、切り捨て誤差が生じます。一方、hがあまりにも小さすぎると、二つのほぼ同じ値の減算誤差が生じます。
+            </li>
+            <li>複数のパラメータの値や入力の大きさを考慮して判断します。一つの点の一致だけで、全体の学習コードが正しいと結論付けることはありません。</li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>より小さい間隔のほうが良いのでしょうか？</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="スクロールの幅が小さい方が良いのでしょうか？画面が狭い場合は、左右にスクロールする必要があります。"><img
+                src="../../assets/images/advanced/03-gradient.svg" width="940" height="450"
+                loading="lazy"
+                alt="横軸は中央の偏差値hを示し、縦軸は、三つの傾き成分の中で最大の絶対誤差を示しています。両軸は対数スケールです。十分に小さいhの場合でも、上昇する傾きが確認できます。">
+            </div>
+            <figcaption>
+              横軸は中央の偏差値hを示し、縦軸は、三つの傾き成分の中で最大の絶対誤差を示しています。両軸は対数スケールです。十分に小さいhの場合でも、上昇する傾きが確認できます。<a
+                href="../../assets/images/advanced/03-gradient.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="worked-code">
+            <summary>計算コードの要点を開く</summary>
+            <p>発展Pythonの対応する関数から計算の流れを抜粋しています。完全なデータ生成と補助関数は以下のダウンロードにあります。</p>
+            <pre><code>def loss(w):
+    z = X @ w
+    return np.mean(np.logaddexp(0, z) - y * z)
+p = 1 / (1 + np.exp(-(X @ w)))
+gradient = X.T @ (p - y) / len(y)
+h = 1e-5
+numeric = np.array([(loss(w+h*e)-loss(w-h*e))/(2*h)
+                    for e in np.eye(len(w))])
+print(np.max(np.abs(numeric - gradient)))</code></pre>
+          </details>
+        </section>
+        <section id="advanced-c">
+          <h2>深化 C / SGD そのノイズのレベルを予測する方法</h2>
+          <div class="case-brief"><span class="pill">発展されたC · SGDのノイズレベル</span>
+            <p><strong>考える問題</strong> 平均的に、正しい傾度を使用しても、損失が0にまで下がらない理由を、式を用いて予測してみましょう。</p>
+          </div>
+          <p>スカラー損失はJ(w)=λw²/2, λ=4を使用します。ミニバッチの傾斜はg=λw+ξ, Eξ=0, Varξ=σg²/Bでモデル化されます。σg=2,
+            η=0.1、開始時の値はw=2です。実際のデータセットをバッチに分ける代わりに、バッチのサイズに応じてガウス分布の傾斜を直接生成する、という単純化された実験です。シード値は2303、各Bごとに2,048個の独立した経路の平均を取ります。
+          </p>
+          <div class="equation"><span
+              class="eq-label">重要な式</span>w<sub>t+1</sub>=(1−ηλ)w<sub>t</sub>−ηξ<sub>t</sub><br>V<sub>∞</sub>=(1−ηλ)²V<sub>∞</sub>+η²σg²/B<br>E[J]<sub>∞</sub>=ησg²
+            / [2B(2−ηλ)]</div>
+          <ol class="worked-steps">
+            <li>傾斜のノイズが現在、 w そして、独立している。| 1−ηλ|&lt;1の場合、有限な正規分布を得ることができます。ここでは、1−ηλ=0.6を考えます。</li>
+            <li>初期値の効果がなくなった後も、毎回新しいノイズが入ってくるため、定数の学習率は一定のロスレッジバースを形成します。</li>
+            <li>B=1,16,64の理論的な損失の底は、それぞれ0.125, 0.0078125,
+              0.001953125となります。同じ学習率で、エポック数を16倍に増やすと、この単純なモデルの正規化損失は1/16になります。</li>
+            <li>
+              学習率を下げても、ノイズレベルは低くなりますが、初期の収束速度は遅くなります。ブロッキングの計算コスト、データの相関性、非線形損失の場合には、この式をそのまま性能保証として使用することはできません。
+            </li>
+          </ol>
+          <figure class="advanced-figure">
+            <div class="figure-heading">
+              <span>計算を図で読む</span><strong>シミュレーションと、正規分布による計算をうまく調整してみましょう。</strong><small
+                class="scroll-hint">左右にスクロールしてグラフ全体を確認してください。</small>
+            </div>
+            <div class="graph-scroll" tabindex="0"
+              aria-label="シミュレーションと、正規分布に基づく計算を合わせて行ってみてください。画面が狭い場合は、左右にスクロールできます。"><img
+                src="../../assets/images/advanced/03-noise.svg" width="940" height="450"
+                loading="lazy"
+                alt="実線と破線は、B=1,16,64の2,048回分の平均損失を示しています。水平な点線は、それぞれの理論的な正常値に対する損失を示しています。120回分の区間では、初期の減少とノイズの底の状態を比較しています。">
+            </div>
+            <figcaption>
+              実線と破線は、B=1,16,64の2,048回分の平均損失を示しています。水平な点線は、それぞれの理論的な正常値に対する損失を示しています。120回分の区間では、初期の減少とノイズの底の状態を比較しています。<a
+                href="../../assets/images/advanced/03-noise.svg" download>SVGをダウンロード ↗</a>
+            </figcaption>
+          </figure>
+          <details class="answer">
+            <summary>GDが静かな状態のままにしておき、ηをそのままにしておくと、このような損失の底が残るのでしょうか？</summary>
+            <p>
+              σg=0の場合、理論上の正常な損失は0です。安定した学習率の場合、初期の誤差は指数関数的に減少します。現在の状態は、定数的な学習率によって、新しい傾きやノイズが継続的に与えられている結果です。
+            </p>
+          </details>
+          <div class="reproduce-box">
+            <h3>結果を再現して条件を変える</h3>
+            <p>
+              図はこの章の発展Python実験の事前計算結果です。Notebookには7章分の実行コードと28点の図出力があります。計算にはNumPy、図の再生成にはMatplotlibも必要です。
+            </p>
+            <div class="download-links"><a href="../downloads/advanced-experiments.ipynb"
+                download>発展Notebook ↓</a><a href="../downloads/advanced-experiments.py"
+                download>計算用Python ↓</a><a href="../downloads/advanced-figures.py"
+                download>作図用Python ↓</a><a href="../downloads/advanced-results.json"
+                download>数値結果JSON ↓</a></div>
+            <p>Pythonファイル二つを同じフォルダに置いてください。計算ファイルの <code>--chapter 3</code>
+              オプションでこの章だけを実行できます。作図ファイルの <code>--output ./figures</code> オプションは28点のSVGを生成します。</p>
+          </div>
+        </section>
+        <p class="sources">参考文献： <a href="../appendix/references.html#mml">関連概念の参考資料</a> · <a
+            href="../appendix/glossary.html">用語と記号</a></p><button class="print-button" type="button"
+          data-print>このページを印刷 / PDF保存</button>
+        <nav class="next-prev" aria-label="学習順序"><a href="02-linear-regression.html">←
+            前のページ：予測を作り出す数学</a><a href="04-probability-and-inference.html">次に：不確実性を扱う方法について →</a>
+        </nav>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>概念を結び付け、計算で確かめる学習記録。<br>合成データ · 独自の説明と実験</p><a
+          href="../appendix/references.html">参考資料と制作情報 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

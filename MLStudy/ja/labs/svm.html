@@ -1,0 +1,373 @@
+<!doctype html>
+<html data-language="ja" lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="数学からモデルへ。HD2Labの個人的な機械学習の学習記録。">
+    <meta name="theme-color" content="#18312e">
+    <title>SVM分類境界実験室 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script defer src="../assets/js/math-core.js"></script>
+    <script defer src="../assets/js/svm-core.js"></script>
+    <script defer src="../assets/js/figures.js"></script>
+    <script defer src="../assets/js/labs.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">本文へスキップ</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab 学習ホーム"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="メインメニュー"><a href="../main.html#curriculum">学習目次</a><a
+            href="../main.html#labs">実験室</a><a href="../appendix/references.html">参考資料</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="言語"><a href="../../labs/svm.html" lang="en"
+              hreflang="en" data-language="en">English</a><a href="../../ko/labs/svm.html" lang="ko"
+              hreflang="ko" data-language="ko">한국어</a><a href="../../ja/labs/svm.html" lang="ja"
+              hreflang="ja" data-language="ja" aria-current="true">日本語</a></nav><button
+            type="button" class="theme-toggle" data-theme-toggle aria-pressed="false"
+            hidden>ダークモード</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Margin studio</div>
+        <h1>SVM分類境界実験室</h1>
+        <p>Cとデータ条件を変えて、境界、マージン、サポートベクトルを確認します。</p>
+        <div class="meta"><span>合成データ</span><span>ブラウザ計算</span><span>再現可能な設定</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap">
+      <div class="lab-layout">
+        <form class="controls" data-lab="svm" aria-label="実験設定">
+          <div class="control"><label for="logC">C = 10の指数<output
+                for="logC">0</output></label><input id="logC" name="logC" type="range" min="-2"
+              max="1" step="0.25" value="0" disabled></div>
+          <div class="control"><label for="overlap">クラスの重なり σ<output
+                for="overlap">0.65</output></label><input id="overlap" name="overlap" type="range"
+              min="0" max="1.5" step="0.05" value="0.65" disabled></div>
+          <div class="control"><label for="featureScale">第2特徴の倍率<output
+                for="featureScale">1</output></label><input id="featureScale" name="featureScale"
+              type="range" min="1" max="8" step="1" value="1" disabled></div>
+          <div class="control"><label for="seed">データシード<output for="seed">17</output></label><input
+              id="seed" name="seed" type="range" min="1" max="60" step="1" value="17" disabled>
+          </div>
+          <div class="control"><label for="standardize"><input id="standardize" name="standardize"
+                type="checkbox" checked disabled> 訓練データで標準化</label></div>
+          <div class="control"><label for="outlier"><input id="outlier" name="outlier"
+                type="checkbox" disabled> 外れ値を追加</label></div><button type="reset"
+            disabled>既定の設定に戻す</button>
+        </form>
+        <div>
+          <p class="eyebrow" id="mode">既定設定の事前計算結果 · 収束を確認</p>
+          <div id="metrics" class="metrics">
+            <div class="metric"><span>C</span><strong>1</strong></div>
+            <div class="metric"><span>訓練正解率</span><strong>91.667%</strong></div>
+            <div class="metric"><span>検証の正確さ</span><strong>96.25%</strong></div>
+            <div class="metric"><span>マージン幅 · 学習座標</span><strong>0.837</strong></div>
+            <div class="metric"><span>サポートベクトル</span><strong>14 / 48</strong></div>
+            <div class="metric"><span>相対的な差・対称的な差</span><strong>0</strong></div>
+          </div>
+          <div class="plot-panel">
+            <h2>訓練観測と決定境界</h2>
+            <p class="scroll-hint">グラフを左右にスクロールして軸と値を読めます。</p>
+            <div id="primary-plot" class="graph-scroll" tabindex="0" aria-label="主グラフ、左右にスクロール可能">
+              <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+                aria-labelledby="svm-trained-title">
+                <title id="svm-trained-title">訓練観測と線形SVMの決定境界、マージン、サポートベクトル</title>
+                <defs>
+                  <clippath id="svm-trained-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-3.4</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-2.4</text>
+                <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-2.04</text><text x="54" y="252.4" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-1.44</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-0.68</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-0.48</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">0.68</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.48</text>
+                <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">2.04</text><text x="54" y="82.6" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">1.44</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">3.4</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">2.4</text>
+                <g clip-path="url(#svm-trained-clip)">
+                  <circle cx="278.94143772560756" cy="163.55693593856887" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="223.01943102779717" cy="218.54952821491025" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="172.48017352251236" cy="243.0180492886568" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="384.21165543890356" cy="168.14595925434844" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="293.16168485399817" cy="89.51377608366886" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="249.94759805214923" cy="190.4504723768173" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="276.6605554845308" cy="220.06257632160754" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="291.71977008327906" cy="169.4137188941542" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="197.2477308713698" cy="234.54636906252347" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="329.6196842733773" cy="217.53248435116592" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="308.2121950759124" cy="252.00629858723744" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="278.8235503347963" cy="205.7453657556461" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="325.54133841055483" cy="163.31951714996592" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="346.039566174163" cy="114.06784016025193" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="232.1856616425227" cy="256.23072713679096" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="146.5726924482579" cy="213.65980475822474" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="369.71178533822916" cy="124.49631899893163" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="390.7865066795737" cy="218.94275893407809" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="264.3183331229036" cy="225.95385816703788" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="328.50845699203745" cy="113.19843823302497" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="234.17439485863866" cy="180.10653330562758" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="210.52446321378233" cy="198.8262499144294" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="178.48353740529728" cy="222.52990127781015" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="231.0245780526581" cy="184.0170729235116" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <rect x="468.3331210594259" y="197.28417992926543" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="490.55057305868195" y="121.68739071370052" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="411.90838923758986" y="184.76165311149907" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="410.45572021206806" y="98.08621033263466" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="526.2668360330863" y="94.88087342554462" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="495.81768319151683" y="128.70739782516378" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="493.6144257168753" y="66.95666297064133" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="457.5085213247659" y="173.9786699406303" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="428.91234579088575" y="139.12550817796733" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="512.966725019084" y="96.60730816612704" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="498.1160861306042" y="101.88061190050351" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="450.4789332858026" y="200.81935231964152" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="381.9939566205943" y="188.3403662247327" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="403.52330765403275" y="155.87470702014988" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="545.6232046086111" y="132.92596022708346" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="351.15211347245383" y="184.59487104005018" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="551.2854041175272" y="134.3651889679044" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="408.87763896213346" y="103.52012322559816" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="385.1482295686755" y="85.89915832340702" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="434.6717286312764" y="113.44278438180649" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="442.6085936355652" y="115.56511688494277" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="515.1621396348005" y="87.01709119515934" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="399.59490181713284" y="158.25767902377314" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="470.8915485818979" y="175.9701348277743" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <path d="M64.00 -2555.05 L660.00 3666.10" fill="none" stroke="#738b7a"
+                    stroke-width="1.6" stroke-dasharray="6 5" />
+                  <path d="M64.00 -3039.87 L660.00 3181.28" fill="none" stroke="#18312e"
+                    stroke-width="2.8" />
+                  <path d="M64.00 -3524.69 L660.00 2696.47" fill="none" stroke="#738b7a"
+                    stroke-width="1.6" stroke-dasharray="6 5" />
+                  <circle cx="414.90838923758986" cy="187.76165311149907" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="384.21165543890356" cy="168.14595925434844" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="329.6196842733773" cy="217.53248435116592" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="325.54133841055483" cy="163.31951714996592" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="384.9939566205943" cy="191.3403662247327" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="346.039566174163" cy="114.06784016025193" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="406.52330765403275" cy="158.87470702014988" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="354.15211347245383" cy="187.59487104005018" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="369.71178533822916" cy="124.49631899893163" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="390.7865066795737" cy="218.94275893407809" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="411.87763896213346" cy="106.52012322559816" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="388.1482295686755" cy="88.89915832340702" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="328.50845699203745" cy="113.19843823302497" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="402.59490181713284" cy="161.25767902377314" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e"
+                  font-family="sans-serif">Feature 1 (raw)</text><text x="15" y="163.5"
+                  transform="rotate(-90 15 163.5)" text-anchor="middle" font-size="12"
+                  fill="#18312e" font-family="sans-serif">Feature 2 (raw, scaled)</text>
+              </svg>
+            </div>
+            <p class="legend">緑の丸：−1 · オレンジの四角：+1 · 濃い実線：決定境界 · 破線：f=±1 · 輪郭：サポートベクトル · 紫の輪郭：追加外れ値
+            </p>
+          </div>
+          <div class="plot-panel">
+            <h2>主・双対目的値と収束</h2>
+            <div id="secondary-plot" class="graph-scroll" tabindex="0"
+              aria-label="補助グラフ、左右にスクロール可能"><svg xmlns="http://www.w3.org/2000/svg"
+                viewbox="0 0 680 360" role="img" aria-labelledby="svm-objectives-title">
+                <title id="svm-objectives-title">SVM双対更新ごとの主目的値と双対目的値</title>
+                <defs>
+                  <clippath id="svm-objectives-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">0</text>
+                <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">2</text><text x="54" y="252.4" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">10.08</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">4</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">20.16</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">6</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">30.24</text>
+                <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">8</text><text x="54" y="82.6" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">40.32</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">10</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">50.4</text>
+                <g clip-path="url(#svm-objectives-clip)">
+                  <path
+                    d="M64.00 35.48 L123.60 92.71 L183.20 80.23 L242.80 147.59 L302.40 121.52 L362.00 222.02 L421.60 244.09 L481.20 241.62 L540.80 244.71 L600.40 245.07 L660.00 245.70"
+                    fill="none" stroke="#b15d2d" stroke-width="2.2" />
+                  <path
+                    d="M64.00 305.00 L123.60 293.90 L183.20 283.39 L242.80 271.82 L302.40 262.13 L362.00 252.14 L421.60 247.14 L481.20 246.41 L540.80 245.89 L600.40 245.71 L660.00 245.70"
+                    fill="none" stroke="#106858" stroke-width="2.2" stroke-dasharray="6 5" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Pair
+                  updates</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                  text-anchor="middle" font-size="12" fill="#18312e"
+                  font-family="sans-serif">Objective value</text>
+              </svg></div>
+          </div>
+          <div id="experiment-details">
+            <div class="plot-panel">
+              <h2>検証混同行列 · 160件</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">実際 / 予測</th>
+                      <th scope="col">−1と予測</th>
+                      <th scope="col">+1と予測</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">実際−1</th>
+                      <td>78</td>
+                      <td>2</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">実際+1</th>
+                      <td>4</td>
+                      <td>76</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="muted">グラフは訓練観測だけを表示します。検証観測は独立したシードで生成し、学習や標準化には使いません。</p>
+            </div>
+          </div>
+          <p id="status" class="experiment-status" role="status" aria-live="polite">収束を確認 · 双対更新10回
+            · 主・双対ギャップ0 · KKT違反0 · 訓練統計で標準化 · 目的値グラフ：オレンジ実線が主目的値、緑の破線が双対目的値です。</p><noscript>
+            <p class="note">JavaScriptが無効です。図は既定設定の計算結果です。設定の変更にはJavaScriptが必要です。</p>
+          </noscript>
+        </div>
+      </div>
+      <section class="lab-notes">
+        <h2>実験条件と結果の読み方</h2>
+        <p>線形ソフトマージンSVMの目的関数は½‖w‖² +
+          CΣmax(0,1−yᵢ(wᵀxᵢ+b))です。切片には罰則を与えません。Cは.01~10で、スライダーはlog10(C)を調整します。カーネルは使いません。</p>
+        <p>
+          均衡ラベル−1,+1を各24件使って訓練し、独立シードの160件で検証します。独立標準正規a,bからx₁=1.15y+σa、x₂=s(.55y+.3a+.8b)を生成します。すべて無次元の合成特徴です。訓練シードは選択値、検証シードはその値+10000です。外れ値を有効にすると座標[−2.6,−1.6s]、ラベル+1の訓練点を一つ加えます。
+        </p>
+        <p>
+          標準化には訓練観測の平均と標準偏差だけを使います。比較のためグラフは常に元の特徴座標に戻して表示します。マージン幅2/‖w‖は学習座標の距離なので、標準化の前後を同じ単位で直接比較できません。特徴倍率だけを変えて標準化した場合に予測が同じになるか確認してください。
+        </p>
+        <p>
+          二つの双対係数を同時に更新し、Σαᵢyᵢ=0と0≤αᵢ≤Cを維持します。最大8000回更新し、相対主・双対ギャップ≤10⁻⁵かつKKT違反≤10⁻³で収束と表示します。未収束の結果は現在の近似値です。輪郭はαᵢ&gt;10⁻⁷の観測を示し、ソフトマージンではマージン内部や誤分類点も含まれます。
+        </p>
+        <ol>
+          <li>重なりを減らし、Cによるマージンの違いを比較してください。</li>
+          <li>外れ値を追加してCを大きくし、境界の変化を見てください。</li>
+          <li>特徴の倍率を上げ、標準化をオン・オフしてください。</li>
+          <li>正解率と混同行列を一緒に読んでください。繰り返し比較する検証正解率は最終テスト性能ではありません。</li>
+        </ol><a class="callout-link" href="../chapters/07-svm.html">関連する概念と導出を読む →</a>
+        <p class="sources"><a href="../assets/js/math-core.js" download>計算コードをダウンロード</a> · <a
+            href="../appendix/references.html#reproduce">実装と検証の情報</a></p>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>概念を結び付け、計算で確かめる学習記録。<br>合成データ · 独自の説明と実験</p><a
+          href="../appendix/references.html">参考資料と制作情報 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

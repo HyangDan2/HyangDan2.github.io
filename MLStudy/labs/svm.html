@@ -1,0 +1,395 @@
+<!doctype html>
+<html data-language="en" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+      content="From mathematics to models: HD2Lab&#x27;s personal machine learning studies.">
+    <meta name="theme-color" content="#18312e">
+    <title>SVM Classification Lab | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script defer src="../assets/js/math-core.js"></script>
+    <script defer src="../assets/js/svm-core.js"></script>
+    <script defer src="../assets/js/figures.js"></script>
+    <script defer src="../assets/js/labs.js"></script>
+    <script src="../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab learning home"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="Main navigation"><a
+            href="../main.html#curriculum">Curriculum</a><a href="../main.html#labs">Labs</a><a
+            href="../appendix/references.html">References</a><a class="hq-link"
+            href="../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="Language"><a href="../labs/svm.html" lang="en"
+              hreflang="en" data-language="en" aria-current="true">English</a><a
+              href="../ko/labs/svm.html" lang="ko" hreflang="ko" data-language="ko">한국어</a><a
+              href="../ja/labs/svm.html" lang="ja" hreflang="ja" data-language="ja">日本語</a></nav>
+          <button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false"
+            hidden>Dark mode</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Margin studio</div>
+        <h1>SVM Classification Lab</h1>
+        <p>Inspect boundaries, margins, and support vectors by changing C and data conditions.</p>
+        <div class="meta"><span>Synthetic data</span><span>Browser
+            calculations</span><span>Reproducible settings</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap">
+      <div class="lab-layout">
+        <form class="controls" data-lab="svm" aria-label="Experiment settings">
+          <div class="control"><label for="logC">C = 10 raised to this power<output
+                for="logC">0</output></label><input id="logC" name="logC" type="range" min="-2"
+              max="1" step="0.25" value="0" disabled></div>
+          <div class="control"><label for="overlap">Class overlap σ<output
+                for="overlap">0.65</output></label><input id="overlap" name="overlap" type="range"
+              min="0" max="1.5" step="0.05" value="0.65" disabled></div>
+          <div class="control"><label for="featureScale">Second-feature scale<output
+                for="featureScale">1</output></label><input id="featureScale" name="featureScale"
+              type="range" min="1" max="8" step="1" value="1" disabled></div>
+          <div class="control"><label for="seed">Data seed<output
+                for="seed">17</output></label><input id="seed" name="seed" type="range" min="1"
+              max="60" step="1" value="17" disabled></div>
+          <div class="control"><label for="standardize"><input id="standardize" name="standardize"
+                type="checkbox" checked disabled> Standardize using training data</label></div>
+          <div class="control"><label for="outlier"><input id="outlier" name="outlier"
+                type="checkbox" disabled> Add an outlier</label></div><button type="reset"
+            disabled>Reset to defaults</button>
+        </form>
+        <div>
+          <p class="eyebrow" id="mode">Precomputed default results · Convergence verified</p>
+          <div id="metrics" class="metrics">
+            <div class="metric"><span>C</span><strong>1</strong></div>
+            <div class="metric"><span>Training accuracy</span><strong>91.667%</strong></div>
+            <div class="metric"><span>Accuracy of verification</span><strong>96.25%</strong></div>
+            <div class="metric"><span>Margin width · Training
+                coordinates</span><strong>0.837</strong></div>
+            <div class="metric"><span>Support vectors</span><strong>14 / 48</strong></div>
+            <div class="metric"><span>Relative and dual differences</span><strong>0</strong></div>
+          </div>
+          <div class="plot-panel">
+            <h2>Training observations and decision boundary</h2>
+            <p class="scroll-hint">Scroll horizontally to read graph axes and values.</p>
+            <div id="primary-plot" class="graph-scroll" tabindex="0"
+              aria-label="Primary graph; horizontal scrolling available"><svg
+                xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+                aria-labelledby="svm-trained-title">
+                <title id="svm-trained-title">Training observations and linear SVM boundary,
+                  margins, and support vectors</title>
+                <defs>
+                  <clippath id="svm-trained-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-3.4</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-2.4</text>
+                <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-2.04</text><text x="54" y="252.4" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-1.44</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-0.68</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-0.48</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">0.68</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.48</text>
+                <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">2.04</text><text x="54" y="82.6" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">1.44</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">3.4</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">2.4</text>
+                <g clip-path="url(#svm-trained-clip)">
+                  <circle cx="278.94143772560756" cy="163.55693593856887" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="223.01943102779717" cy="218.54952821491025" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="172.48017352251236" cy="243.0180492886568" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="384.21165543890356" cy="168.14595925434844" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="293.16168485399817" cy="89.51377608366886" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="249.94759805214923" cy="190.4504723768173" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="276.6605554845308" cy="220.06257632160754" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="291.71977008327906" cy="169.4137188941542" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="197.2477308713698" cy="234.54636906252347" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="329.6196842733773" cy="217.53248435116592" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="308.2121950759124" cy="252.00629858723744" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="278.8235503347963" cy="205.7453657556461" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="325.54133841055483" cy="163.31951714996592" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="346.039566174163" cy="114.06784016025193" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="232.1856616425227" cy="256.23072713679096" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="146.5726924482579" cy="213.65980475822474" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="369.71178533822916" cy="124.49631899893163" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="390.7865066795737" cy="218.94275893407809" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="264.3183331229036" cy="225.95385816703788" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="328.50845699203745" cy="113.19843823302497" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="234.17439485863866" cy="180.10653330562758" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="210.52446321378233" cy="198.8262499144294" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="178.48353740529728" cy="222.52990127781015" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="231.0245780526581" cy="184.0170729235116" r="4" fill="#106858"
+                    opacity="0.7" />
+                  <rect x="468.3331210594259" y="197.28417992926543" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="490.55057305868195" y="121.68739071370052" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="411.90838923758986" y="184.76165311149907" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="410.45572021206806" y="98.08621033263466" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="526.2668360330863" y="94.88087342554462" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="495.81768319151683" y="128.70739782516378" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="493.6144257168753" y="66.95666297064133" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="457.5085213247659" y="173.9786699406303" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="428.91234579088575" y="139.12550817796733" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="512.966725019084" y="96.60730816612704" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="498.1160861306042" y="101.88061190050351" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="450.4789332858026" y="200.81935231964152" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="381.9939566205943" y="188.3403662247327" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="403.52330765403275" y="155.87470702014988" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="545.6232046086111" y="132.92596022708346" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="351.15211347245383" y="184.59487104005018" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="551.2854041175272" y="134.3651889679044" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="408.87763896213346" y="103.52012322559816" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="385.1482295686755" y="85.89915832340702" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="434.6717286312764" y="113.44278438180649" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="442.6085936355652" y="115.56511688494277" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="515.1621396348005" y="87.01709119515934" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="399.59490181713284" y="158.25767902377314" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <rect x="470.8915485818979" y="175.9701348277743" width="6" height="6"
+                    fill="#b15d2d" opacity=".65" />
+                  <path d="M64.00 -2555.05 L660.00 3666.10" fill="none" stroke="#738b7a"
+                    stroke-width="1.6" stroke-dasharray="6 5" />
+                  <path d="M64.00 -3039.87 L660.00 3181.28" fill="none" stroke="#18312e"
+                    stroke-width="2.8" />
+                  <path d="M64.00 -3524.69 L660.00 2696.47" fill="none" stroke="#738b7a"
+                    stroke-width="1.6" stroke-dasharray="6 5" />
+                  <circle cx="414.90838923758986" cy="187.76165311149907" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="384.21165543890356" cy="168.14595925434844" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="329.6196842733773" cy="217.53248435116592" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="325.54133841055483" cy="163.31951714996592" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="384.9939566205943" cy="191.3403662247327" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="346.039566174163" cy="114.06784016025193" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="406.52330765403275" cy="158.87470702014988" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="354.15211347245383" cy="187.59487104005018" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="369.71178533822916" cy="124.49631899893163" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="390.7865066795737" cy="218.94275893407809" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="411.87763896213346" cy="106.52012322559816" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="388.1482295686755" cy="88.89915832340702" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="328.50845699203745" cy="113.19843823302497" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                  <circle cx="402.59490181713284" cy="161.25767902377314" r="7" fill="none"
+                    stroke="#18312e" stroke-width="1.8" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e"
+                  font-family="sans-serif">Feature 1 (raw)</text><text x="15" y="163.5"
+                  transform="rotate(-90 15 163.5)" text-anchor="middle" font-size="12"
+                  fill="#18312e" font-family="sans-serif">Feature 2 (raw, scaled)</text>
+              </svg></div>
+            <p class="legend">Green circles: −1 · Orange squares: +1 · Dark solid line: decision
+              boundary · Dashed lines: f=±1 · Outlined points: support vectors · Purple outline:
+              added outlier</p>
+          </div>
+          <div class="plot-panel">
+            <h2>Primal/dual objectives and convergence</h2>
+            <div id="secondary-plot" class="graph-scroll" tabindex="0"
+              aria-label="Secondary graph; horizontal scrolling available"><svg
+                xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+                aria-labelledby="svm-objectives-title">
+                <title id="svm-objectives-title">SVM primal and dual objectives over dual updates
+                </title>
+                <defs>
+                  <clippath id="svm-objectives-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">0</text>
+                <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">2</text><text x="54" y="252.4" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">10.08</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">4</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">20.16</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">6</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">30.24</text>
+                <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">8</text><text x="54" y="82.6" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">40.32</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">10</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">50.4</text>
+                <g clip-path="url(#svm-objectives-clip)">
+                  <path
+                    d="M64.00 35.48 L123.60 92.71 L183.20 80.23 L242.80 147.59 L302.40 121.52 L362.00 222.02 L421.60 244.09 L481.20 241.62 L540.80 244.71 L600.40 245.07 L660.00 245.70"
+                    fill="none" stroke="#b15d2d" stroke-width="2.2" />
+                  <path
+                    d="M64.00 305.00 L123.60 293.90 L183.20 283.39 L242.80 271.82 L302.40 262.13 L362.00 252.14 L421.60 247.14 L481.20 246.41 L540.80 245.89 L600.40 245.71 L660.00 245.70"
+                    fill="none" stroke="#106858" stroke-width="2.2" stroke-dasharray="6 5" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Pair
+                  updates</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                  text-anchor="middle" font-size="12" fill="#18312e"
+                  font-family="sans-serif">Objective value</text>
+              </svg></div>
+          </div>
+          <div id="experiment-details">
+            <div class="plot-panel">
+              <h2>Validation confusion matrix · 160 observations</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Actual / Predicted</th>
+                      <th scope="col">Predicted −1</th>
+                      <th scope="col">Predicted +1</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Actual −1</th>
+                      <td>78</td>
+                      <td>2</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Actual +1</th>
+                      <td>4</td>
+                      <td>76</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="muted">The graph shows training observations only. Validation observations
+                use an independent seed and are not used for training or standardization.</p>
+            </div>
+          </div>
+          <p id="status" class="experiment-status" role="status" aria-live="polite">Convergence
+            verified · 10 dual updates · Primal/dual gap 0 · KKT violation 0 · Standardized using
+            training statistics · Objective plot: orange solid line is primal; green dashed line is
+            dual.</p><noscript>
+            <p class="note">JavaScript is disabled. The figures show calculations for the default
+              settings. Changing settings requires JavaScript.</p>
+          </noscript>
+        </div>
+      </div>
+      <section class="lab-notes">
+        <h2>Experiment conditions and how to read the results</h2>
+        <p>The linear soft-margin SVM objective is ½‖w‖² + CΣmax(0,1−yᵢ(wᵀxᵢ+b)). The intercept is
+          not penalized. C ranges from .01~10; the slider controls log10(C). No kernel is used.</p>
+        <p>Train on 24 observations for each balanced label −1,+1 and validate on 160 observations
+          from an independent seed. With independent standard-normal a,b, generate x₁=1.15y+σa and
+          x₂=s(.55y+.3a+.8b). All features are dimensionless and synthetic. The training seed is
+          selected; the validation seed is that value+10000. Enabling the outlier adds one training
+          point at [−2.6,−1.6s] with label +1.</p>
+        <p>Standardization uses only training means and standard deviations. For comparison, plots
+          always convert back to the original feature coordinates. Margin width 2/‖w‖ is a distance
+          in training coordinates, so values before and after standardization are not directly
+          comparable in the same units. Check whether changing only feature scale while
+          standardizing preserves predictions.</p>
+        <p>Update two dual coefficients together to preserve Σαᵢyᵢ=0 and 0≤αᵢ≤C. Allow at most 8000
+          updates; report convergence only when the relative primal-dual gap is ≤10⁻⁵ and KKT
+          violation is ≤10⁻³. Unconverged results are current approximations. Outlines indicate
+          observations with αᵢ&gt;10⁻⁷; in soft-margin SVM these may include points inside the
+          margin or misclassified observations.</p>
+        <ol>
+          <li>Reduce overlap, then compare margins across C values.</li>
+          <li>Add an outlier and increase C to observe the boundary change.</li>
+          <li>Increase the feature scale, then switch standardization on and off.</li>
+          <li>Read accuracy together with the confusion matrix. Repeatedly compared validation
+            accuracy is not final test performance.</li>
+        </ol><a class="callout-link" href="../chapters/07-svm.html">Read related concepts and
+          derivations →</a>
+        <p class="sources"><a href="../assets/js/math-core.js" download>Download calculation
+            code</a> · <a href="../appendix/references.html#reproduce">Implementation and
+            verification</a></p>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>A study journal connecting concepts and checking them through calculation.<br>Synthetic
+          data · Original explanations and experiments</p><a
+          href="../appendix/references.html">References and credits ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

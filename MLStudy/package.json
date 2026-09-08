@@ -1,0 +1,12 @@
+{
+  "name": "mlstudy-authoring",
+  "private": true,
+  "scripts": {
+    "format": "python3 tools/format_sources.py",
+    "format:check": "python3 tools/format_sources.py --check"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "js-beautify": "1.15.4"
+  }
+}

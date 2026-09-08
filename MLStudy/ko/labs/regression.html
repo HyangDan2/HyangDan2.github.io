@@ -1,0 +1,331 @@
+<!doctype html>
+<html data-language="ko" lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="수학에서 모델까지, HD2Lab의 개인적인 머신러닝 공부.">
+    <meta name="theme-color" content="#18312e">
+    <title>회귀 곡선 실험실 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script defer src="../assets/js/math-core.js"></script>
+    <script defer src="../assets/js/svm-core.js"></script>
+    <script defer src="../assets/js/figures.js"></script>
+    <script defer src="../assets/js/labs.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">본문으로 건너뛰기</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html" aria-label="HD2Lab 홈"><i
+            aria-hidden="true"></i>HD2Lab<small>LEARNING ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="주 메뉴"><a href="../main.html#curriculum">학습 목차</a><a
+            href="../main.html#labs">실험실</a><a href="../appendix/references.html">참고자료</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="언어"><a href="../../labs/regression.html"
+              lang="en" hreflang="en" data-language="en">English</a><a
+              href="../../ko/labs/regression.html" lang="ko" hreflang="ko" data-language="ko"
+              aria-current="true">한국어</a><a href="../../ja/labs/regression.html" lang="ja"
+              hreflang="ja" data-language="ja">日本語</a></nav><button type="button"
+            class="theme-toggle" data-theme-toggle aria-pressed="false" hidden>다크 모드</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Regression studio</div>
+        <h1>회귀 곡선 실험실</h1>
+        <p>차수와 정규화를 바꾸며 학습·검증 오차를 비교합니다.</p>
+        <div class="meta"><span>합성 데이터</span><span>브라우저 계산</span><span>재현 가능한 설정</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap">
+      <div class="lab-layout">
+        <form class="controls" data-lab="regression" aria-label="실험 설정">
+          <div class="control"><label for="degree">다항식 차수<output
+                for="degree">3</output></label><input id="degree" name="degree" type="range" min="1"
+              max="9" step="1" value="3" disabled></div>
+          <div class="control"><label for="n">학습 표본 수<output for="n">32</output></label><input
+              id="n" name="n" type="range" min="12" max="100" step="4" value="32" disabled></div>
+          <div class="control"><label for="noise">잡음 표준편차 (ms)<output
+                for="noise">0.7</output></label><input id="noise" name="noise" type="range" min="0"
+              max="2" step="0.1" value="0.7" disabled></div>
+          <div class="control"><label for="ridge">정규화 α<output for="ridge">0</output></label><input
+              id="ridge" name="ridge" type="range" min="0" max="5" step="0.1" value="0" disabled>
+          </div><button type="reset" disabled>기본 설정으로 초기화</button>
+        </form>
+        <div>
+          <p class="eyebrow" id="mode">기본 설정의 사전 계산 결과 </p>
+          <div id="metrics" class="metrics">
+            <div class="metric"><span>학습 MSE · ms²</span><strong>0.433</strong></div>
+            <div class="metric"><span>검증 MSE · ms²</span><strong>0.435</strong></div>
+            <div class="metric"><span>학습 표본</span><strong>32</strong></div>
+          </div>
+          <div class="plot-panel">
+            <h2>예측 곡선과 관측</h2>
+            <p class="scroll-hint">그래프를 좌우로 이동해 축과 값을 읽을 수 있습니다.</p>
+            <div id="primary-plot" class="graph-scroll" tabindex="0" aria-label="주 그래프, 좌우 스크롤 가능">
+              <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 680 360" role="img"
+                aria-labelledby="reg-fit-title">
+                <title id="reg-fit-title">저장장치 부하별 학습 관측, 생성식과 회귀 곡선</title>
+                <defs>
+                  <clippath id="reg-fit-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">-0.15</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-2</text>
+                <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.11</text><text x="54" y="252.4" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">1.8</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.37</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">5.6</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">0.63</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">9.4</text>
+                <path d="M540.8 22V305 M64 78.60000000000002H660" stroke="#e4e9e0" fill="none" />
+                <text x="540.8" y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.89</text><text x="54" y="82.60000000000002" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">13.2</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">1.15</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">17</text>
+                <g clip-path="url(#reg-fit-clip)">
+                  <rect x="64" y="22" width="68.76923076923077" height="283" fill="#dcb688"
+                    opacity=".2" />
+                  <rect x="591.2307692307693" y="22" width="68.76923076923072" height="283"
+                    fill="#dcb688" opacity=".2" />
+                  <circle cx="176.25716266179313" cy="250.05470042697314" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="583.7251326645223" cy="101.97590966701253" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="411.14235519961676" cy="187.96205466104357" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="320.0290572646146" cy="198.30424104538847" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="436.6422858120731" cy="191.26257040062941" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="260.0922256739667" cy="216.58993408389358" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="462.3740318212659" cy="183.61860598210268" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="230.74123663569875" cy="202.93483028959247" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="292.915045276141" cy="217.29714232604113" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="371.74580910128475" cy="203.49569393536098" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="557.6103961778663" cy="132.1990282070142" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="350.56573091031845" cy="204.98640309567034" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="190.48385887865265" cy="227.71258245435746" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="276.66530321380844" cy="218.5850490175324" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="559.557074772194" cy="119.51571797638096" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="398.83037130305405" cy="199.4797342571036" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="584.2359753220987" cy="109.91847617372511" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="418.57933612067546" cy="181.86269159792192" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="590.5095928516239" cy="84.39768352846812" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="171.0643428681562" cy="225.2147680021941" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="472.674590119519" cy="169.06058112875021" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="473.3673017446239" cy="163.86885542049993" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="311.29579118409987" cy="220.61446753020817" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="579.7277016725678" cy="89.09344453013642" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="457.9870959854184" cy="159.56865367933656" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="335.9357699210255" cy="210.95259538307891" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="464.4256398779556" cy="183.28810843728644" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="306.8914002662955" cy="225.59815066340235" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="314.5452231909507" cy="220.96990400063183" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="573.2096348591149" cy="108.07268256809957" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="306.289398108824" cy="199.47881177649572" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="291.8984883646839" cy="235.75574335981395" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <path
+                    d="M64.00 235.35 L70.02 234.87 L76.04 234.41 L82.06 233.96 L88.08 233.53 L94.10 233.10 L100.12 232.69 L106.14 232.28 L112.16 231.87 L118.18 231.48 L124.20 231.08 L130.22 230.69 L136.24 230.30 L142.26 229.91 L148.28 229.51 L154.30 229.12 L160.32 228.71 L166.34 228.30 L172.36 227.89 L178.38 227.46 L184.40 227.02 L190.42 226.57 L196.44 226.11 L202.46 225.63 L208.48 225.14 L214.51 224.62 L220.53 224.09 L226.55 223.54 L232.57 222.97 L238.59 222.37 L244.61 221.75 L250.63 221.10 L256.65 220.42 L262.67 219.71 L268.69 218.98 L274.71 218.21 L280.73 217.41 L286.75 216.57 L292.77 215.70 L298.79 214.79 L304.81 213.84 L310.83 212.85 L316.85 211.82 L322.87 210.74 L328.89 209.62 L334.91 208.46 L340.93 207.24 L346.95 205.98 L352.97 204.67 L358.99 203.30 L365.01 201.88 L371.03 200.41 L377.05 198.88 L383.07 197.30 L389.09 195.65 L395.11 193.94 L401.13 192.18 L407.15 190.35 L413.17 188.45 L419.19 186.49 L425.21 184.46 L431.23 182.37 L437.25 180.20 L443.27 177.96 L449.29 175.65 L455.31 173.26 L461.33 170.80 L467.35 168.26 L473.37 165.64 L479.39 162.94 L485.41 160.16 L491.43 157.30 L497.45 154.35 L503.47 151.32 L509.49 148.20 L515.52 144.99 L521.54 141.69 L527.56 138.30 L533.58 134.82 L539.60 131.24 L545.62 127.56 L551.64 123.79 L557.66 119.93 L563.68 115.96 L569.70 111.89 L575.72 107.71 L581.74 103.43 L587.76 99.05 L593.78 94.56 L599.80 89.96 L605.82 85.25 L611.84 80.43 L617.86 75.50 L623.88 70.45 L629.90 65.29 L635.92 60.01 L641.94 54.61 L647.96 49.10 L653.98 43.46 L660.00 37.70"
+                    fill="none" stroke="#8b948b" stroke-width="2.2" stroke-dasharray="6 5" />
+                  <path
+                    d="M64.00 264.56 L67.72 263.02 L71.45 261.52 L75.18 260.05 L78.90 258.63 L82.63 257.24 L86.35 255.89 L90.08 254.58 L93.80 253.30 L97.53 252.05 L101.25 250.84 L104.98 249.66 L108.70 248.52 L112.43 247.40 L116.15 246.32 L119.88 245.26 L123.60 244.23 L127.33 243.24 L131.05 242.27 L134.78 241.32 L138.50 240.40 L142.23 239.51 L145.95 238.64 L149.68 237.80 L153.40 236.98 L157.13 236.18 L160.85 235.40 L164.58 234.64 L168.30 233.91 L172.03 233.19 L175.75 232.49 L179.48 231.81 L183.20 231.15 L186.93 230.50 L190.65 229.87 L194.38 229.25 L198.10 228.64 L201.83 228.05 L205.55 227.48 L209.28 226.91 L213.00 226.35 L216.73 225.81 L220.45 225.27 L224.18 224.75 L227.90 224.23 L231.63 223.72 L235.35 223.21 L239.08 222.71 L242.80 222.22 L246.53 221.73 L250.25 221.24 L253.98 220.76 L257.70 220.28 L261.43 219.80 L265.15 219.32 L268.88 218.84 L272.60 218.35 L276.33 217.87 L280.05 217.39 L283.77 216.90 L287.50 216.40 L291.23 215.91 L294.95 215.40 L298.68 214.89 L302.40 214.38 L306.13 213.85 L309.85 213.32 L313.58 212.78 L317.30 212.23 L321.03 211.66 L324.75 211.09 L328.48 210.50 L332.20 209.90 L335.93 209.29 L339.65 208.66 L343.38 208.02 L347.10 207.36 L350.83 206.69 L354.55 205.99 L358.28 205.28 L362.00 204.55 L365.73 203.80 L369.45 203.03 L373.18 202.24 L376.90 201.42 L380.63 200.58 L384.35 199.72 L388.08 198.84 L391.80 197.93 L395.53 196.99 L399.25 196.03 L402.98 195.04 L406.70 194.02 L410.43 192.98 L414.15 191.90 L417.88 190.80 L421.60 189.66 L425.33 188.49 L429.05 187.29 L432.78 186.05 L436.50 184.79 L440.23 183.48 L443.95 182.14 L447.68 180.77 L451.40 179.36 L455.13 177.91 L458.85 176.42 L462.58 174.89 L466.30 173.32 L470.03 171.71 L473.75 170.06 L477.48 168.37 L481.20 166.63 L484.93 164.85 L488.65 163.03 L492.38 161.16 L496.10 159.24 L499.83 157.28 L503.55 155.27 L507.28 153.21 L511.00 151.11 L514.73 148.95 L518.45 146.74 L522.18 144.49 L525.90 142.17 L529.63 139.81 L533.35 137.39 L537.08 134.92 L540.80 132.40 L544.53 129.81 L548.25 127.18 L551.98 124.48 L555.70 121.73 L559.42 118.91 L563.15 116.04 L566.88 113.11 L570.60 110.11 L574.33 107.06 L578.05 103.94 L581.78 100.76 L585.50 97.51 L589.23 94.20 L592.95 90.83 L596.68 87.38 L600.40 83.87 L604.13 80.30 L607.85 76.65 L611.58 72.94 L615.30 69.15 L619.03 65.30 L622.75 61.37 L626.48 57.37 L630.20 53.30 L633.93 49.15 L637.65 44.93 L641.38 40.63 L645.10 36.26 L648.83 31.81 L652.55 27.28 L656.28 22.68 L660.00 17.99"
+                    fill="none" stroke="#b15d2d" stroke-width="2.2" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Load
+                  (unitless)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                  text-anchor="middle" font-size="12" fill="#18312e"
+                  font-family="sans-serif">Latency (ms)</text>
+              </svg>
+            </div>
+            <p class="legend">● 학습 관측 · 주황 실선: 학습 곡선 · 회색 점선: 생성식 · 음영: 외삽</p>
+          </div>
+          <div class="plot-panel">
+            <h2>잔차로 다시 보기</h2>
+            <div id="secondary-plot" class="graph-scroll" tabindex="0"
+              aria-label="보조 그래프, 좌우 스크롤 가능"><svg xmlns="http://www.w3.org/2000/svg"
+                viewbox="0 0 680 360" role="img" aria-labelledby="reg-residual-title">
+                <title id="reg-residual-title">부하별 학습 잔차</title>
+                <defs>
+                  <clippath id="reg-residual-clip">
+                    <rect x="64" y="22" width="596" height="283" />
+                  </clippath>
+                </defs>
+                <rect width="680" height="360" fill="white" />
+                <path d="M64 22V305 M64 305H660" stroke="#e4e9e0" fill="none" /><text x="64" y="328"
+                  text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0</text><text x="54" y="309" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-1.614</text>
+                <path d="M183.2 22V305 M64 248.4H660" stroke="#e4e9e0" fill="none" /><text x="183.2"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.2</text><text x="54" y="252.4" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-0.968</text>
+                <path d="M302.4 22V305 M64 191.8H660" stroke="#e4e9e0" fill="none" /><text x="302.4"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.4</text><text x="54" y="195.8" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">-0.323</text>
+                <path d="M421.59999999999997 22V305 M64 135.20000000000002H660" stroke="#e4e9e0"
+                  fill="none" /><text x="421.59999999999997" y="328" text-anchor="middle"
+                  font-family="sans-serif" font-size="11" fill="#526964">0.6</text><text x="54"
+                  y="139.20000000000002" text-anchor="end" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.323</text>
+                <path d="M540.8 22V305 M64 78.6H660" stroke="#e4e9e0" fill="none" /><text x="540.8"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">0.8</text><text x="54" y="82.6" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">0.968</text>
+                <path d="M660 22V305 M64 22H660" stroke="#e4e9e0" fill="none" /><text x="660"
+                  y="328" text-anchor="middle" font-family="sans-serif" font-size="11"
+                  fill="#526964">1</text><text x="54" y="26" text-anchor="end"
+                  font-family="sans-serif" font-size="11" fill="#526964">1.614</text>
+                <g clip-path="url(#reg-residual-clip)">
+                  <path d="M64.00 163.50 L660.00 163.50" fill="none" stroke="#8b948b"
+                    stroke-width="2.2" stroke-dasharray="6 5" />
+                  <circle cx="120.53431146033108" cy="267.4348037282102" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="650.242672463879" cy="180.62323634406363" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="425.8850617595017" cy="135.1782107532878" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="307.43777444399893" cy="83.9633322217019" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="459.03497155569494" cy="201.9150603937639" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="229.5198933761567" cy="143.6141312871371" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="492.48624136764556" cy="214.39763594225113" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="191.36360762640834" cy="40.45652173913044" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="272.1895588589832" cy="173.02227239304273" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="374.6695518316701" cy="169.11053296727732" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="616.293515031226" cy="233.6014295100237" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="347.1354501834139" cy="153.21886401733403" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="139.02901654224843" cy="150.66159411935772" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="251.06489417795092" cy="167.95896131616863" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="618.8241972038522" cy="167.64595412113675" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="409.8794826939702" cy="183.15115755305948" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="650.9067679187283" cy="230.00066585297475" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="435.553136956878" cy="112.16414548174978" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="659.0624707071111" cy="112.59636470849284" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="113.783645728603" cy="115.47338172959317" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="505.8769671553746" cy="154.77981925878484" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="506.777492268011" cy="126.04001600233704" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="296.08452853932977" cy="207.66140125823867" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="645.0460121743381" cy="84.4992546519812" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="486.7832247810438" cy="62.27775624584717" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="328.116500897333" cy="173.2899279742489" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="495.15333184134215" cy="217.49929273089265" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="290.3588203461841" cy="233.27112266435685" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="300.30879014823586" cy="212.5525527494762" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="636.5725253168494" cy="164.05098937504246" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="289.5762175414711" cy="79.01997833827295" r="3" fill="#106858"
+                    opacity="0.7" />
+                  <circle cx="270.86803487408906" cy="280.86963257075615" r="3" fill="#106858"
+                    opacity="0.7" />
+                </g>
+                <path d="M64 22V305H660" fill="none" stroke="#9bafa4" /><text x="362" y="350"
+                  text-anchor="middle" font-size="12" fill="#18312e" font-family="sans-serif">Load
+                  (unitless)</text><text x="15" y="163.5" transform="rotate(-90 15 163.5)"
+                  text-anchor="middle" font-size="12" fill="#18312e"
+                  font-family="sans-serif">Residual (ms)</text>
+              </svg></div>
+          </div>
+          <div id="experiment-details"></div>
+          <p id="status" class="experiment-status" role="status" aria-live="polite">계산 완료 · 곡선 표시 범위
+            -2~17 ms. 음영은 외삽 구간이며 범위를 넘는 곡선은 잘라 표시합니다.</p><noscript>
+            <p class="note">JavaScript가 꺼져 있습니다. 위 그림은 기본 설정의 계산 결과이며 설정을 바꾸려면 JavaScript가 필요합니다.
+            </p>
+          </noscript>
+        </div>
+      </div>
+      <section class="lab-notes">
+        <h2>실험 조건과 읽는 방법</h2>
+        <p>합성 부하 x ~ Uniform(0,1), 지연 y = 3 + 2x + 7x³ + ε, ε ~ N(0,σ²). 훈련 시드 1729, 검증 시드 1730, 검증
+          관측 120개. 브라우저는 Mulberry32와 Box–Muller 난수를 사용합니다.</p>
+        <p>기저는 z=2x−1의 0차부터 d차까지입니다. 잔차 제곱합 + αΣθⱼ²를 Householder QR로 최소화하며 절편은 벌점에서 제외합니다. 검증 오차는
+          0≤x≤1에서만 측정합니다. 음영 구간은 데이터가 없으므로 예측의 외삽입니다.</p>
+        <ol>
+          <li>표본 12개에서 1차, 3차, 9차를 비교하세요.</li>
+          <li>같은 데이터에 α를 늘리고 검증 오차가 개선되는지 확인하세요.</li>
+          <li>관측이 많아져도 외삽이 안전해지는지 곡선을 살펴보세요.</li>
+        </ol><a class="callout-link" href="../chapters/02-linear-regression.html">관련 개념과 유도 읽기 →</a>
+        <p class="sources"><a href="../assets/js/math-core.js" download>계산 코드 다운로드</a> · <a
+            href="../appendix/references.html#reproduce">구현·검증 정보</a></p>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>개념을 연결하고, 계산으로 확인하는 학습 기록.<br>합성 데이터 · 직접 작성한 설명과 실험</p><a
+          href="../appendix/references.html">참고자료 및 제작 정보 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>

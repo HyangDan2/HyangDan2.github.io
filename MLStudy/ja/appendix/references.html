@@ -1,0 +1,145 @@
+<!doctype html>
+<html data-language="ja" lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="標準的な概念の根拠、およびこのサイトの作成・計算の範囲を明確にします。">
+    <meta name="theme-color" content="#18312e">
+    <title>参考資料と制作情報 | HD2Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <script defer src="../assets/js/navigation.js"></script>
+    <script src="../../assets/js/preferences.js"></script>
+  </head>
+  <body><a class="skip" href="#content">本文へスキップ</a>
+    <header class="site-header">
+      <div class="wrap header-inner"><a class="brand" href="../main.html"
+          aria-label="HD2Lab 学習ホーム"><i aria-hidden="true"></i>HD2Lab<small>LEARNING
+            ARCHIVE</small></a>
+        <nav class="site-nav" aria-label="メインメニュー"><a href="../main.html#curriculum">学習目次</a><a
+            href="../main.html#labs">実験室</a><a href="../appendix/references.html">参考資料</a><a
+            class="hq-link" href="../../../index.html">← Web-HQ</a></nav>
+        <div class="preferences">
+          <nav class="language-switch" aria-label="言語"><a href="../../appendix/references.html"
+              lang="en" hreflang="en" data-language="en">English</a><a
+              href="../../ko/appendix/references.html" lang="ko" hreflang="ko"
+              data-language="ko">한국어</a><a href="../../ja/appendix/references.html" lang="ja"
+              hreflang="ja" data-language="ja" aria-current="true">日本語</a></nav><button
+            type="button" class="theme-toggle" data-theme-toggle aria-pressed="false"
+            hidden>ダークモード</button>
+        </div>
+      </div>
+    </header>
+    <div class="page-hero">
+      <div class="wrap">
+        <div class="eyebrow">Appendix / References</div>
+        <h1>参考資料と制作情報</h1>
+        <p>標準的な概念の根拠、およびこのサイトの作成・計算の範囲を明確にします。</p>
+        <div class="meta"><span>公式文献</span><span>再現情報</span></div>
+      </div>
+    </div>
+    <main tabindex="-1" id="content" class="wrap article-layout">
+      <details class="toc" open>
+        <summary>このページの流れ</summary>
+        <ol>
+          <li><a href="#mml">数学的背景</a></li>
+          <li><a href="#evaluation">評価とデータ漏洩</a></li>
+          <li><a href="#probability">確率分布と数値確認</a></li>
+          <li><a href="#linear">回帰と正則化</a></li>
+          <li><a href="#pca">PCAと行列分解</a></li>
+          <li><a href="#gmm">混合モデルとEM</a></li>
+          <li><a href="#svm">分類とマージン</a></li>
+          <li><a href="#reproduce">制作と再現</a></li>
+        </ol>
+      </details>
+      <article>
+        <section id="mml">
+          <h2>数学的背景</h2>
+          <p><a href="https://mml-book.github.io/">Mathematics for Machine Learning —
+              著者の公式サイト</a><br>Marc Peter Deisenroth, A. Aldo Faisal, Cheng Soon Ong, Cambridge
+            University Press, 2020.</p>
+          <p>
+            線形代数、幾何学、行列分解、微分、確率論、最適化などをより深く学ぶための資料です。このサイトの文章や例題、コード、図表などは、別途作成されており、教科書の図表や練習問題をそのまま使っていません。
+          </p>
+        </section>
+        <section id="evaluation">
+          <h2>評価とデータ漏洩</h2>
+          <p><a href="https://scikit-learn.org/stable/common_pitfalls.html">scikit-learn公式文書：Common
+              pitfalls</a>と <a
+              href="https://scikit-learn.org/stable/modules/model_evaluation.html">Model
+              evaluation</a>訓練においてのみ適切に処理されるという原則、評価指標、および漏れの概念を確認します。本文中に記載されている時間の変化や後処理の特徴、コストの例は、別途設計された合成実験によるものです。
+          </p>
+        </section>
+        <section id="probability">
+          <h2>確率分布と数値確認</h2>
+          <p><a
+              href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.beta.html">SciPy公式文書：Beta
+              distribution</a>密度の定義や、CDF·度数分布の意味を確認します。Beta–Bernoulliの更新とガウス分布による分散の計算は、本文中で示されています。ダウンロード用の計算では、SciPyは使用されません。
+          </p>
+        </section>
+        <section id="linear">
+          <h2>回帰と正則化</h2>
+          <p><a
+              href="https://scikit-learn.org/stable/modules/linear_model.html">scikit-learn公式文書：Linear
+              Models</a>最小二乗法、Ridge目的関数、特徴の拡張、およびその実装については、参照してください。ブラウザは、scikit-learnを呼び出さず、代わりに自前で作成したQRによる計算を使用します。
+          </p>
+        </section>
+        <section id="pca">
+          <h2>PCAと行列分解</h2>
+          <p><a
+              href="https://scikit-learn.org/stable/modules/decomposition.html#pca">scikit-learn公式文書：PCA</a>中心化、説明分散、圧縮という概念について、実際のライブラリの使用例と比較して参照してください。
+          </p>
+        </section>
+        <section id="gmm">
+          <h2>混合モデルとEM</h2>
+          <p><a
+              href="https://scikit-learn.org/stable/modules/mixture.html">scikit-learn公式文書：Gaussian
+              mixture models</a>分散形態や混合モデルの適合性、成分数の選択についての実装方法についての参考情報です。</p>
+        </section>
+        <section id="svm">
+          <h2>分類とマージン</h2>
+          <p><a href="https://scikit-learn.org/stable/modules/svm.html">scikit-learn公式文書：Support
+              Vector Machines</a>線形・カーヌル関数SVMや、決定関数の使い方についても確認できます。</p>
+        </section>
+        <section id="reproduce">
+          <h2>制作と再現</h2>
+          <p>
+            HD2Labの学習アーカイブのために、説明や合成例、JavaScriptの計算結果、そしてSVGの図表を新たに作成しました。AIの作成には支援を利用し、公開文書の比較や計算テスト、画面検証を通じて確認しました。個人の学習経験や実際のサービス実施の経歴については、記載しませんでした。
+          </p>
+          <p>
+            ブラウザに外部ランタイム依存関係はありません。数式はHTMLの上付き・下付き文字とUnicode、グラフはSVGです。実験はローカルで実行し、入力を送信・保存しません。言語とテーマの設定だけを保存します。JavaScriptが無効でも、既定設定の事前計算結果を表示します。
+          </p>
+          <p><a href="../downloads/study-examples.py" download>7章分のPython例をダウンロード</a> · <a
+              href="../downloads/study-examples.ipynb" download>Jupyter Notebookをダウンロード</a> · <a
+              href="../assets/js/math-core.js" download>ブラウザ数値計算コード</a></p>
+          <p><a href="../downloads/advanced-experiments.ipynb" download>発展Notebook · 28点の図出力</a> ·
+            <a href="../downloads/advanced-experiments.py" download>発展計算Python</a> · <a
+              href="../downloads/advanced-figures.py" download>図の再生成Python</a> · <a
+              href="../downloads/advanced-results.json" download>発展数値結果</a>
+          </p>
+          <p>28個の図は、NumPy 2.2.6とMatplotlib
+            3.10.5によって事前に計算されたSVGです。Notebookのすべてのセルを実行すると、同じ実験や図が再び生成されます。Matplotlibは制作ツールであり、ウェブランタイムには含まれていません。
+            <a href="https://matplotlib.org/stable/project/license.html">Matplotlibライセンス</a> · <a
+              href="https://numpy.org/doc/stable/license.html">NumPyライセンス</a>.
+          </p>
+          <p>
+            Pythonの計算例には、NumPyも必要です。また、高度なグラフの再生成にはMatplotlibも必要です。PythonとJavaScriptは、ランダムな数値を生成する機能が異なるため、同じシードを使用しても、サンプル値が一致しないことがあります。別途の検証では、ブラウザによって生成された同じ配列をNumPyに渡し、その結果を比較します。
+          </p>
+          <p>
+            参照リンクの確認：2026-09-08。外部からの依存コード、フォント、画像はバンドリングされていません。公開された文書の著作権は、各著作権者に帰属します。このサイト全体に対する利用許可は、別途定められていません。
+          </p>
+        </section>
+        <p class="sources">参考文献： <a href="../appendix/references.html#mml">関連概念の参考資料</a> · <a
+            href="../appendix/glossary.html">用語と記号</a></p><button class="print-button" type="button"
+          data-print>このページを印刷 / PDF保存</button>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="brand">HD2Lab<small>LEARNING ARCHIVE</small></div>
+        <p>概念を結び付け、計算で確かめる学習記録。<br>合成データ · 独自の説明と実験</p><a
+          href="../appendix/references.html">参考資料と制作情報 ↗</a>
+      </div>
+    </footer>
+  </body>
+</html>
