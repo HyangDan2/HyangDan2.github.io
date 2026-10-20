@@ -65,10 +65,13 @@ dialog {
     overscroll-behavior: contain;
 }
 dialog::backdrop { background: rgb(0 0 0 / 78%); }
-.dialog-content { padding: 32px; }
+.dialog-content { position: relative; padding: 32px; }
 .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .dialog-heading h2 { margin: 0; color: #fff; font-size: 25px; }
 .close-button {
+    position: absolute;
+    top: 16px;
+    right: 16px;
     flex-shrink: 0;
     width: 44px;
     height: 44px;
@@ -83,7 +86,7 @@ dialog::backdrop { background: rgb(0 0 0 / 78%); }
 .dialog-content .representative { color: #ff8850; margin-top: 12px; }
 .contact { border-top: 1px solid #333; padding-top: 24px; }
 .contact a { color: #ff9a66; overflow-wrap: anywhere; text-underline-offset: 4px; }
-.about-logo { display: block; width: min(100%, 280px); height: auto; margin: 28px auto 0; border-radius: 12px; }
+.about-logo { display: block; width: 25%; height: auto; margin: 0 auto 24px; border-radius: 8%; }
 
 @media (max-width: 600px) {
     .site-header { padding: 20px 24px; }
