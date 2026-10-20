@@ -1,6 +1,0 @@
-{
-  "564": {
-    "en": "import numpy as np\n# Rows are observations and columns are components. Values are log(pi_k) + log N(x_i).\nlogp = np.array([[-2.1,-2.5],[-900.,-902.]])\nshift = logp.max(axis=1, keepdims=True)\nq = np.exp(logp-shift)\nr = q/q.sum(axis=1, keepdims=True)\nprint(r)\nassert np.allclose(r.sum(axis=1), 1)",
-    "ja": "import numpy as np\n# 行は観測、列は成分です。値はlog(pi_k) + log N(x_i)です。\nlogp = np.array([[-2.1,-2.5],[-900.,-902.]])\nshift = logp.max(axis=1, keepdims=True)\nq = np.exp(logp-shift)\nr = q/q.sum(axis=1, keepdims=True)\nprint(r)\nassert np.allclose(r.sum(axis=1), 1)"
-  }
-}

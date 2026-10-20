@@ -1,9 +1,0 @@
-{
-  "status": "passed",
-  "languageLabChecks": 15,
-  "viewportChecks": 9,
-  "contentViewportChecks": 60,
-  "noJavaScriptLanguages": 3,
-  "javascriptErrors": [],
-  "httpFailures": []
-}

@@ -1,6 +1,0 @@
-line-length = 100
-indent-width = 4
-
-[format]
-quote-style = "preserve"
-docstring-code-format = false
