@@ -1,10 +1,12 @@
 # HD2Lab Web-HQ
 
-Personal portfolio, research archive, and education authoring documentation.
+HD2Lab HQ: the English-language entry point for EduHub and GameHub, with an About dialog and email contact. Research archives and education authoring documentation remain available in this repository.
 
 [Live website](https://hyangdan2.github.io)
 
-- [Portfolio](index.html)
+- [HQ](index.html)
+- [EduHub](https://hyangdan2.github.io/EduHub/)
+- [GameHub](https://hyangdan2.github.io/GameHub/)
 - [Stock and ETF analysis](analysis.html)
 - [Machine Learning Study — Korean](https://hyangdan2.github.io/EDPilot0001/)
 - [Education authoring Harness Guide](docs/education-harness-guide.md)
@@ -20,5 +22,5 @@ Serve Web-HQ locally:
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000/`. The portfolio and analysis pages use static HTML,
+Open `http://localhost:8000/`. The HQ and analysis pages use static HTML,
 CSS, and JavaScript and share `assets/favicon.svg`.

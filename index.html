@@ -3,148 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HD2Lab HQ. A space to learn, a space to play. Explore EduHub and GameHub.">
+    <meta name="theme-color" content="#0a0a0a">
     <title>HD2Lab | Web-HQ</title>
     <link rel="stylesheet" href="style.css">
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <script src="script.js" defer></script>
 </head>
 <body>
+    <header class="site-header">
+        <a class="brand" href="./">HD2Lab <span>· HQ</span></a>
+        <button class="about-button" type="button" aria-haspopup="dialog" aria-controls="about-dialog">About</button>
+    </header>
 
-<header>
-    <h1>🚀 HD2Lab</h1>
-    <p class="subtitle">Automotive Display Optics Engineer • Computer Vision • Applied AI Builder</p>
-</header>
+    <main>
+        <section class="hero" aria-labelledby="welcome-title">
+            <h1 id="welcome-title">Hello, World.<br><span>This is where it begins.</span></h1>
+            <p>My own space on the internet.<br>
+                The next 10 years — and even the next 50 —<br>
+                start right here, right now.</p>
+        </section>
 
-<section class="hero">
-    <h2>🔥 AI-Powered. System-Built. Reality-Ready.</h2>
-    <p>
-        Hello, World.
+        <nav class="hubs" aria-label="Explore the hubs">
+            <a class="hub-card" href="https://hyangdan2.github.io/EduHub/">
+                <h2>EduHub <span aria-hidden="true">→</span></h2>
+                <p>A space to learn.</p>
+            </a>
+            <a class="hub-card" href="https://hyangdan2.github.io/GameHub/">
+                <h2>GameHub <span aria-hidden="true">→</span></h2>
+                <p>A space to play.</p>
+            </a>
+        </nav>
+    </main>
 
-        This is where it begins.
-        My own space on the internet.
-        
-        From here, I build —
-        not demos, but real systems.
-        
-        My web app journey starts now.
-        
-        And now, with AI,
-        my long-held vision is finally beginning to take shape.
-        
-        What was once difficult alone
-        has become possible with AI-powered systems.
-        
-        The next 10 years — and even the next 50 —
-        start right here, right now.
-    </p>
-    <button onclick="scrollToSection('projects')">View Projects</button>
-</section>
+    <footer><p>© 2026 HD2Lab</p></footer>
 
-<section id="projects">
-    <h2>💻 Current Projects</h2>
-
-    <div class="card" id="mlstudy">
-        <h3>📚 Machine Learning Study</h3>
-        <p>Mathematics, models, and interactive experiments in Korean.</p>
-        <a class="tag-link" href="https://hyangdan2.github.io/EDPilot0001/">Open MLStudy</a>
-    </div>
-
-    <div class="card">
-        <h3>🧠 Local LLM GUI</h3>
-        <p>PySide6-based local LLM interface powered by llama.cpp</p>
-    </div>
-
-    <div class="card">
-        <h3>📷 FFmpeg Camera System</h3>
-        <p>High-speed camera + real-time image processing + Landmark Tracking</p>
-    </div>
-
-    <div class="card">
-        <h3>📊 Stock Screener</h3>
-        <p>Data-driven analysis tool for KOSPI and KOSDAQ</p>
-    </div>
-
-</section>
-
-<section>
-    <h2>⚙️ Tech Stack</h2>
-
-    <div class="stack-group">
-        <h3>🧠 AI / Local LLM</h3>
-        <div class="tags">
-            <span>llama.cpp</span>
-            <span>Local LLM</span>
-            <span>Prompt Engineering</span>
+    <dialog id="about-dialog" aria-labelledby="about-title">
+        <div class="dialog-content">
+            <div class="dialog-heading">
+                <h2 id="about-title">About HD2Lab</h2>
+                <button class="close-button" type="button" aria-label="Close About">×</button>
+            </div>
+            <p class="representative">Representative of HD2Lab</p>
+            <p>From here, I build —<br>not demos, but real systems.</p>
+            <p>And now, with AI,<br>my long-held vision is finally beginning to take shape.</p>
+            <p>What was once difficult alone<br>has become possible with AI-powered systems.</p>
+            <p>The next 10 years — and even the next 50 —<br>start right here, right now.</p>
+            <p class="contact">Contact me freely for further information:<br>
+                <a href="mailto:jhshim1988@gmail.com">jhshim1988@gmail.com</a>
+            </p>
         </div>
-    </div>
-
-    <div class="stack-group">
-        <h3>🖥️ Application Development</h3>
-        <div class="tags">
-            <span>Python</span>
-            <span>PySide6</span>
-            <span>SQLite</span>
-            <span>YAML Config</span>
-            <span>Multithreading</span>
-        </div>
-    </div>
-
-    <div class="stack-group">
-        <h3>📷 Computer Vision</h3>
-        <div class="tags">
-            <span>OpenCV</span>
-            <span>MediaPipe Face Mesh</span>
-            <span>Image Processing</span>
-        </div>
-    </div>
-
-    <div class="stack-group">
-        <h3>🎥 Camera / Video Pipeline</h3>
-        <div class="tags">
-            <span>FFmpeg</span>
-            <span>DirectShow</span>
-            <span>High-speed UVC Capture</span>
-        </div>
-    </div>
-
-    <div class="stack-group">
-        <h3>⚙️ Embedded / System Integration</h3>
-        <div class="tags">
-            <span>MCU Sync & Serial Communication</span>
-            <span>Automation</span>
-            <span>Data Pipeline</span>
-        </div>
-    </div>
-
-    <div class="stack-group">
-        <h3>📈 Financial Research System</h3>
-        <div class="tags">
-            <span>Stock / ETF Analysis</span>
-            <span>Static Research & Source Tracking</span>
-            <span>AI-Assisted Market Research</span>
-            <a class="tag-link" href="analysis.html">Open Analysis</a>
-        </div>
-    </div>
-</section>
-
-<section class="about">
-
-
-    <h2>📜 About</h2>
-    <p>
-        Automotive Display Engineer since 2013.  
-        Currently, Building AI-powered systems for real-world applications.
-        Contact me freely for further information : jhshim1988@gmail.com
-    </p>
-
-    <img src="assets/LOGO.png" alt="HD2Lab Logo" class="about-logo">
-
-
-</section>
-
-<footer>
-    <p>© 2026 HD2Lab</p>
-</footer>
-
-<script src="script.js"></script>
+    </dialog>
 </body>
 </html>
