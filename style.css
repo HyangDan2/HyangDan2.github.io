@@ -83,6 +83,7 @@ dialog::backdrop { background: rgb(0 0 0 / 78%); }
 .dialog-content .representative { color: #ff8850; margin-top: 12px; }
 .contact { border-top: 1px solid #333; padding-top: 24px; }
 .contact a { color: #ff9a66; overflow-wrap: anywhere; text-underline-offset: 4px; }
+.about-logo { display: block; width: min(100%, 280px); height: auto; margin: 28px auto 0; border-radius: 12px; }
 
 @media (max-width: 600px) {
     .site-header { padding: 20px 24px; }
