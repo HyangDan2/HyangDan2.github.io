@@ -22,6 +22,9 @@ a:focus-visible, button:focus-visible { outline: 3px solid #ff9a66; outline-offs
 }
 .brand { font-size: 24px; font-weight: bold; text-decoration: none; }
 .brand span { color: #ff8850; font-size: 16px; font-weight: normal; }
+.header-actions { display: flex; align-items: center; gap: 18px; }
+.technicalhub-link { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; color: #ffb18c; font-size: 14px; text-decoration: none; }
+.technicalhub-link:hover { color: #fff; }
 .about-button {
     border: 1px solid #ad5229;
     border-radius: 8px;
