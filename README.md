@@ -1,12 +1,13 @@
 # HD2Lab Web-HQ
 
-HD2Lab HQ: the English-language entry point for EduHub and GameHub, with an About dialog and email contact. Research archives and education authoring documentation remain available in this repository.
+HD2Lab HQ: the English-language entry point for EduHub, GameHub, and TechnicalHub, with an About dialog and email contact. Research archives and education authoring documentation remain available in this repository.
 
 [Live website](https://hyangdan2.github.io)
 
 - [HQ](index.html)
 - [EduHub](https://hyangdan2.github.io/EduHub/)
 - [GameHub](https://hyangdan2.github.io/GameHub/)
+- [TechnicalHub](https://hyangdan2.github.io/TechnicalHub/)
 - [Stock and ETF analysis](analysis.html)
 - [Machine Learning Study — Korean](https://hyangdan2.github.io/EDPilot0001/)
 - [Education authoring Harness Guide](docs/education-harness-guide.md)
