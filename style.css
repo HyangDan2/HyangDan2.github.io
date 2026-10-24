@@ -35,7 +35,7 @@ main { width: min(100%, 1048px); margin: auto; padding: 64px 24px 80px; }
 .hero h1 { margin: 0; font-size: clamp(32px, 5vw, 54px); line-height: 1.25; letter-spacing: -0.035em; }
 .hero h1 span { color: #ff8850; }
 .hero p { margin: 28px 0 0; line-height: 1.9; color: #bdbdbd; }
-.hubs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 56px; }
+.hubs { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 56px; }
 .hub-card {
     display: block;
     padding: 32px;
@@ -98,7 +98,4 @@ dialog::backdrop { background: rgb(0 0 0 / 78%); }
 @media (prefers-reduced-motion: reduce) {
     .hub-card { transition: none; }
     .hub-card:hover { transform: none; }
-}
-@media (min-width: 601px) and (max-width: 860px) {
-    .hubs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
