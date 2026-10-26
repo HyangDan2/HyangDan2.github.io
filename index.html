@@ -4,46 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="HD2Lab HQ. A space to learn, play, and explore technology.">
-    <meta name="theme-color" content="#0a0a0a">
+    <meta name="theme-color" content="#101110">
     <title>HD2Lab | Web-HQ</title>
-    <link rel="stylesheet" href="style.css?v=20261025-github-link">
+    <link rel="stylesheet" href="style.css?v=20261027-hq-design">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <script src="script.js" defer></script>
 </head>
 <body>
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
-        <a class="brand" href="./">HD2Lab <span>· HQ</span></a>
-        <div class="header-actions">
-            <a class="github-link" href="https://github.com/HyangDan2/TechnicalHub">← GitHub</a>
-            <button class="about-button" type="button" aria-haspopup="dialog" aria-controls="about-dialog">About</button>
+        <div class="header-inner">
+            <a class="brand" href="./" aria-label="HD2Lab Web-HQ home">
+                <svg class="brand-mark" viewBox="0 0 34 38" fill="none" aria-hidden="true" focusable="false">
+                    <path d="M17 2 31 9v20l-14 7L3 29V9L17 2Z" stroke="currentColor" stroke-width="2.4"/>
+                    <path d="m17 2 0 34M3 9l14 7 14-7M10 13v16l7 4m7-20v16l-7 4" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span class="brand-name">HD2Lab</span>
+                <span class="brand-divider" aria-hidden="true"></span>
+                <span class="brand-section">Web-HQ</span>
+            </a>
+            <div class="header-actions">
+                <nav class="site-nav" aria-label="Hub navigation">
+                    <a href="https://hyangdan2.github.io/EduHub/">EduHub</a>
+                    <a href="https://hyangdan2.github.io/GameHub/">GameHub</a>
+                    <a href="https://hyangdan2.github.io/TechnicalHub/">TechnicalHub</a>
+                </nav>
+                <button class="about-button" type="button" aria-haspopup="dialog" aria-controls="about-dialog">About <span aria-hidden="true">↗</span></button>
+            </div>
         </div>
     </header>
 
-    <main>
-        <section class="hero" aria-labelledby="welcome-title">
-            <h1 id="welcome-title">Hello, World.<br><span>This is where it begins.</span></h1>
-            <p>My own space on the internet.<br>
-                The next 10 years — and even the next 50 —<br>
-                start right here, right now.</p>
+    <main id="main">
+        <section class="hero shell" aria-labelledby="welcome-title">
+            <div class="hero-copy">
+                <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>A space for what comes next</p>
+                <h1 id="welcome-title">Hello, World.<br><span>This is where<br>it begins.</span></h1>
+                <p class="hero-description">My own space on the internet.<br>The next 10 years — and even the next 50 —<br>start right here, right now.</p>
+                <a class="hero-action" href="#hubs">Explore the hubs <span aria-hidden="true">↗</span></a>
+            </div>
+            <div class="hero-visual" aria-hidden="true">
+                <img src="assets/hq-hero.svg" alt="" width="620" height="490">
+                <p>Ideas <span>+</span> Experiments <span>+</span> Possibilities</p>
+            </div>
         </section>
 
-        <nav class="hubs" aria-label="Explore the hubs">
-            <a class="hub-card" href="https://hyangdan2.github.io/EduHub/">
-                <h2>EduHub <span aria-hidden="true">→</span></h2>
-                <p>A space to learn.</p>
-            </a>
-            <a class="hub-card" href="https://hyangdan2.github.io/GameHub/">
-                <h2>GameHub <span aria-hidden="true">→</span></h2>
-                <p>A space to play.</p>
-            </a>
-            <a class="hub-card" href="https://hyangdan2.github.io/TechnicalHub/">
-                <h2>TechnicalHub <span aria-hidden="true">→</span></h2>
-                <p>A space to explore technology.</p>
-            </a>
-        </nav>
+        <section class="explore shell" id="hubs" aria-labelledby="explore-title">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Explore the hubs</p>
+                    <h2 id="explore-title">One space. Three possibilities.</h2>
+                </div>
+                <p>Start with what interests you.</p>
+            </div>
+            <nav class="hubs" aria-label="Explore the hubs">
+                <a class="hub-card" href="https://hyangdan2.github.io/EduHub/">
+                    <span class="card-index">01 / LEARN</span>
+                    <h3>EduHub</h3>
+                    <p>A space to learn.</p>
+                    <span class="card-topics">Learning · Notes · Courses</span>
+                    <span class="card-action">Explore EduHub <span aria-hidden="true">↗</span></span>
+                </a>
+                <a class="hub-card" href="https://hyangdan2.github.io/GameHub/">
+                    <span class="card-index">02 / PLAY</span>
+                    <h3>GameHub</h3>
+                    <p>A space to play.</p>
+                    <span class="card-topics">Games · Interaction · Play</span>
+                    <span class="card-action">Explore GameHub <span aria-hidden="true">↗</span></span>
+                </a>
+                <a class="hub-card" href="https://hyangdan2.github.io/TechnicalHub/">
+                    <span class="card-index">03 / EXPLORE</span>
+                    <h3>TechnicalHub</h3>
+                    <p>A space to explore technology.</p>
+                    <span class="card-topics">Technology · Projects · Ideas</span>
+                    <span class="card-action">Explore TechnicalHub <span aria-hidden="true">↗</span></span>
+                </a>
+            </nav>
+        </section>
+
+        <section class="closing shell" aria-labelledby="closing-title">
+            <h2 id="closing-title">From here,<br><span>I build.</span></h2>
+            <div>
+                <p>Learn something new. Make something useful.<br>See where the next idea leads.</p>
+                <span class="closing-note">+ STAY CURIOUS &nbsp;&nbsp; + KEEP BUILDING &nbsp;&nbsp; + EXPLORE MORE</span>
+            </div>
+        </section>
     </main>
 
-    <footer><p>© 2026 HD2Lab</p></footer>
+    <footer class="site-footer">
+        <div class="footer-inner shell">
+            <span>© 2026 HD2Lab</span>
+            <span>From here, I build.</span>
+            <a href="https://github.com/HyangDan2/TechnicalHub">GitHub <span aria-hidden="true">↗</span></a>
+        </div>
+    </footer>
 
     <dialog id="about-dialog" aria-labelledby="about-title">
         <div class="dialog-content">

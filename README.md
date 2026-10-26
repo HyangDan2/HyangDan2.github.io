@@ -11,6 +11,8 @@ HD2Lab HQ: the English-language entry point for EduHub, GameHub, and TechnicalHu
 - [Stock and ETF analysis](analysis.html)
 - [Machine Learning Study — Korean](https://hyangdan2.github.io/EDPilot0001/)
 - [Education authoring Harness Guide](docs/education-harness-guide.md)
+- [Web-HQ Harness Guide](docs/HARNESS_GUIDE.md)
+- [Multi-application architecture Phase 1](docs/platform-architecture/phase1/README.md)
 
 MLStudy is now maintained and built independently in the sibling `EDPilot0001/`
 project: [source repository](https://github.com/HyangDan2/EDPilot0001).

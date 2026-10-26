@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hd2lab:project-manifest:v1",
+  "title": "HD2Lab public Project Manifest v1",
+  "description": "One reviewed, publicly exportable project record. The registry envelope and private operational records have separate contracts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "hub", "sourceId", "type", "title", "summary", "status", "repositoryAccess", "updatedAt", "tags", "links", "primaryAction"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^(web-hq|edu-hub|game-hub|technical-hub):[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 120 },
+    "hub": { "enum": ["web-hq", "edu-hub", "game-hub", "technical-hub"] },
+    "sourceId": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$" },
+    "type": { "enum": ["game", "learning", "technical", "research", "web-app", "library", "other"] },
+    "title": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "\\S" },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 320, "pattern": "\\S" },
+    "status": { "enum": ["published", "unavailable"] },
+    "repositoryAccess": { "enum": ["public", "private", "none"] },
+    "updatedAt": { "type": "string", "format": "date" },
+    "tags": {
+      "type": "array", "maxItems": 16, "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 40, "pattern": "\\S" }
+    },
+    "links": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {
+        "launch": { "$ref": "#/$defs/publicUrl" },
+        "profile": { "$ref": "#/$defs/publicUrl" },
+        "repository": { "$ref": "#/$defs/publicUrl" }
+      }
+    },
+    "primaryAction": { "enum": ["launch", "profile", "repository"] },
+    "image": {
+      "type": "object", "additionalProperties": false,
+      "required": ["url", "alt"],
+      "properties": {
+        "url": { "$ref": "#/$defs/publicUrl" },
+        "alt": { "type": "string", "minLength": 1, "maxLength": 180, "pattern": "\\S" }
+      }
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "repositoryAccess": { "const": "private" } }, "required": ["repositoryAccess"] }, "then": { "properties": { "links": { "not": { "required": ["repository"] } } } } },
+    { "if": { "properties": { "repositoryAccess": { "const": "none" } }, "required": ["repositoryAccess"] }, "then": { "properties": { "links": { "not": { "required": ["repository"] } } } } },
+    { "if": { "properties": { "repositoryAccess": { "const": "public" } }, "required": ["repositoryAccess"] }, "then": { "properties": { "links": { "required": ["repository"] } } } },
+    { "if": { "properties": { "primaryAction": { "const": "launch" } }, "required": ["primaryAction"] }, "then": { "properties": { "links": { "required": ["launch"] } } } },
+    { "if": { "properties": { "primaryAction": { "const": "profile" } }, "required": ["primaryAction"] }, "then": { "properties": { "links": { "required": ["profile"] } } } },
+    { "if": { "properties": { "primaryAction": { "const": "repository" } }, "required": ["primaryAction"] }, "then": { "properties": { "links": { "required": ["repository"] } } } }
+  ],
+  "$defs": {
+    "publicUrl": { "type": "string", "format": "uri", "pattern": "^https://", "maxLength": 2048 }
+  }
+}

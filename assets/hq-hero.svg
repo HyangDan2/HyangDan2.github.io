@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 490" role="img" aria-labelledby="title">
+  <title id="title">Three connected geometric forms representing learning, play, and technology</title>
+  <defs>
+    <linearGradient id="ground" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#252922" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#111310" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M41 302 312 171 594 311 321 444Z" fill="url(#ground)" stroke="#363a32" stroke-opacity=".45"/>
+  <g fill="none" stroke="#474b40" stroke-opacity=".32" stroke-width="1">
+    <path d="m93 276 281 141M145 251l281 141M197 226l281 141M249 201l281 141M301 176l281 141"/>
+    <path d="M90 326 362 194M141 352 414 220M193 378 466 246M245 404 518 272M297 430 570 298"/>
+    <path d="m78 286 271 135M119 266l272 135M160 246l272 135" stroke-opacity=".22"/>
+  </g>
+
+  <g stroke="#86947a" stroke-width="1.5" stroke-linejoin="round">
+    <path d="m153 254 85-42 85 42-85 42Z" fill="#6d7c62"/>
+    <path d="m153 254 85 42v88l-85-42Z" fill="#303b2e"/>
+    <path d="m238 296 85-42v88l-85 42Z" fill="#465442"/>
+    <path d="m195 233 85 42m-85 0 85-42M153 298l85 42 85-42M153 321l85 42 85-42" fill="none" stroke="#9fac91" stroke-opacity=".55"/>
+  </g>
+
+  <g stroke="#d69371" stroke-width="1.6" stroke-linejoin="round">
+    <path d="m306 163 93-46 93 46-93 46Z" fill="#e18e66"/>
+    <path d="m306 163 93 46v139l-93-46Z" fill="#965539"/>
+    <path d="m399 209 93-46v139l-93 46Z" fill="#b56d4c"/>
+    <path d="m352 140 93 46m-93 0 93-46M306 209l93 46 93-46M306 255l93 46 93-46M352 186v139m93-139v139" fill="none" stroke="#f4b18d" stroke-opacity=".52"/>
+  </g>
+
+  <g stroke="#a3b092" stroke-width="1.5" stroke-linejoin="round">
+    <path d="m416 312 66-33 66 33-66 33Z" fill="#a5ae86"/>
+    <path d="m416 312 66 33v66l-66-33Z" fill="#586449"/>
+    <path d="m482 345 66-33v66l-66 33Z" fill="#768362"/>
+    <path d="m416 345 66 33 66-33" fill="none" stroke="#c0c9a8" stroke-opacity=".54"/>
+  </g>
+
+  <g fill="none" stroke="#9ca68d" stroke-width="1.5">
+    <path d="M151 254H69v-49"/>
+    <path d="M492 163h59V91"/>
+    <path d="M548 378h35v52"/>
+  </g>
+  <g fill="#d9e0cb">
+    <circle cx="151" cy="254" r="3.5"/>
+    <circle cx="492" cy="163" r="3.5"/>
+    <circle cx="548" cy="378" r="3.5"/>
+  </g>
+  <g fill="#c0c1b8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" letter-spacing="2">
+    <text x="30" y="188">01 / LEARN</text>
+    <text x="478" y="76">02 / PLAY</text>
+    <text x="444" y="456">03 / EXPLORE</text>
+  </g>
+</svg>
