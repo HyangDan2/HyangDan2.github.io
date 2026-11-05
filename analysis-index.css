@@ -54,7 +54,44 @@ a, button, input, select { font: inherit; }
     backdrop-filter: blur(10px);
 }
 
-.brand,
+.brand {
+    color: var(--color-text);
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -1.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand em {
+    font-size: 12px;
+    letter-spacing: 0;
+    font-style: normal;
+    font-weight: 400;
+    color: var(--color-muted);
+    border-left: 1px solid var(--color-border);
+    padding-left: 13px;
+}
+
+.mark {
+    display: inline-block;
+    width: 17px;
+    height: 22px;
+    border: 3px solid #ff824f;
+    transform: skewY(-23deg);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.mark:after {
+    content: '';
+    position: absolute;
+    inset: 4px -8px -7px 4px;
+    border: 2px solid #ff824f;
+}
+
 .home-link {
     color: var(--color-text);
     text-decoration: none;

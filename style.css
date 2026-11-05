@@ -8,7 +8,7 @@
     --border: #343630;
     --text: #f3f2ec;
     --muted: #aaa9a1;
-    --accent: #f08d62;
+    --accent: #ff824f;
 }
 
 * { box-sizing: border-box; }
@@ -23,11 +23,47 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outlin
 
 .site-header { position: sticky; z-index: 10; top: 0; border-bottom: 1px solid var(--border); background: rgb(16 17 16 / 94%); backdrop-filter: blur(14px); }
 .header-inner { width: min(100% - 96px, 1344px); min-height: 88px; margin-inline: auto; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
-.brand { display: inline-flex; align-items: center; gap: 10px; flex: none; text-decoration: none; white-space: nowrap; }
-.brand-mark { width: 31px; height: 35px; color: var(--accent); }
-.brand-name { font-size: 24px; font-weight: 800; letter-spacing: -.06em; }
-.brand-divider { width: 1px; height: 17px; margin-inline: 5px; background: #6b6c66; }
-.brand-section { color: var(--muted); font-size: 13px; }
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex: none;
+    text-decoration: none;
+    white-space: nowrap;
+    font-weight: 800;
+    font-size: 25px;
+    letter-spacing: -1.5px;
+}
+.brand-name {
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+}
+.brand em {
+    font-size: 12px;
+    letter-spacing: 0;
+    font-style: normal;
+    font-weight: 400;
+    color: var(--muted);
+    border-left: 1px solid #45473f;
+    padding-left: 13px;
+}
+/* HD2Lab Skew Mark - Exact geometry matching hd2lab.duckdns.org */
+.mark {
+    display: inline-block;
+    width: 17px;
+    height: 22px;
+    border: 3px solid var(--accent);
+    transform: skewY(-23deg);
+    position: relative;
+    flex-shrink: 0;
+}
+.mark:after {
+    content: '';
+    position: absolute;
+    inset: 4px -8px -7px 4px;
+    border: 2px solid var(--accent);
+}
 .header-actions { display: flex; align-items: center; gap: 36px; }
 .site-nav { display: flex; align-items: center; gap: 28px; }
 .site-nav a { color: #d1d0ca; font-size: 13px; text-decoration: none; white-space: nowrap; transition: color .2s; }
@@ -104,8 +140,9 @@ dialog::backdrop { background: rgb(0 0 0 / 80%); }
 @media (max-width: 650px) {
     .shell, .header-inner { width: min(100% - 36px, 1344px); }
     .header-inner { flex-wrap: wrap; gap: 0; min-height: 0; padding-block: 14px 0; }
-    .brand { min-height: 42px; }
-    .brand-name { font-size: 21px; }
+    .brand { min-height: 42px; font-size: 22px; }
+    .brand-name { font-size: 22px; }
+    .brand em { display: none; }
     .header-actions { display: contents; }
     .about-button { margin-left: auto; }
     .site-nav { order: 3; width: 100%; justify-content: space-between; gap: 14px; padding-block: 14px; overflow-x: auto; }
