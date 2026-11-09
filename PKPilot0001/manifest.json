@@ -1,0 +1,42 @@
+{
+  "name": "HD2Lab | Photos (PKPilot0001)",
+  "short_name": "HD2Lab Photos",
+  "description": "iOS Photos 스타일의 정적 사진 라이브러리 · HD2Lab 정회원 인증 · 목업 EXIF · 필터 보정",
+  "id": "/PKPilot0001/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["minimal-ui", "standalone"],
+  "orientation": "any",
+  "background_color": "#101110",
+  "theme_color": "#101110",
+  "lang": "ko",
+  "dir": "ltr",
+  "categories": ["photo", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
