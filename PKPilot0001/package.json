@@ -1,0 +1,15 @@
+{
+  "name": "pkpilot0001",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HD2Lab | Photos — iOS Photos style production-grade static photo library (PKPilot0001)",
+  "homepage": "https://hyangdan2.github.io/PKPilot0001/",
+  "scripts": {
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test": "npm run test:unit",
+    "serve": "python3 -m http.server 8080"
+  },
+  "keywords": ["hd2lab", "photos", "ios", "vanilla-js", "pwa", "static"],
+  "license": "UNLICENSED"
+}
