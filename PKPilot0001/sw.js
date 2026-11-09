@@ -8,9 +8,12 @@
  *  · 문서 요청: network-first, 실패 시 캐시된 index.html
  */
 
-const VERSION = 'pkpilot0001-v1.0.0';
+const CACHE_PREFIX = 'hd2lab-photos-';
+const LEGACY_CACHE_PREFIXES = ['pkpilot0001-v1.0.0'];
+const VERSION = `${CACHE_PREFIX}v1.1.0-brand`;
 const SHELL_CACHE = `${VERSION}-shell`;
 const IMAGE_CACHE = `${VERSION}-images`;
+const ACTIVE_CACHES = [SHELL_CACHE, IMAGE_CACHE];
 
 const SHELL_ASSETS = [
   './',
@@ -22,10 +25,13 @@ const SHELL_ASSETS = [
   './js/auth.js',
   './js/viewer.js',
   './manifest.json',
-  './assets/icon.svg',
-  './assets/icon-192.png',
-  './assets/icon-512.png',
-  './assets/apple-touch-icon.png',
+  './favicon.ico',
+  './favicon.svg',
+  './favicon-32x32.png',
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png',
+  './og-image.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -42,7 +48,17 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key))),
+        Promise.all(
+          keys
+            // 같은 오리진의 다른 앱(AGPilot0002 등) 캐시는 절대 지우지 않는다.
+            .filter(
+              (key) =>
+                (key.startsWith(CACHE_PREFIX) ||
+                  LEGACY_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix))) &&
+                !ACTIVE_CACHES.includes(key),
+            )
+            .map((key) => caches.delete(key)),
+        ),
       )
       .then(() => self.clients.claim()),
   );

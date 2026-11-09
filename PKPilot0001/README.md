@@ -94,7 +94,16 @@ PKPilot0001/
 ├── tests/preview/viewport.html  # 390×844 모바일 뷰포트 확인용 프리뷰
 ├── manifest.json           # PWA 매니페스트
 ├── sw.js                   # 서비스 워커 (오프라인 셸)
-├── assets/                 # 아이콘 (SVG · 192 · 512 · apple-touch)
+├── favicon.svg             # HD2Lab 듀얼 스큐 마크 (벡터 원본)
+├── favicon.ico             # 멀티사이즈 16 · 32 · 48
+├── favicon-32x32.png       # 브라우저 탭 아이콘
+├── apple-touch-icon.png    # iOS 홈화면 180×180
+├── icon-192.png            # PWA 192×192
+├── icon-512.png            # PWA 512×512
+├── og-image.png            # 카카오톡 · 소셜 공유 썸네일 1200×630
+├── social-preview.png      # og-image 동일본 (소셜 미리보기)
+├── assets/                 # (레거시) 이전 아이콘 세트
+├── tools/generate_brand_assets.py  # 브랜드 에셋 재생성 스크립트
 ├── docs/screenshots/       # README · PR용 스크린샷 (데스크톱 / 모바일)
 └── README.md
 ```
