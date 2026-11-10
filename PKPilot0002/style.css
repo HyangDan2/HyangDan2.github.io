@@ -556,6 +556,15 @@ a {
   color: var(--muted);
 }
 
+.search-results .res-car .res-ic,
+.search-results .res-ic-car .res-ic,
+.search-results .res-rest .res-ic,
+.search-results .res-parking .res-ic,
+.search-results .res-ktx .res-ic {
+  background: rgba(94, 200, 255, 0.12);
+  color: #5ec8ff;
+}
+
 .search-results .res-body {
   display: block;
   flex: 1;
@@ -636,6 +645,51 @@ a {
   min-height: 34px;
   gap: 7px;
   margin-top: -6px;
+}
+
+/* 이동 수단 토글 — 대중교통 / 자차 */
+.mode-toggle {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mode-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 7px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.18s var(--ease);
+}
+
+.mode-toggle button .ic {
+  width: 15px;
+  height: 15px;
+}
+
+.mode-toggle button:hover {
+  color: var(--text);
+}
+
+.mode-toggle button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #17130e;
+}
+
+.mode-toggle button[aria-pressed='true'] .ic {
+  stroke-width: 2.4;
 }
 
 .chip {
@@ -1179,6 +1233,112 @@ a,
   letter-spacing: 0;
   line-height: 1;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.road-badge {
+  min-width: 0;
+}
+
+.both-badge,
+.parking-badge {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text);
+}
+
+.station-card.is-car {
+  border-color: rgba(94, 200, 255, 0.35);
+  background:
+    radial-gradient(300px 160px at 100% 0%, rgba(94, 200, 255, 0.14), transparent 72%),
+    linear-gradient(180deg, #1a2027, #171a1f);
+}
+
+.station-card.is-car .station-kicker {
+  color: #5ec8ff;
+}
+
+/* 참가자별 길찾기 링크 */
+.dir-box {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.dir-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.dir-head .ic {
+  width: 13px;
+  height: 13px;
+}
+
+.dir-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.dir-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  min-width: 0;
+  max-width: 42%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dir-who::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--c, var(--accent));
+}
+
+.dir-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.nav-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.16s var(--ease);
+}
+
+.nav-chip:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.nav-chip:active {
+  transform: scale(0.97);
 }
 
 .station-actions {
@@ -1968,6 +2128,25 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
     padding-bottom: 3px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* 이동 수단 토글도 접힌 시트에서 바로 보인다 */
+  .mode-toggle {
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .mode-toggle button {
+    height: 34px;
+    font-size: 12.5px;
+  }
+
+  .dir-row {
+    flex-wrap: wrap;
+  }
+
+  .dir-who {
+    max-width: 100%;
   }
 
   .presets::-webkit-scrollbar {

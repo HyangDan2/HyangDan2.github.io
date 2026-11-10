@@ -5,6 +5,7 @@
 
 import {
   DEFAULT_NAMES,
+  LONG_TRIP_KM,
   MAX_PARTICIPANTS,
   buildShareUrl,
   distanceStats,
@@ -15,16 +16,21 @@ import {
   formatLatLng,
   haversineKm,
   lineMeta,
+  maxPairwiseKm,
   midpoint,
   nearestStations,
   parseShareState,
   recommendMeetingSpot,
   sanitizeName,
+  spotKind,
   suggestPlaces,
+  travelModeOf,
   walkingMinutes,
 } from './js/core.js';
 import { LINES, STATIONS } from './js/stations.js';
+import { DRIVING_SPOTS, ROADS } from './js/driving_spots.js';
 import { LANDMARKS } from './js/landmarks.js';
+import { PROVIDERS, isIOS, isMobileDevice, naverDirectionsUrl, providerList } from './js/directions.js';
 
 /* ------------------------------------------------------------------
    상수
@@ -34,15 +40,26 @@ const PALETTE = [
   '#f4a261', '#a0c4ff', '#e0e08a', '#ff9f9f', '#b8e986', '#d0bfff',
 ];
 
-const PRESETS = [
+const TRANSIT_PRESETS = [
+  { label: '서울역', name: '서울역' },
   { label: '강남', name: '강남역' },
   { label: '홍대입구', name: '홍대입구역' },
-  { label: '종로3가', name: '종로3가역' },
-  { label: '신도림', name: '신도림역' },
-  { label: '여의도', name: '여의도역' },
-  { label: '잠실', name: '잠실역' },
-  { label: '판교', name: '판교역' },
-  { label: '광화문', name: '광화문역' },
+  { label: '대전역', name: '대전역' },
+  { label: '동대구역', name: '동대구역' },
+  { label: '부산역', name: '부산역' },
+  { label: '창원중앙', name: '창원중앙역' },
+  { label: '광주송정', name: '광주송정역' },
+];
+
+const CAR_PRESETS = [
+  { label: '판교IC', name: '판교IC' },
+  { label: '기흥IC', name: '기흥IC' },
+  { label: '천안IC', name: '천안IC' },
+  { label: '대전IC', name: '대전IC' },
+  { label: '동대구IC', name: '동대구IC' },
+  { label: '경주IC', name: '경주IC' },
+  { label: '서부산IC', name: '서부산IC' },
+  { label: '동창원IC', name: '동창원IC' },
 ];
 
 const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 };
@@ -58,10 +75,12 @@ const TILES = {
 };
 
 const STATION_INDEX = new Map(STATIONS.map(row => [row[0], row]));
+const DRIVING_INDEX = new Map(DRIVING_SPOTS.map(row => [row[0], row]));
 
-// 추천 후보: 지하철역 + 주요 랜드마크 (중심에서 가장 가까운 곳을 제안)
+// 추천 후보: 지하철역·KTX·터미널 + 고속도로 IC·휴게소 + 주요 랜드마크
 const SPOTS = [
-  ...STATIONS.map(([name, lat, lng, lines]) => [name, lat, lng, lines, { kind: 'station' }]),
+  ...STATIONS.map(([name, lat, lng, lines, meta]) => [name, lat, lng, lines, { kind: meta?.hub ? 'ktx' : 'station', ...(meta || {}) }]),
+  ...DRIVING_SPOTS.map(([name, lat, lng, , meta]) => [name, lat, lng, [], { ...meta }]),
   ...LANDMARKS.map(([name, lat, lng, note]) => [name, lat, lng, [], { kind: 'landmark', note }]),
 ];
 
@@ -72,6 +91,7 @@ let seq = 0;
 const state = {
   points: [], // { id, lat, lng, name, address, addressState }
   mode: 'fair',
+  travelMode: 'transit',
   activeId: null,
   style: 'dark',
 };
@@ -88,6 +108,7 @@ const el = {
   emptyHint: document.getElementById('emptyHint'),
   result: document.getElementById('resultCard'),
   presets: document.getElementById('presets'),
+  modeToggle: document.getElementById('modeToggle'),
   searchForm: document.getElementById('searchForm'),
   searchInput: document.getElementById('searchInput'),
   searchBtn: document.getElementById('searchBtn'),
@@ -357,17 +378,23 @@ function lineText(codes) {
   return (codes || []).map(code => lineMeta(code, LINES).name).join(' · ');
 }
 
-// 내장 데이터(589개 역 + 랜드마크)에서 즉시 찾는다 — 네트워크 없음
+// 내장 데이터(957개 역·거점 + IC·휴게소 + 랜드마크)에서 즉시 찾는다 — 네트워크 없음
 function localSuggestions(term) {
-  return suggestPlaces(term, { stations: STATIONS, landmarks: LANDMARKS, limit: SUGGEST_LIMIT })
-    .map(item => ({
-      name: item.name,
-      lat: item.lat,
-      lng: item.lng,
-      kind: item.kind,
-      lines: item.lines,
-      address: item.kind === 'station' ? lineText(item.lines) : (item.note || ''),
-    }));
+  return suggestPlaces(term, {
+    stations: state.travelMode === 'car' ? [...DRIVING_SPOTS, ...STATIONS] : [...STATIONS, ...DRIVING_SPOTS],
+    landmarks: LANDMARKS,
+    limit: SUGGEST_LIMIT,
+  }).map(item => ({
+    name: item.name,
+    lat: item.lat,
+    lng: item.lng,
+    kind: item.kind === 'landmark' ? 'landmark' : spotKind(item),
+    lines: item.lines,
+    note: item.note,
+    address: item.kind === 'station' || item.kind === 'ktx'
+      ? lineText(item.lines)
+      : (item.note || (item.road ? `${item.road}${item.kind === 'rest' ? ' 휴게소' : ' IC'}` : (item.parking ? '주차 편리 거점' : ''))),
+  }));
 }
 
 function emptyRow(text) {
@@ -399,10 +426,11 @@ function renderSearchRows(rows, options = {}) {
   el.searchInput.setAttribute('aria-expanded', 'true');
 
   const items = rows.map((row, i) => {
-    const icon = row.kind === 'station' ? 'i-train' : 'i-pin';
-    const meta = row.kind === 'station'
+    const icon = row.kind === 'station' || row.kind === 'ktx' ? 'i-train'
+      : row.kind === 'landmark' ? 'i-pin' : 'i-car';
+    const meta = row.kind === 'station' || row.kind === 'ktx'
       ? `<span class="res-lines">${lineBadges(row.lines) || '<span class="res-sub">지하철역</span>'}</span>`
-      : `<span class="res-sub">${esc(row.address || '')}</span>`;
+      : `<span class="res-sub">${esc(row.address || row.note || row.road || '')}</span>`;
     return `<li role="option" id="search-opt-${i}" data-index="${i}" aria-selected="false" class="res-row res-${esc(row.kind)}">
         <span class="res-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${icon}"/></svg></span>
         <span class="res-body"><span class="res-name">${esc(row.name)}</span>${meta}</span>
@@ -529,7 +557,11 @@ function computeResult() {
   const distances = distancesKm(center, points);
   const stats = distanceStats(distances);
   const fairness = fairnessScore(distances);
-  const rec = recommendMeetingSpot(points, SPOTS, { mode: state.mode, stations: STATIONS });
+  const rec = recommendMeetingSpot(points, SPOTS, {
+    mode: state.mode,
+    travelMode: state.travelMode,
+    stations: STATIONS,
+  });
   return { center, distances, stats, fairness, rec };
 }
 
@@ -579,6 +611,19 @@ function shortLineName(meta) {
   return name.replace('수인분당', '분당').replace('경의중앙', '경의').replace('김포골드', '김포').replace('공항철도', '공항').replace('우이신설', '우이');
 }
 
+/** IC·휴게소·주차 거점 배지 */
+function spotBadges(spot) {
+  const badges = [];
+  if (spot.road) {
+    const color = ROADS[spot.road] || '#8b8f83';
+    const label = spot.road.replace(/고속도로$/, '').replace('수도권제1순환', '1순환').replace('수도권제2순환', '2순환');
+    badges.push(`<span class="line-badge road-badge" style="--lc:${color};color:#fff" title="${esc(spot.road)}">${esc(label)}</span>`);
+  }
+  if (spot.kind === 'rest' && spot.both) badges.push('<span class="line-badge both-badge">쌍방</span>');
+  if (spot.parking) badges.push('<span class="line-badge parking-badge">주차 편리</span>');
+  return badges.join('');
+}
+
 function isLightColor(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
   if (!m) return false;
@@ -587,6 +632,52 @@ function isLightColor(hex) {
   const g = (int >> 8) & 255;
   const b = int & 255;
   return (0.299 * r + 0.587 * g + 0.114 * b) > 156;
+}
+
+function isCarMode() {
+  return state.travelMode === 'car';
+}
+
+function kindKicker(spot) {
+  const kind = spotKind(spot);
+  if (kind === 'ktx' || kind === 'terminal') return '광역 환승 거점';
+  if (kind === 'ic') return '고속도로 IC';
+  if (kind === 'rest') return '휴게소 · 만남의 광장';
+  if (kind === 'parking') return '대형 주차 거점';
+  if (kind === 'landmark') return '추천 만남 장소';
+  return '추천 만남 거점';
+}
+
+/** 참가자별 길찾기 버튼 행 — 카카오맵·네이버지도(·티맵) 원클릭 딥링크 */
+function directionLinks(spot) {
+  if (!spot) return '';
+  const travelMode = state.travelMode;
+  const rows = state.points.map((point, i) => {
+    const color = PALETTE[i % PALETTE.length];
+    const links = providerList(travelMode).map(key => {
+      const provider = PROVIDERS[key];
+      const url = provider.app({ from: point, to: spot, travelMode });
+      const label = travelMode === 'car' ? provider.carLabel : provider.label;
+      return `<a class="nav-chip" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(point.name)} → ${esc(spot.name)} ${esc(label)} 길찾기">${esc(label)}</a>`;
+    }).join('');
+    return `
+      <div class="dir-row">
+        <span class="dir-who" style="--c:${color}">${esc(point.name)}</span>
+        <span class="dir-links">${links}</span>
+      </div>`;
+  }).join('');
+  return `
+    <div class="dir-box">
+      <div class="dir-head"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-walk"/></svg>여기까지 길찾기</div>
+      ${rows}
+    </div>`;
+}
+
+// 도차 60km/h + 도심 감속을 반영한 대략의 운전 시간(분)
+function driveMinutes(km) {
+  if (!Number.isFinite(km)) return '—';
+  const minutes = (km / 60) * 60 + (km > 5 ? 10 : 3);
+  return `${Math.max(1, Math.round(minutes))}분`;
 }
 
 function renderResult(result) {
@@ -606,6 +697,7 @@ function renderResult(result) {
 
   const stationFallback = !primary && rec ? nearestStations(rec.center, SPOTS, 1, Infinity)[0] : null;
   const station = primary || stationFallback;
+  const car = isCarMode();
 
   const spreadRows = state.points.map((point, i) => {
     const d = result.distances[i];
@@ -620,27 +712,28 @@ function renderResult(result) {
   }).join('');
 
   const stationMarkup = station ? `
-    <div class="card station-card">
+    <div class="card station-card ${car ? 'is-car' : ''}">
       <div class="station-top">
-        <span class="station-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-train"/></svg>${primary ? (station.kind === 'landmark' ? '추천 만남 장소' : '추천 만남 거점') : '가장 가까운 곳'}</span>
+        <span class="station-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>${primary ? kindKicker(station) : '가장 가까운 곳'}</span>
         <span class="station-dist">중심에서 ${formatKm(primary ? primary.km : station.km)}</span>
       </div>
-      <div class="station-name">${esc(station.name)} ${lineBadges(station.lines)}${station.kind === 'landmark' && station.note ? `<em>${esc(station.note)}</em>` : ''}</div>
+      <div class="station-name">${esc(station.name)} ${car ? spotBadges(station) : (car ? '' : lineBadges(station.lines))}</div>
       <div class="station-actions">
         <div class="station-meta">
-          <span>도보 <b>${walkingMinutes(primary ? primary.km : station.km)}분</b></span>
+          <span>${car ? '차로' : '도보'} <b>${car ? driveMinutes(primary ? primary.km : station.km) : walkingMinutes(primary ? primary.km : station.km) + '분'}</b></span>
           <span>가장 먼 참가자 <b>${formatKm(stats.max)}</b></span>
         </div>
         <button class="mini-btn" type="button" data-focus-lat="${station.lat}" data-focus-lng="${station.lng}">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg>지도에서
         </button>
       </div>
+      ${directionLinks(station)}
     </div>` : `
     <div class="card station-card">
       <div class="station-top">
-        <span class="station-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-train"/></svg>추천 만남 거점</span>
+        <span class="station-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>추천 만남 거점</span>
       </div>
-      <div class="station-name" style="font-size:15px">주변에 지하철역이 없어요</div>
+      <div class="station-name" style="font-size:15px">주변에 ${car ? '고속도로 거점이' : '지하철역이'} 없어요</div>
       <p class="lede" style="margin-top:6px">중간 지점 좌표를 확인해 보세요.</p>
     </div>`;
 
@@ -651,7 +744,6 @@ function renderResult(result) {
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>
       </button>
     </div>
-
     <div class="card">
       <div class="fair">
         <div class="ring" style="--p:${score.toFixed(0)}">
@@ -678,8 +770,8 @@ function renderResult(result) {
 
     ${alternative ? `
       <div class="alt-station">
-        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-train"/></svg>
-        <span>더 공평한 역 <b>${esc(alternative.name)}</b> · 가장 먼 참가자 ${kmHtml(alternative.maxKm)}</span>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>
+        <span>더 공평한 ${car ? '거점' : '역'} <b>${esc(alternative.name)}</b> · 가장 먼 참가자 ${kmHtml(alternative.maxKm)}</span>
         <span class="alt-km">중심에서 ${formatKm(alternative.km)}</span>
       </div>` : ''}
 
@@ -701,6 +793,16 @@ function renderResult(result) {
       render();
     });
   });
+  el.result.querySelectorAll('[data-focus-lat]').forEach(button => {
+    button.addEventListener('click', () => {
+      const lat = Number(button.dataset.focusLat);
+      const lng = Number(button.dataset.focusLng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        map.setView([lat, lng], 15, { animate: true });
+        if (isMobile()) setSheet('peek');
+      }
+    });
+  });
   const coordBtn = el.result.querySelector('#coordBtn');
   if (coordBtn) {
     coordBtn.addEventListener('click', async () => {
@@ -711,17 +813,6 @@ function renderResult(result) {
   }
   const inlineShare = el.result.querySelector('#shareBtnInline');
   if (inlineShare) inlineShare.addEventListener('click', copyLink);
-  const focusSpot = el.result.querySelector('[data-focus-lat]');
-  if (focusSpot) {
-    focusSpot.addEventListener('click', () => {
-      const lat = Number(focusSpot.dataset.focusLat);
-      const lng = Number(focusSpot.dataset.focusLng);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        map.setView([lat, lng], 15, { animate: true });
-        if (isMobile()) setSheet('peek');
-      }
-    });
-  }
 }
 
 /* ------------------------------------------------------------------
@@ -871,17 +962,18 @@ function drawOverlays(result) {
 
   const station = result.rec?.primary;
   if (station) {
+    const car = isCarMode();
     L.marker([station.lat, station.lng], {
       icon: L.divIcon({
         className: 'station-wrap',
-        html: `<span class="pin-station"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-train"/></svg>${esc(station.name)}</span>`,
+        html: `<span class="pin-station"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>${esc(station.name)}</span>`,
         iconSize: [10, 10],
         iconAnchor: [5, 26],
       }),
       zIndexOffset: 600,
       keyboard: false,
     })
-      .bindPopup(`<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · 도보 ${walkingMinutes(station.km)}분`)
+      .bindPopup(`<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : `도보 ${walkingMinutes(station.km)}분`}`)
       .addTo(overlayLayer);
   }
 }
@@ -912,7 +1004,7 @@ function updateChrome() {
 function syncUrl() {
   try {
     const url = state.points.length
-      ? buildShareUrl(location.href, state.points, state.mode)
+      ? buildShareUrl(location.href, state.points, state.mode, state.travelMode)
       : `${location.origin}${location.pathname.replace(/index\.html?$/i, '')}`;
     history.replaceState(null, '', url);
   } catch {
@@ -1036,14 +1128,7 @@ function initSheet() {
    이벤트 바인딩
    ------------------------------------------------------------------ */
 function initPresets() {
-  el.presets.innerHTML = PRESETS.map(preset => {
-    const row = STATION_INDEX.get(preset.name);
-    const landmark = LANDMARKS.find(l => l[0] === preset.name);
-    const lat = row ? row[1] : landmark?.[1];
-    const lng = row ? row[2] : landmark?.[2];
-    return `<button class="chip" type="button" data-preset="${esc(preset.name)}" data-lat="${lat}" data-lng="${lng}">${esc(preset.label)}</button>`;
-  }).join('');
-
+  renderPresets();
   el.presets.addEventListener('click', event => {
     const chip = event.target.closest('[data-preset]');
     if (!chip) return;
@@ -1053,9 +1138,43 @@ function initPresets() {
       toast('위치를 찾지 못했어요');
       return;
     }
-    const name = chip.dataset.preset.replace(/역$/, '');
+    const name = chip.dataset.preset;
     const point = addPoint({ lat, lng, name, source: 'preset' });
     if (point) toast(`${name} 추가`);
+  });
+}
+
+function renderPresets() {
+  const presets = isCarMode() ? CAR_PRESETS : TRANSIT_PRESETS;
+  el.presets.innerHTML = presets.map(preset => {
+    const row = STATION_INDEX.get(preset.name) || DRIVING_INDEX.get(preset.name);
+    const landmark = LANDMARKS.find(l => l[0] === preset.name);
+    const lat = row ? row[1] : landmark?.[1];
+    const lng = row ? row[2] : landmark?.[2];
+    return `<button class="chip" type="button" data-preset="${esc(preset.name)}" data-lat="${lat ?? ''}" data-lng="${lng ?? ''}">${esc(preset.label)}</button>`;
+  }).join('');
+}
+
+function setTravelMode(mode, notify = true) {
+  const next = travelModeOf(mode);
+  if (state.travelMode === next) return;
+  state.travelMode = next;
+  el.modeToggle.querySelectorAll('[data-travel]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.travel === next));
+  });
+  renderPresets();
+  render();
+  if (notify) {
+    toast(next === 'car'
+      ? '자차 모드 — 고속도로 IC·휴게소 거점을 추천해요'
+      : '대중교통 모드 — 역·터미널 거점을 추천해요');
+  }
+}
+
+function initModeToggle() {
+  el.modeToggle.querySelectorAll('[data-travel]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.travel === state.travelMode));
+    button.addEventListener('click', () => setTravelMode(button.dataset.travel));
   });
 }
 
@@ -1168,14 +1287,14 @@ function initHeaderEvents() {
 
   window.addEventListener('popstate', () => {
     const parsed = parseShareState(location.href);
-    if (parsed.present) loadPoints(parsed.points, parsed.mode, false);
+    if (parsed.present) loadPoints(parsed.points, parsed.mode, false, parsed.travelMode);
   });
 }
 
 /* ------------------------------------------------------------------
    초기 상태 불러오기
    ------------------------------------------------------------------ */
-function loadPoints(points, mode, notify = true) {
+function loadPoints(points, mode, notify = true, travelMode = null) {
   state.points = points.map((p, i) => {
     seq += 1;
     return {
@@ -1188,6 +1307,13 @@ function loadPoints(points, mode, notify = true) {
     };
   });
   if (mode) state.mode = mode;
+  if (travelMode) {
+    state.travelMode = travelModeOf(travelMode);
+    el.modeToggle.querySelectorAll('[data-travel]').forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.travel === state.travelMode));
+    });
+    renderPresets();
+  }
   state.points.forEach(point => requestAddress(point));
   render();
   fitAll(false);
@@ -1231,6 +1357,7 @@ function initViewportLock() {
    ------------------------------------------------------------------ */
 function boot() {
   initMap();
+  initModeToggle();
   initPresets();
   initListEvents();
   initSearchEvents();
@@ -1240,7 +1367,7 @@ function boot() {
 
   const parsed = parseShareState(location.href);
   if (parsed.present && parsed.points.length) {
-    loadPoints(parsed.points, parsed.mode, true);
+    loadPoints(parsed.points, parsed.mode, true, parsed.travelMode);
     if (parsed.skipped) toast(`좌표 ${parsed.skipped}개는 형식이 맞지 않아 건너뛰었어요`, 3200);
   } else {
     render();
