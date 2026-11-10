@@ -680,6 +680,13 @@ function driveMinutes(km) {
   return `${Math.max(1, Math.round(minutes))}분`;
 }
 
+/** 중심↔거점 이동 표기 — 도보 90분을 넘으면 광역 환승 거점이므로 도보 대신 접근 수단을 알려준다. */
+function approachLabel(km, car) {
+  if (car) return `차로 <b>${driveMinutes(km)}</b>`;
+  const walk = walkingMinutes(km);
+  return walk > 90 ? '<b>KTX·버스로 접근</b>' : `도보 <b>${walk}분</b>`;
+}
+
 function renderResult(result) {
   if (!result || state.points.length < 2) {
     el.result.hidden = true;
@@ -720,7 +727,7 @@ function renderResult(result) {
       <div class="station-name">${esc(station.name)} ${car ? spotBadges(station) : (car ? '' : lineBadges(station.lines))}</div>
       <div class="station-actions">
         <div class="station-meta">
-          <span>${car ? '차로' : '도보'} <b>${car ? driveMinutes(primary ? primary.km : station.km) : walkingMinutes(primary ? primary.km : station.km) + '분'}</b></span>
+          <span>${approachLabel(primary ? primary.km : station.km, car)}</span>
           <span>가장 먼 참가자 <b>${formatKm(stats.max)}</b></span>
         </div>
         <button class="mini-btn" type="button" data-focus-lat="${station.lat}" data-focus-lng="${station.lng}">
@@ -973,7 +980,7 @@ function drawOverlays(result) {
       zIndexOffset: 600,
       keyboard: false,
     })
-      .bindPopup(`<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : `도보 ${walkingMinutes(station.km)}분`}`)
+      .bindPopup(`<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : (walkingMinutes(station.km) > 90 ? 'KTX·버스로 접근' : `도보 ${walkingMinutes(station.km)}분`)}`)
       .addTo(overlayLayer);
   }
 }
