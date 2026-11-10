@@ -28,9 +28,12 @@ import {
   sanitizeName,
   stationObjects,
   sphericalCentroid,
+  suggestPlaces,
+  toChoseong,
   walkingMinutes,
 } from '../../js/core.js';
 import { LINES, STATIONS } from '../../js/stations.js';
+import { LANDMARKS } from '../../js/landmarks.js';
 import { assert, assertClose, assertEqual, assertFinitePoint, test } from './harness.js';
 
 const CITY_HALL = { lat: 37.5665, lng: 126.9780 };
@@ -542,4 +545,60 @@ test('walkingMinutes: 4.5km/h 기준', () => {
   assertEqual(walkingMinutes(1), 13);
   assertEqual(walkingMinutes(0.1), 1);
   assertEqual(walkingMinutes(NaN), null);
+});
+
+/* ------------------------------------------------------------------
+   9. 검색 자동완성 (suggestPlaces)
+   ------------------------------------------------------------------ */
+test('suggestPlaces: 이름이 포함된 역을 찾는다', () => {
+  const found = suggestPlaces('강남', { stations: STATIONS, landmarks: LANDMARKS });
+  assert(found.length > 0, '강남 검색 결과가 없다');
+  assertEqual(found[0].name, '강남역');
+  assertEqual(found[0].kind, 'station');
+  assert(found[0].lines.includes('2'), '강남역 2호선 정보가 없다');
+});
+
+test('suggestPlaces: 완전 일치가 부분 일치보다 먼저', () => {
+  const found = suggestPlaces('신촌역', { stations: STATIONS, landmarks: LANDMARKS, limit: 7 });
+  assertEqual(found[0].name, '신촌역');
+  const partial = suggestPlaces('신촌', { stations: STATIONS, landmarks: LANDMARKS, limit: 7 });
+  assertEqual(partial[0].name, '신촌역');
+});
+
+test('suggestPlaces: 초성 검색 (ㄱㄴ → 강남역)', () => {
+  assertEqual(toChoseong('강남'), 'ㄱㄴ');
+  const found = suggestPlaces('ㄱㄴ', { stations: STATIONS, landmarks: LANDMARKS });
+  assert(found.some(item => item.name === '강남역'), `초성 검색 결과: ${found.map(f => f.name).join(', ')}`);
+  const hongdae = suggestPlaces('ㅎㄷㅇㄱ', { stations: STATIONS, landmarks: LANDMARKS });
+  assertEqual(hongdae[0].name, '홍대입구역');
+});
+
+test('suggestPlaces: 랜드마크도 함께 제안한다', () => {
+  const found = suggestPlaces('광화문', { stations: STATIONS, landmarks: LANDMARKS });
+  const names = found.map(item => item.name);
+  assert(names.includes('광화문역'), names.join(', '));
+  assert(names.includes('광화문광장'), names.join(', '));
+  const landmark = found.find(item => item.name === '광화문광장');
+  assertEqual(landmark.kind, 'landmark');
+  assert(landmark.note.includes('광화문역'), '랜드마크 설명이 비었다');
+});
+
+test('suggestPlaces: 빈 검색어·공백은 결과 없음', () => {
+  assertEqual(suggestPlaces('', { stations: STATIONS, landmarks: LANDMARKS }).length, 0);
+  assertEqual(suggestPlaces('   ', { stations: STATIONS, landmarks: LANDMARKS }).length, 0);
+  assertEqual(suggestPlaces('없는역이름xyz', { stations: STATIONS, landmarks: LANDMARKS }).length, 0);
+});
+
+test('suggestPlaces: limit 만큼만 돌려준다', () => {
+  const found = suggestPlaces('역', { stations: STATIONS, landmarks: LANDMARKS, limit: 6 });
+  assertEqual(found.length, 6);
+  assert(found.every(item => Number.isFinite(item.lat) && Number.isFinite(item.lng)));
+});
+
+test('suggestPlaces: 좌표가 유효하고 중복이 없다', () => {
+  const found = suggestPlaces('구', { stations: STATIONS, landmarks: LANDMARKS, limit: 7 });
+  assert(found.length > 0);
+  found.forEach(item => assertFinitePoint(item, item.name));
+  const keys = found.map(item => `${item.name}|${item.kind}`);
+  assertEqual(new Set(keys).size, keys.length);
 });

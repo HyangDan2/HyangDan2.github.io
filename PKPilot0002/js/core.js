@@ -493,3 +493,77 @@ export function lineMeta(code, lines) {
   if (meta) return { code, name: meta.name, color: meta.color };
   return { code, name: code, color: '#8b8f83' };
 }
+
+/* ------------------------------------------------------------------
+   검색 자동완성 — 내장 역·랜드마크 즉시 필터
+   ------------------------------------------------------------------ */
+
+const HANGUL_INITIALS = [...'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'];
+
+/** 한글 음절을 초성으로 바꾼 문자열 — 그 밖의 글자는 소문자로 둔다. (예: 강남 → ㄱㄴ) */
+export function toChoseong(text) {
+  return [...String(text ?? '')]
+    .map(ch => {
+      const code = ch.charCodeAt(0);
+      if (code >= 0xac00 && code <= 0xd7a3) {
+        return HANGUL_INITIALS[Math.floor((code - 0xac00) / 588)];
+      }
+      return ch.toLowerCase();
+    })
+    .join('');
+}
+
+// 비교용 정규화 — 공백과 가운뎃점·마침표 따위를 지우고 소문자로.
+const compact = text => String(text ?? '').toLowerCase().replace(/[\s·.,'’-]/g, '');
+
+/**
+ * 검색어에 맞는 역·랜드마크를 골라 순위대로 돌려준다.
+ * - 이름 완전 일치 → 이름 시작 일치 → 이름 포함 → 초성 일치 → 설명 포함 순.
+ * - 초성만 입력한 경우(예: ㄱㄴ)에는 이름의 초성과 맞춘다.
+ * stations:  [[이름, 위도, 경도, [노선코드…]], …]
+ * landmarks: [[이름, 위도, 경도, 설명], …]
+ */
+export function suggestPlaces(query, options = {}) {
+  const stations = options.stations || [];
+  const landmarks = options.landmarks || [];
+  const limit = options.limit ?? 7;
+  const raw = String(query ?? '').trim();
+  const needle = compact(raw);
+  if (!needle) return [];
+
+  const choseongOnly = /^[ㄱ-ㅎ]+$/.test(needle);
+  const needleChoseong = toChoseong(raw).replace(/[\s·.,'’]/g, '');
+
+  const candidates = [
+    ...stations.map(([name, lat, lng, lines]) => ({ name, lat, lng, lines: lines || [], kind: 'station' })),
+    ...landmarks.map(([name, lat, lng, note]) => ({ name, lat, lng, lines: [], kind: 'landmark', note })),
+  ];
+
+  const scored = [];
+  for (const item of candidates) {
+    if (!item.name || !Number.isFinite(item.lat) || !Number.isFinite(item.lng)) continue;
+    const name = compact(item.name);
+    const bare = name.replace(/역$/, '');
+    let score = -1;
+
+    if (choseongOnly) {
+      const choseong = toChoseong(item.name).replace(/\s/g, '');
+      if (choseong.startsWith(needleChoseong)) score = 1;
+      else if (choseong.includes(needleChoseong)) score = 4;
+    } else {
+      if (name === needle || bare === needle) score = 0;
+      else if (name.startsWith(needle)) score = 1;
+      else if (bare.startsWith(needle)) score = 2;
+      else if (name.includes(needle)) score = 3;
+      else if (item.note && compact(item.note).includes(needle)) score = 5;
+    }
+    if (score >= 0) scored.push({ item, score });
+  }
+
+  scored.sort((a, b) => a.score - b.score
+    || (a.item.kind === b.item.kind ? 0 : a.item.kind === 'station' ? -1 : 1)
+    || compact(a.item.name).length - compact(b.item.name).length
+    || a.item.name.localeCompare(b.item.name, 'ko'));
+
+  return scored.slice(0, Math.max(1, limit)).map(({ item }) => ({ ...item, lines: [...item.lines] }));
+}

@@ -16,7 +16,9 @@
 
 **출발지 입력**
 - 지도 클릭으로 참가자 추가 (Person 1, Person 2 … 고유 색 마커)
-- 주소·장소 검색 (Nominatim) → 결과를 눌러 추가
+- **검색창 실시간 자동완성**: 입력하는 즉시 내장 589개 역·랜드마크를 골라 제안 (이름 부분 일치·초성 `ㄱㄴ` 검색, 최대 7개)
+  - 항목을 누르면 바로 출발지로 추가, ↑↓ + Enter로도 선택
+  - 내장 데이터에 없으면 Enter·검색 버튼으로 Nominatim 외부 주소 검색
 - 빠른 선택: 강남 · 홍대입구 · 종로3가 · 신도림 · 여의도 · 잠실 · 판교 · 광화문
 - 마커 드래그로 미세 조정, 이름 인라인 수정, 개별 삭제, 전체 초기화
 - 최대 12명. 2명 이상이면 즉시 계산
@@ -43,6 +45,8 @@
   (좌표 5자리 ≈ 1m 정밀도, `n`은 이름을 바꿨을 때만, `m`은 기본값 `fair`가 아닐 때만)
 - 링크를 받은 사람은 같은 결과를 바로 봅니다. 상태가 바뀔 때마다 `history.replaceState`로 주소 갱신
 - 데스크톱(1440px) 좌측 패널 / 모바일(390px) 하단 슬라이드 시트(끌어서 펼침·접힘)
+- 모바일 사파리 대응: 입력창 16px 고정(포커스 시 강제 확대 방지), 페이지 확대·축소 차단
+  (`user-scalable=no` + `gesturestart`/더블탭 차단), 지도 핀치 줌은 Leaflet 그대로 유지
 
 ## 파일 구조
 
@@ -59,7 +63,7 @@ PKPilot0002/
 ├── tools/build_stations.py   stations.js 생성기 (Wikidata SPARQL)
 ├── tests/
 │   ├── run_tests.py      단위 테스트 러너 (Playwright + http.server)
-│   ├── unit/             테스트 하네스·케이스 61개
+│   ├── unit/             테스트 하네스·케이스 68개
 │   └── visual/capture.py 화면 검증 + 스크린샷
 └── docs/screenshots/     데스크톱·모바일 스크린샷
 ```
@@ -77,12 +81,12 @@ ES 모듈을 쓰므로 `file://`로 열면 동작하지 않습니다. 정적 서
 ## 테스트
 
 ```sh
-python3 tests/run_tests.py            # 단위 테스트 61개
+python3 tests/run_tests.py            # 단위 테스트 68개
 python3 tests/visual/capture.py --check   # Chromium 화면 검증
 python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 ```
 
-- 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역·랜드마크 추천, 표시 형식
+- 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역·랜드마크 추천, 검색 자동완성(완전 일치·부분 일치·초성·랜드마크), 표시 형식
 - 화면 검증: 타일 로드, 핀/마커 수, 결과 카드, URL 상태, 공유 링크 왕복, 모드 전환, 삭제/초기화, 모바일 시트 접힘·펼침
 - Node.js 없이 Playwright(Chromium)만 사용합니다. `pip install playwright && playwright install chromium` 필요.
 
