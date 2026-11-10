@@ -1678,17 +1678,46 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
     gap: 8px;
   }
 
-  .brand-divider,
-  .brand .tag {
-    display: none;
+  /* 모바일에서도 앱 식별 뱃지(PKPilot0002)를 유지한다 — 좁은 폭에 맞춘 컴팩트 스타일 */
+  .brand {
+    gap: 6px;
+    min-width: 0;
   }
 
-  .brand em {
-    font-size: 13px;
+  .brand-divider {
+    display: inline-block;
+    margin: 0 4px;
+    font-size: 11px;
+    line-height: 1;
+    opacity: 0.4;
+    color: var(--muted-2);
+  }
+
+  .brand .tag {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 130, 79, 0.35);
+    background: rgba(255, 130, 79, 0.1);
+    color: var(--accent);
+    font-size: 9.5px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
 
   .brand-name {
     font-size: 14.5px;
+    flex: none;
+  }
+
+  .brand em {
+    font-size: 12.5px;
+    flex: none;
   }
 
   .count-chip {
@@ -1900,6 +1929,10 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
 @media (max-width: 380px) {
   .brand em {
     display: none;
+  }
+
+  .brand-divider {
+    margin: 0 2px;
   }
 
   .panel-head h1 {
