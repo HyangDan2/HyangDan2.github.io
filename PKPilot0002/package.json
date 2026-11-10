@@ -1,0 +1,24 @@
+{
+  "name": "pkpilot0002",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HD2Lab | Midpoint — N명에게 가장 공평한 만남 지점과 가까운 역을 찾는 정적 웹앱 (PKPilot0002)",
+  "homepage": "https://hyangdan2.github.io/PKPilot0002/",
+  "scripts": {
+    "test": "python3 tests/run_tests.py",
+    "test:unit": "python3 tests/run_tests.py",
+    "test:ui": "python3 tests/visual/capture.py --check",
+    "shots": "python3 tests/visual/capture.py",
+    "serve": "python3 -m http.server 8080"
+  },
+  "keywords": [
+    "hd2lab",
+    "midpoint",
+    "meeting-point",
+    "leaflet",
+    "vanilla-js",
+    "static"
+  ],
+  "license": "UNLICENSED"
+}
