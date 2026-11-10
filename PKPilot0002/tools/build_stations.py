@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Build js/stations.js from a Wikidata SPARQL query.
+"""(구버전) 수도권 전용 stations.js 생성기 — tools/build_network.py 로 대체됐다.
+
+이 스크립트는 수도권 BBOX로 잘라낸 589개 역만 만들기 때문에 지금의 전국 스냅샷(js/stations.js·js/driving_spots.js)과 형식도 다르다.
+다시 생성하려면 다음을 쓴다:
+
+    python3 tools/build_network.py
+
+---
+
+Build js/stations.js from a Wikidata SPARQL query.
 
 The app ships a static snapshot of 수도권 subway stations so the "추천 만남 거점"
 feature works without any API key. Re-run this script to refresh the snapshot:

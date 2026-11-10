@@ -1,1 +1,7 @@
 /output/
+
+# 데이터 빌더 캐시·중간 산출물
+PKPilot0002/tools/.cache/
+PKPilot0002/tools/data/stations.json
+PKPilot0002/tools/data/driving_spots.json
+PKPilot0002/tools/__pycache__/

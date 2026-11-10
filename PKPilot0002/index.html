@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#101110" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="HD2Lab | Midpoint (PKPilot0002) — 지도에 출발지를 찍으면 N명 모두에게 가장 공평한 만남 지점과 가까운 지하철역을 찾아주는 정적 웹앱." />
+  <meta name="description" content="HD2Lab | Midpoint (PKPilot0002) — 전국 어디든 출발지만 찍으면 N명 모두에게 가장 공평한 만남 지점과 만날 거점을 찾아주는 정적 웹앱. 대중교통(전국 전철·KTX·터미널)과 자차(고속도로 IC·휴게소) 모드, 카카오맵·네이버지도·티맵 길찾기 연동." />
   <title>HD2Lab | Midpoint (PKPilot0002)</title>
 
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
@@ -15,13 +15,13 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="HD2Lab" />
   <meta property="og:title" content="HD2Lab | Midpoint (PKPilot0002)" />
-  <meta property="og:description" content="여럿이 만날 때, 딱 가운데. N명에게 가장 공평한 만남 지점과 가까운 역을 찾아주는 지도 앱." />
+  <meta property="og:description" content="여럿이 만날 때, 딱 가운데. 전국 어디든 출발지만 찍으면 가장 공평한 만남 지점과 만날 거점을 찾아 줍니다 — 대중교통·자차 모드와 길찾기 연동." />
   <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0002/" />
   <meta property="og:image" content="https://hyangdan2.github.io/PKPilot0002/docs/screenshots/desktop-result.jpg" />
   <meta property="og:image:alt" content="HD2Lab Midpoint — 중간 지점 지도 화면" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="HD2Lab | Midpoint (PKPilot0002)" />
-  <meta name="twitter:description" content="여럿이 만날 때, 딱 가운데. N명에게 가장 공평한 만남 지점을 찾아주는 지도 앱." />
+  <meta name="twitter:description" content="여럿이 만날 때, 딱 가운데. 전국 어디든 출발지만 찍으면 가장 공평한 만남 지점을 찾아 줍니다." />
 
   <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
@@ -42,6 +42,11 @@
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.8-6.1 6.8-10.8a6.8 6.8 0 1 0-13.6 0C5.2 14.9 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M12 11v5.4"/><circle cx="12" cy="7.8" r=".9" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4.4 9.4h9.4a5.2 5.2 0 0 1 0 10.4H8.6"/><path d="M8 5.2L3.8 9.4 8 13.6"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5.4 11.6l1.5-4.4a2 2 0 0 1 1.9-1.4h6.4a2 2 0 0 1 1.9 1.4l1.5 4.4"/><path d="M4.2 11.6h15.6a1.6 1.6 0 0 1 1.6 1.6v3.6a1 1 0 0 1-1 1H20M4 17.8H2.6a1 1 0 0 1-1-1v-3.6a1.6 1.6 0 0 1 1.6-1.6"/><circle cx="7.2" cy="17.8" r="1.8"/><circle cx="16.8" cy="17.8" r="1.8"/><path d="M9 17.8h6"/></symbol>
+    <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="12.6" cy="4.4" r="1.9"/><path d="M11.6 21.6l1.4-5.2-2.6-2.2.8-5 2.8 1.2 1.6 2.6M10.2 14.2l-2.4 3.2M13.6 15.6l2 2.6 1.2 3.4"/></symbol>
+    <symbol id="i-nav-kakao" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.6"/><path d="M7.4 9.8h9.2M7.4 13.4h5.6"/></symbol>
+    <symbol id="i-nav-naver" viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3"/><path d="M8.4 16.2V7.8l7.2 8.4V7.8"/></symbol>
+    <symbol id="i-nav-tmap" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.6"/><path d="M6.4 8h11.2M12 8v8.6"/></symbol>
   </svg>
 
   <a class="skip-link" href="#panel">본문으로 건너뛰기</a>
@@ -76,16 +81,25 @@
         <header class="panel-head">
           <p class="eyebrow"><i aria-hidden="true"></i><span>MEETUP ENGINE / 02 · FAIR MIDPOINT</span></p>
           <h1>여럿이 만날 때, <br /><strong>딱 가운데.</strong></h1>
-          <p class="lede">지도에 출발지를 찍으면 모두에게 가장 공평한 지점과 가까운 지하철역을 찾아 드립니다.</p>
+          <p class="lede">전국 어디든, 출발지만 찍으면 모두에게 가장 공평한 지점과 만날 거점 — 전철타고, 차타고.</p>
         </header>
 
         <form class="search" id="searchForm" role="search" autocomplete="off">
           <label class="sr-only" for="searchInput">출발지 검색</label>
           <span class="search-icon" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-search"/></svg></span>
-          <input id="searchInput" type="search" name="q" placeholder="주소·장소 검색 (예: 강남역, 판교역)" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false" />
+          <input id="searchInput" type="search" name="q" placeholder="출발지 검색 (예: 강남역, 부산역, 판교IC)" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false" />
           <button class="search-btn" id="searchBtn" type="submit" aria-label="검색">검색</button>
           <ul class="search-results" id="searchResults" role="listbox" aria-label="검색 결과" hidden></ul>
         </form>
+
+        <div class="mode-toggle" id="modeToggle" role="group" aria-label="이동 수단">
+          <button type="button" data-travel="transit" aria-pressed="true">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-train"/></svg>대중교통
+          </button>
+          <button type="button" data-travel="car" aria-pressed="false">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-car"/></svg>자차
+          </button>
+        </div>
 
         <div class="presets" id="presets" role="group" aria-label="빠른 선택"></div>
 
@@ -104,7 +118,7 @@
 
         <footer class="panel-foot">
           <p class="foot-note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg><span>좌표는 URL에 담겨 전달됩니다. 링크를 받은 사람은 같은 결과를 바로 봅니다.</span></p>
-          <p class="foot-credit">Map © OpenStreetMap contributors · Stations Wikidata (CC0)</p>
+          <p class="foot-credit">Map © OpenStreetMap contributors (ODbL) · Stations Wikidata (CC0)</p>
         </footer>
       </div>
     </section>
@@ -126,7 +140,7 @@
       <ul class="legend" aria-label="범례">
         <li><span class="dot dot-mid"></span>중간 지점</li>
         <li><span class="dot dot-person"></span>참가자</li>
-        <li><span class="dot dot-station"></span>추천 역</li>
+        <li><span class="dot dot-station"></span>추천 거점</li>
       </ul>
       <noscript><p class="noscript">이 앱은 JavaScript가 필요합니다.</p></noscript>
     </section>

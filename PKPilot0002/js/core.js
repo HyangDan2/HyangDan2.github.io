@@ -6,7 +6,14 @@
 
 export const EARTH_RADIUS_KM = 6371.0088;
 export const MAX_PARTICIPANTS = 12;
+export const LONG_TRIP_KM = 50;
 export const DEFAULT_NAMES = i => `Person ${i + 1}`;
+
+/** 이동 수단 — 'transit' (대중교통) | 'car' (자차) */
+export const TRAVEL_MODES = ['transit', 'car'];
+export function travelModeOf(value) {
+  return value === 'car' ? 'car' : 'transit';
+}
 
 const toRad = deg => (deg * Math.PI) / 180;
 const toDeg = rad => (rad * 180) / Math.PI;
@@ -47,6 +54,19 @@ export function haversineKm(a, b) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** 참가자 사이에서 가장 먼 두 사람의 거리(km) — 장거리 모임 판단에 쓴다. */
+export function maxPairwiseKm(points) {
+  const list = (points || []).filter(Boolean);
+  let max = 0;
+  for (let i = 0; i < list.length; i += 1) {
+    for (let j = i + 1; j < list.length; j += 1) {
+      const d = haversineKm(list[i], list[j]);
+      if (Number.isFinite(d) && d > max) max = d;
+    }
+  }
+  return max;
 }
 
 /** 구면 무게중심: 단위 구면 벡터의 평균을 다시 지표면으로 옮긴다. */
@@ -337,8 +357,8 @@ export function decodeParticipants(raw) {
   return { points, skipped };
 }
 
-/** 'p=..&n=..&m=..' 형태의 질의 문자열을 만든다. */
-export function buildShareQuery(points, mode = 'fair') {
+/** 'p=..&n=..&m=..&t=..' 형태의 질의 문자열을 만든다. */
+export function buildShareQuery(points, mode = 'fair', travelMode = 'transit') {
   const list = (points || []).filter(Boolean);
   // 좌표는 숫자·쉼표·파이프뿐이라 인코딩하지 않는다 (?p=37.566,126.978|37.517,127.047)
   const parts = [`p=${encodeParticipants(list)}`];
@@ -346,17 +366,18 @@ export function buildShareQuery(points, mode = 'fair') {
   const usesCustomName = list.some((p, i) => p.name && p.name !== DEFAULT_NAMES(i));
   if (usesCustomName) parts.push(`n=${encodeURIComponent(names.join('~'))}`);
   if (mode && mode !== 'fair') parts.push(`m=${encodeURIComponent(mode)}`);
+  if (travelModeOf(travelMode) === 'car') parts.push('t=car');
   return parts.join('&');
 }
 
 /** 공유 링크: 기존 쿼리·해시를 지우고 상태만 남긴다. */
-export function buildShareUrl(href, points, mode = 'fair') {
+export function buildShareUrl(href, points, mode = 'fair', travelMode = 'transit') {
   const url = new URL(href);
   url.hash = '';
   url.search = '';
   const cleanPath = url.pathname.replace(/index\.html?$/i, '');
   url.pathname = cleanPath;
-  const query = buildShareQuery(points, mode);
+  const query = buildShareQuery(points, mode, travelMode);
   return `${url.origin}${url.pathname}${query ? `?${query}` : ''}`;
 }
 
@@ -385,7 +406,7 @@ function parseQueryTokens(str) {
  * 유효하지 않은 좌표는 건너뛰고 개수를 센다.
  */
 export function parseShareState(input) {
-  const result = { points: [], mode: 'fair', skipped: 0, present: false };
+  const result = { points: [], mode: 'fair', travelMode: 'transit', skipped: 0, present: false };
   if (typeof input !== 'string' || !input.trim()) return result;
 
   let rest = input.trim();
@@ -421,6 +442,9 @@ export function parseShareState(input) {
   const mode = get('m');
   if (mode === 'centroid' || mode === 'median' || mode === 'fair') result.mode = mode;
 
+  const travel = get('t');
+  if (travel) result.travelMode = travelModeOf(travel);
+
   return result;
 }
 
@@ -437,6 +461,58 @@ export function stationObjects(stations) {
     lines: lines || [],
     ...(meta || {}),
   }));
+}
+
+/* ------------------------------------------------------------------
+   이동 수단 — 대중교통(역·터미널) vs 자차(IC·휴게소·주차 거점)
+   ------------------------------------------------------------------ */
+
+/** 후보 종류: station | ktx | terminal | landmark | ic | rest | parking */
+export function spotKind(spot) {
+  if (!spot) return 'station';
+  if (spot.kind) return spot.kind;
+  if (spot.hub) return 'ktx';
+  return 'station';
+}
+
+const TRANSIT_KINDS = new Set(['station', 'ktx', 'terminal', 'landmark', 'bus']);
+const CAR_KINDS = new Set(['ic', 'rest', 'parking']);
+
+export function spotAllowed(spot, travelMode) {
+  const kind = spotKind(spot);
+  return travelModeOf(travelMode) === 'car' ? CAR_KINDS.has(kind) : TRANSIT_KINDS.has(kind);
+}
+
+/**
+ * 장거리 가중치(km). 같은 거리라면 광역 환승 거점·휴게소 쪽을 조금 더 밀어 준다.
+ * 서울↔부산처럼 멀 때는 "딱 가운데"보다 "어디서든 닿기 쉬운 곳"이 낫기 때문이다.
+ */
+const HUB_WEIGHT = {
+  transit: { ktx: 0.18, terminal: 0.12, station: 0, landmark: 0 },
+  car: { rest: 0.16, parking: 0.1, ic: 0.08 },
+};
+
+export function hubBonusKm(spot, travelMode, maxPairKm) {
+  const mode = travelModeOf(travelMode);
+  const weight = (HUB_WEIGHT[mode] || {})[spotKind(spot)] || 0;
+  let bonus = weight * Math.max(0, maxPairKm);
+  // 환승역(노선 2개 이상)은 장거리에서 한 번 더 유리하다
+  if (mode === 'transit' && (spot.lines || []).length >= 2) {
+    bonus += Math.min(8, maxPairKm * 0.03);
+  }
+  return Math.min(30, bonus);
+}
+
+function withDistances(spot, center, points) {
+  const distances = points.map(p => haversineKm(spot, p));
+  return {
+    ...spot,
+    km: haversineKm(center, spot),
+    distances,
+    maxKm: Math.max(...distances),
+    minKm: Math.min(...distances),
+    sumKm: distances.reduce((sum, d) => sum + d, 0),
+  };
 }
 
 export function nearestStations(point, stations, limit = 3, maxKm = Infinity) {
@@ -478,14 +554,49 @@ export function recommendMeetingSpot(points, spots, options = {}) {
   if (list.length < 2) return null;
   const center = midpoint(list, options.mode || 'fair');
   if (!center) return null;
-  const nearBy = nearestStations(center, spots, 3, options.primaryMaxKm ?? 4);
-  const primary = nearBy[0] || null;
-  const fair = fairestStation(list, options.stations || spots, {
-    mode: options.mode,
-    radiusKm: options.radiusKm ?? 15,
-  });
-  const alternative = fair && primary && fair.name !== primary.name && fair.maxKm < primary.maxKm - 0.15 ? fair : null;
-  return { center, primary, nearBy, alternative };
+
+  const travelMode = travelModeOf(options.travelMode);
+  const all = stationObjects(spots);
+  const picked = all.filter(spot => spotAllowed(spot, travelMode));
+  const usable = picked.length ? picked : all;
+
+  const maxPairKm = maxPairwiseKm(list);
+  const longDistance = maxPairKm >= (options.longTripKm ?? LONG_TRIP_KM);
+  const radiusKm = options.radiusKm ?? clamp(12 + maxPairKm * 0.09, 12, 45);
+  const primaryMaxKm = options.primaryMaxKm ?? clamp(4 + maxPairKm * 0.18, 4, 18);
+
+  const scaled = usable.map(spot => withDistances(spot, center, list));
+  const candidates = scaled.filter(spot => Number.isFinite(spot.km) && spot.km <= radiusKm);
+  const nearBy = [...scaled].sort((a, b) => a.km - b.km).slice(0, 3);
+
+  // 장거리일 때만 환승 거점 가중치를 더한다 — 가까운 모임은 "가까운 곳"이 먼저다.
+  const scored = candidates
+    .map(spot => ({
+      ...spot,
+      score: spot.maxKm - (longDistance ? hubBonusKm(spot, travelMode, maxPairKm) : 0),
+    }))
+    .sort((a, b) => a.score - b.score || a.km - b.km || a.name.localeCompare(b.name, 'ko'));
+
+  let primary = null;
+  if (longDistance) {
+    primary = scored[0] || null;
+  } else {
+    primary = candidates
+      .filter(spot => spot.km <= primaryMaxKm)
+      .sort((a, b) => a.km - b.km || a.maxKm - b.maxKm)[0] || null;
+  }
+  if (!primary && nearBy.length) primary = nearBy[0];
+  if (!primary) {
+    return { center, primary: null, nearBy: [], alternative: null, travelMode, maxPairKm, longDistance, radiusKm };
+  }
+
+  // 더 공평한 후보: 같은 이동 수단 안에서 가장 먼 참가자의 거리가 더 짧은 곳
+  const fairer = scaled
+    .filter(spot => Number.isFinite(spot.km) && spot.km <= radiusKm * 1.6 && spot.name !== primary.name)
+    .sort((a, b) => a.maxKm - b.maxKm || a.km - b.km)[0] || null;
+  const alternative = fairer && fairer.maxKm < primary.maxKm - 0.3 ? fairer : null;
+
+  return { center, primary, nearBy, alternative, travelMode, maxPairKm, longDistance, radiusKm };
 }
 
 export function lineMeta(code, lines) {

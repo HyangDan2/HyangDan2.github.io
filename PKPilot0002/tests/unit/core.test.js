@@ -18,7 +18,9 @@ import {
   formatLatLng,
   geometricMedian,
   haversineKm,
+  hubBonusKm,
   lineMeta,
+  maxPairwiseKm,
   midpoint,
   minimaxPoint,
   nearestStations,
@@ -26,6 +28,8 @@ import {
   parseShareState,
   recommendMeetingSpot,
   sanitizeName,
+  spotAllowed,
+  spotKind,
   stationObjects,
   sphericalCentroid,
   suggestPlaces,
@@ -33,6 +37,7 @@ import {
   walkingMinutes,
 } from '../../js/core.js';
 import { LINES, STATIONS } from '../../js/stations.js';
+import { DRIVING_SPOTS, ROADS } from '../../js/driving_spots.js';
 import { LANDMARKS } from '../../js/landmarks.js';
 import { assert, assertClose, assertEqual, assertFinitePoint, test } from './harness.js';
 
@@ -41,6 +46,14 @@ const GANGNAM = { lat: 37.4979, lng: 127.0276 };
 const HONGDAE = { lat: 37.5567, lng: 126.9236 };
 const JONGNO3 = { lat: 37.5700, lng: 126.9917 };
 const PANGYO = { lat: 37.3948, lng: 127.1111 };
+
+/* 영남권 — 창원 가음동(성산구)과 부산 사상구 */
+const CHANGWON_GAEUM = { lat: 35.2320, lng: 128.6790, name: '창원 가음동' };
+const BUSAN_SASANG = { lat: 35.1598, lng: 128.9885, name: '부산 사상구' };
+const SEOUL_STATION = { lat: 37.5558, lng: 126.9720, name: '서울역' };
+const BUSAN_STATION = { lat: 35.1155, lng: 129.0398, name: '부산역' };
+
+const byName = (rows, name) => rows.find(row => row[0] === name);
 
 /* ------------------------------------------------------------------
    1. 거리 계산 (Haversine)
@@ -425,6 +438,37 @@ test('buildShareUrl: 5자리 정밀도(약 1m)로 왕복한다', () => {
   assertClose(parsed.points[0].lng, point.lng, 1e-5);
 });
 
+test('URL 상태: 자차 모드는 t=car로 왕복한다', () => {
+  const query = buildShareQuery([GANGNAM, HONGDAE], 'fair', 'car');
+  assert(query.includes('t=car'), `t=car가 없다: ${query}`);
+  const parsed = parseShareState(`?${query}`);
+  assertEqual(parsed.travelMode, 'car');
+  const back = buildShareQuery([GANGNAM, HONGDAE], 'fair', 'transit');
+  assert(!back.includes('t='), `대중교통 기본값인데 t=가 남았다: ${back}`);
+  assertEqual(parseShareState(`?${back}`).travelMode, 'transit');
+});
+
+/* ------------------------------------------------------------------
+   7e. 검색 자동완성 — 전국망
+   ------------------------------------------------------------------ */
+test('전국 검색: 부산·대구·광주 역과 IC·휴게소도 찾는다', () => {
+  const all = [...STATIONS, ...DRIVING_SPOTS];
+  for (const [needle, expected] of [['연산', '연산역'], ['농성', '농성역'], ['창원중앙', '창원중앙역'], ['서부산', '서부산IC'], ['칠곡휴', '칠곡휴게소']]) {
+    const hit = suggestPlaces(needle, { stations: all, limit: 10 }).find(item => item.name === expected);
+    assert(hit, `${needle} 검색에서 ${expected} 이 없다`);
+  }
+  const 초성 = suggestPlaces('ㅂㅅㅇ', { stations: [...STATIONS, ...DRIVING_SPOTS], limit: 10 });
+  assert(초성.some(item => item.name === '부산역'), '초성 ㅂㅅㅇ에서 부산역이 없다');
+});
+
+test('전국 데이터: 좌표 범위와 중복 이름 점검', () => {
+  for (const row of [...STATIONS, ...DRIVING_SPOTS]) {
+    assert(row[1] > 33 && row[1] < 43 && row[2] > 124 && row[2] < 132, `좌표가 한국 밖: ${row[0]}`);
+  }
+  const names = new Set(STATIONS.map(row => row[0]));
+  assertEqual(names.size, STATIONS.length, '역 이름 중복');
+});
+
 /* ------------------------------------------------------------------
    7. 추천 만남 거점
    ------------------------------------------------------------------ */
@@ -518,10 +562,149 @@ test('stations: 노선 메타데이터', () => {
   assertEqual(meta.name, '2호선');
   assertEqual(meta.color, '#00A84D');
   assertEqual(lineMeta('없는노선', LINES).color, '#8b8f83');
-  assert(STATIONS.length > 400, `역 데이터가 너무 적다: ${STATIONS.length}`);
+  assert(STATIONS.length > 900, `역 데이터가 너무 적다: ${STATIONS.length}`);
   const names = new Set(STATIONS.map(row => row[0]));
   assert(names.has('강남역') && names.has('홍대입구역') && names.has('판교역'));
   assert(STATIONS.every(row => row.length >= 3 && Number.isFinite(row[1]) && Number.isFinite(row[2])));
+});
+
+/* ------------------------------------------------------------------
+   7b. 전국 교통망 — 부·울·경·대전·광주 전철과 KTX·터미널
+   ------------------------------------------------------------------ */
+test('전국: 부산·대구·대전·광주 전철역이 들어 있다', () => {
+  const names = new Set(STATIONS.map(row => row[0]));
+  for (const name of ['시청역 (부산)', '연산역', '동래역', '내당역', '대구역', '시청역 (대전)', '농성역', '시청역 (광주)']) {
+    assert(names.has(name), `${name} 이 없다`);
+  }
+});
+
+test('전국: 김해경전철·동해선 노선 코드가 붙는다', () => {
+  assert(LINES['김해경전'] && LINES['부산1'] && LINES['대구1'] && LINES['대전1'] && LINES['광주1'] && LINES['동해']);
+  const gimhae = STATIONS.filter(row => (row[3] || []).includes('김해경전'));
+  assert(gimhae.length >= 15, `김해경전철 역이 너무 적다: ${gimhae.length}`);
+  const busan1 = STATIONS.filter(row => (row[3] || []).includes('부산1'));
+  assert(busan1.length >= 30, `부산 1호선 역이 너무 적다: ${busan1.length}`);
+  const daegu = STATIONS.filter(row => (row[3] || []).some(c => ['대구1', '대구2', '대구3'].includes(c)));
+  assert(daegu.length >= 80, `대구 전철 역이 너무 적다: ${daegu.length}`);
+});
+
+test('전국: KTX·SRT 정차역과 터미널이 광역 허브로 들어 있다', () => {
+  const find = name => STATIONS.find(row => row[0] === name);
+  for (const name of ['서울역', '대전역', '동대구역', '부산역', '창원중앙역', '광주송정역', '오송역', '천안아산역', '여수엑스포역', '강릉역']) {
+    const row = find(name);
+    assert(row, `${name} 이 없다`);
+    assert((row[3] || []).includes('KTX') || (row[3] || []).includes('SRT'), `${name} 에 KTX/SRT 노선이 없다`);
+    assert(row[4]?.hub, `${name} 이 허브로 표시되지 않는다`);
+  }
+  for (const name of ['서울고속버스터미널', '부산종합버스터미널', '창원종합버스터미널']) {
+    const row = find(name);
+    assert(row && (row[3] || []).includes('BUS'), `${name} 버스터미널이 없다`);
+  }
+});
+
+test('전국: 영남권 좌표가 영남권 거점으로 스냅된다 (평택 문제 재발 방지)', () => {
+  const rec = recommendMeetingSpot([CHANGWON_GAEUM, BUSAN_SASANG], STATIONS, { travelMode: 'transit' });
+  assert(rec && rec.primary, '추천이 없다');
+  assert(rec.primary.lat > 35.0 && rec.primary.lng > 128.5,
+    `중간 지점이 영남 밖으로 나갔다: ${rec.primary.name} (${rec.primary.lat}, ${rec.primary.lng})`);
+  assert(rec.primary.km <= 45, `추천 거점이 너무 멀다: ${rec.primary.name} ${rec.primary.km}km`);
+  assert(!rec.primary.name.includes('평택'), '수도권 역이 잘못 추천됐다');
+});
+
+/* ------------------------------------------------------------------
+   7c. 자차 거점 데이터와 모드 분리
+   ------------------------------------------------------------------ */
+test('자차: IC·휴게소 데이터가 도로명·주차 배지를 갖는다', () => {
+  const DRIVING_INDEX = new Map(DRIVING_SPOTS.map(row => [row[0], row]));
+  assert(DRIVING_SPOTS.length > 500, `자차 거점이 너무 적다: ${DRIVING_SPOTS.length}`);
+  const ic = DRIVING_SPOTS.filter(row => row[4]?.kind === 'ic');
+  const rest = DRIVING_SPOTS.filter(row => row[4]?.kind === 'rest');
+  assert(ic.length > 300, `IC가 너무 적다: ${ic.length}`);
+  assert(rest.length > 100, `휴게소가 너무 적다: ${rest.length}`);
+  for (const name of ['판교IC', '천안IC', '대전IC', '동대구IC', '서부산IC', '동창원IC', '경주IC', '칠곡휴게소', '진영휴게소']) {
+    assert(DRIVING_INDEX.has(name), `${name} 이 없다`);
+  }
+  assert(DRIVING_INDEX.has('안성휴게소 · 경부고속도로') || DRIVING_INDEX.has('안성맞춤휴게소'), '경부고속도로 안성권 휴게소가 없다');
+  const sample = DRIVING_INDEX.get('서부산IC');
+  assert(sample[4].parking === true, '주차 배지 메타가 없다');
+  assert(ROADS[sample[4].road], '도로 색이 없다');
+});
+
+test('모드 분리: 같은 좌표라면 대중교통과 자차의 추천이 다르다', () => {
+  const spots = [
+    ['강남역', 37.4979, 127.0276, ['2'], { kind: 'station' }],
+    ['양재IC', 37.4750, 127.0380, [], { kind: 'ic', parking: true, road: '경부고속도로' }],
+  ];
+  const points = [GANGNAM, { lat: 37.4650, lng: 127.0450 }];
+  const transit = recommendMeetingSpot(points, spots, { travelMode: 'transit' });
+  const car = recommendMeetingSpot(points, spots, { travelMode: 'car' });
+  assertEqual(transit.primary.name, '강남역');
+  assertEqual(spotKind(car.primary), 'ic');
+  assert(spotAllowed(transit.primary, 'transit'));
+  assert(!spotAllowed(transit.primary, 'car'));
+  assert(spotAllowed(car.primary, 'car'));
+});
+
+test('모드 분리: 영남권 자차 모드는 IC·휴게소가 나온다', () => {
+  const rec = recommendMeetingSpot([CHANGWON_GAEUM, BUSAN_SASANG], SPOTS_FIXTURE(), {
+    travelMode: 'car',
+  });
+  assert(rec && rec.primary, '자차 추천이 없다');
+  assert(['ic', 'rest', 'parking'].includes(spotKind(rec.primary)), `자차인데 ${rec.primary.name} (${spotKind(rec.primary)})`);
+  assert(rec.primary.lng > 128.5 && rec.primary.lat > 34.9, `영남 밖 추천: ${rec.primary.name}`);
+  function SPOTS_FIXTURE() {
+    return [
+      ...STATIONS.map(([name, lat, lng, lines, meta]) => [name, lat, lng, lines, { kind: meta?.hub ? 'ktx' : 'station', ...(meta || {}) }]),
+      ...DRIVING_SPOTS,
+      ...LANDMARKS.map(([name, lat, lng, note]) => [name, lat, lng, [], { kind: 'landmark', note }]),
+    ];
+  }
+});
+
+/* ------------------------------------------------------------------
+   7d. 장거리 KTX·휴게소 가중치
+   ------------------------------------------------------------------ */
+test('장거리: 서울↔부산 대중교통 모드는 KTX 환승역을 추천한다', () => {
+  const rec = recommendMeetingSpot([SEOUL_STATION, BUSAN_STATION], STATIONS, { travelMode: 'transit' });
+  assert(rec && rec.primary, '추천이 없다');
+  assert(rec.longDistance, '서울↔부산이 장거리로 판정되지 않았다');
+  assert(maxPairwiseKm([SEOUL_STATION, BUSAN_STATION]) > 300, '최대 거리 계산이 틀렸다');
+  const spot = rec.primary;
+  // 두 사람의 거리가 가장 비슷한 KTX 정차역 — 서울↔부산이면 대전권·김천구미권이 된다.
+  assert(spot.lat > 35.9 && spot.lat < 37.0, `중간권 밖의 추천: ${spot.name} (${spot.lat})`);
+  assert((spot.lines || []).includes('KTX') || (spot.lines || []).includes('SRT'), `KTX 정차역이 아닌 추천: ${spot.name} ${spot.lines}`);
+  assert(spot.name !== '평택역' && spot.name !== '천안역', `수도권 역이 잘못 추천됐다: ${spot.name}`);
+  assert(Math.abs(spot.maxKm - Math.min(...rec.nearBy.map(s => s.maxKm))) < 1 || rec.nearBy.length === 0 || rec.nearBy.some(s => s.name === spot.name) || spot.maxKm <= rec.nearBy[0].maxKm,
+    '가장 가까운 후보가 아니면서 더 불공평하다');
+});
+
+test('장거리: 서울↔부산 자차 모드는 고속도로 휴게소·IC를 추천한다', () => {
+  const spots = [
+    ...STATIONS.map(([name, lat, lng, lines, meta]) => [name, lat, lng, lines, { kind: meta?.hub ? 'ktx' : 'station', ...(meta || {}) }]),
+    ...DRIVING_SPOTS,
+  ];
+  const rec = recommendMeetingSpot([SEOUL_STATION, BUSAN_STATION], spots, { travelMode: 'car' });
+  assert(rec && rec.primary, '추천이 없다');
+  assert(['ic', 'rest', 'parking'].includes(spotKind(rec.primary)), `자차 모드에서 ${spotKind(rec.primary)} 추천: ${rec.primary.name}`);
+  assert(rec.primary.lat > 36.0 && rec.primary.lat < 37.0, `추천 거점 위치: ${rec.primary.name}`);
+});
+
+test('장거리: 가까운 모임에서는 환승 가중치를 쓰지 않는다', () => {
+  const rec = recommendMeetingSpot([GANGNAM, HONGDAE, JONGNO3], STATIONS, { travelMode: 'transit' });
+  assert(!rec.longDistance, '가까운 모임이 장거리로 판정됐다');
+  assert(rec.primary.km <= 4, `가까운 모임인데 추천이 멀다: ${rec.primary.km}km`);
+});
+
+test('장거리: 허브 가중치는 상한이 있다', () => {
+  assert(hubBonusKm({ kind: 'ktx', lines: ['KTX', 'SRT'] }, 'transit', 400) <= 30);
+  assertEqual(hubBonusKm({ kind: 'station', lines: ['2'] }, 'transit', 0), 0);
+});
+
+test('길찾기 없음: 추천 후보가 없어도 결과가 깨지지 않는다', () => {
+  const rec = recommendMeetingSpot([SEOUL_STATION, BUSAN_STATION], [], { travelMode: 'car' });
+  assert(rec && rec.center, '중심 계산이 없다');
+  assertEqual(rec.primary, null);
+  assertEqual(rec.nearBy.length, 0);
 });
 
 /* ------------------------------------------------------------------
