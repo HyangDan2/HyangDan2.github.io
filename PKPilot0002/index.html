@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101110" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="HD2Lab | Midpoint (PKPilot0002) — 지도에 출발지를 찍으면 N명 모두에게 가장 공평한 만남 지점과 가까운 지하철역을 찾아주는 정적 웹앱." />
+  <title>HD2Lab | Midpoint (PKPilot0002)</title>
+
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="../assets/favicon-32x32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="HD2Lab" />
+  <meta property="og:title" content="HD2Lab | Midpoint (PKPilot0002)" />
+  <meta property="og:description" content="여럿이 만날 때, 딱 가운데. N명에게 가장 공평한 만남 지점과 가까운 역을 찾아주는 지도 앱." />
+  <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0002/" />
+  <meta property="og:image" content="https://hyangdan2.github.io/PKPilot0002/docs/screenshots/desktop-result.jpg" />
+  <meta property="og:image:alt" content="HD2Lab Midpoint — 중간 지점 지도 화면" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HD2Lab | Midpoint (PKPilot0002)" />
+  <meta name="twitter:description" content="여럿이 만날 때, 딱 가운데. N명에게 가장 공평한 만남 지점을 찾아주는 지도 앱." />
+
+  <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6L20.5 20.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.2 7V4.8h5.6V7"/><path d="M6.4 7l.8 12.1a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9L17.6 7"/><path d="M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M9.6 13.2l4.8 2.6M14.4 8.2L9.6 10.8"/><circle cx="17.4" cy="6.6" r="2.6"/><circle cx="6.6" cy="12" r="2.6"/><circle cx="17.4" cy="17.4" r="2.6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.6" y="8.6" width="11.4" height="11.4" rx="2.6"/><path d="M15.4 5.4H6.6a2.2 2.2 0 0 0-2.2 2.2v8.8"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.8 12.6l4.6 4.6L19.2 7"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6"/><circle cx="12" cy="12" r="2.6"/><path d="M12 2.4v3M12 18.6v3M2.4 12h3M18.6 12h3"/></symbol>
+    <symbol id="i-train" viewBox="0 0 24 24"><rect x="5.6" y="3.6" width="12.8" height="13.2" rx="3"/><path d="M5.6 11h12.8M9 21l1.6-4M15 21l-1.6-4"/><circle cx="9.2" cy="14" r="1"/><circle cx="14.8" cy="14" r="1"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M5.8 5.8l12.4 12.4M18.2 5.8L5.8 18.2"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3.4l8.4 4.6L12 12.6 3.6 8z"/><path d="M3.6 12.4L12 17l8.4-4.6M3.6 16.6L12 21.2l8.4-4.6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.8-6.1 6.8-10.8a6.8 6.8 0 1 0-13.6 0C5.2 14.9 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M12 11v5.4"/><circle cx="12" cy="7.8" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4.4 9.4h9.4a5.2 5.2 0 0 1 0 10.4H8.6"/><path d="M8 5.2L3.8 9.4 8 13.6"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#panel">본문으로 건너뛰기</a>
+
+  <header class="app-header">
+    <a class="brand" href="https://hyangdan2.github.io/" target="_blank" rel="noopener noreferrer" title="HD2Lab 홈으로">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="brand-name">HD2Lab</span>
+      <span class="brand-divider" aria-hidden="true">|</span>
+      <em>Midpoint</em>
+      <span class="tag">PKPilot0002</span>
+    </a>
+    <div class="header-actions">
+      <span class="count-chip" id="countChip" title="등록된 참가자 수"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pin"/></svg><span id="countChipText">0명</span></span>
+      <button class="ghost-btn" id="fitBtn" type="button" title="참가자 전체가 보이게 지도 맞추기">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg><span>전체 보기</span>
+      </button>
+      <button class="primary-btn" id="shareBtn" type="button" title="이 결과 링크 복사">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg><span>링크 복사</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="panel" id="panel" data-sheet="peek" aria-label="참가자와 결과">
+      <div class="sheet-grab" id="sheetGrab" role="button" tabindex="0" aria-label="패널 펼치기 또는 접기" aria-expanded="false">
+        <span class="grab-bar" aria-hidden="true"></span>
+        <span class="grab-label" id="grabLabel">패널 펼치기</span>
+      </div>
+
+      <div class="panel-scroll" id="panelScroll">
+        <header class="panel-head">
+          <p class="eyebrow"><i aria-hidden="true"></i><span>MEETUP ENGINE / 02 · FAIR MIDPOINT</span></p>
+          <h1>여럿이 만날 때, <br /><strong>딱 가운데.</strong></h1>
+          <p class="lede">지도에 출발지를 찍으면 모두에게 가장 공평한 지점과 가까운 지하철역을 찾아 드립니다.</p>
+        </header>
+
+        <form class="search" id="searchForm" role="search" autocomplete="off">
+          <label class="sr-only" for="searchInput">출발지 검색</label>
+          <span class="search-icon" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-search"/></svg></span>
+          <input id="searchInput" type="search" name="q" placeholder="주소·장소 검색 (예: 강남역, 판교역)" enterkeyhint="search" />
+          <button class="search-btn" id="searchBtn" type="submit" aria-label="검색">검색</button>
+          <ul class="search-results" id="searchResults" role="listbox" aria-label="검색 결과" hidden></ul>
+        </form>
+
+        <div class="presets" id="presets" role="group" aria-label="빠른 선택"></div>
+
+        <section class="participants">
+          <div class="section-head">
+            <h2>참가자 <span class="badge" id="participantCount">0</span></h2>
+            <button class="text-btn" id="resetBtn" type="button">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg><span>전체 초기화</span>
+            </button>
+          </div>
+          <ol class="participant-list" id="participantList"></ol>
+          <p class="empty-hint" id="emptyHint">지도를 눌러 출발지를 찍거나, 위에서 장소를 검색해 보세요.</p>
+        </section>
+
+        <section class="result" id="resultCard" hidden aria-live="polite" aria-label="중간 지점 결과"></section>
+
+        <footer class="panel-foot">
+          <p class="foot-note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg><span>좌표는 URL에 담겨 전달됩니다. 링크를 받은 사람은 같은 결과를 바로 봅니다.</span></p>
+          <p class="foot-credit">Map © OpenStreetMap contributors · Stations Wikidata (CC0)</p>
+        </footer>
+      </div>
+    </section>
+
+    <section class="map-stage" aria-label="지도">
+      <div id="map"></div>
+      <div class="map-hint" id="mapHint">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg>
+        <span>지도를 눌러 참가자 추가</span>
+      </div>
+      <div class="map-tools">
+        <button class="map-tool" id="styleBtn" type="button" aria-label="지도 스타일 전환" title="지도 스타일: 다크 / 라이트">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg>
+        </button>
+        <button class="map-tool" id="fitBtnMap" type="button" aria-label="전체 보기" title="전체 보기 (F)">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg>
+        </button>
+      </div>
+      <ul class="legend" aria-label="범례">
+        <li><span class="dot dot-mid"></span>중간 지점</li>
+        <li><span class="dot dot-person"></span>참가자</li>
+        <li><span class="dot dot-station"></span>추천 역</li>
+      </ul>
+      <noscript><p class="noscript">이 앱은 JavaScript가 필요합니다.</p></noscript>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
