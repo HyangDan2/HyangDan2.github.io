@@ -58,6 +58,12 @@ const TILES = {
 
 const STATION_INDEX = new Map(STATIONS.map(row => [row[0], row]));
 
+// 추천 후보: 지하철역 + 주요 랜드마크 (중심에서 가장 가까운 곳을 제안)
+const SPOTS = [
+  ...STATIONS.map(([name, lat, lng, lines]) => [name, lat, lng, lines, { kind: 'station' }]),
+  ...LANDMARKS.map(([name, lat, lng, note]) => [name, lat, lng, [], { kind: 'landmark', note }]),
+];
+
 /* ------------------------------------------------------------------
    상태
    ------------------------------------------------------------------ */
@@ -403,7 +409,7 @@ function computeResult() {
   const distances = distancesKm(center, points);
   const stats = distanceStats(distances);
   const fairness = fairnessScore(distances);
-  const rec = recommendMeetingSpot(points, STATIONS, { mode: state.mode });
+  const rec = recommendMeetingSpot(points, SPOTS, { mode: state.mode, stations: STATIONS });
   return { center, distances, stats, fairness, rec };
 }
 
@@ -478,7 +484,7 @@ function renderResult(result) {
   const primary = rec?.primary || null;
   const alternative = rec?.alternative || null;
 
-  const stationFallback = !primary && rec ? nearestStations(rec.center, STATIONS, 1, Infinity)[0] : null;
+  const stationFallback = !primary && rec ? nearestStations(rec.center, SPOTS, 1, Infinity)[0] : null;
   const station = primary || stationFallback;
 
   const spreadRows = state.points.map((point, i) => {
@@ -496,16 +502,16 @@ function renderResult(result) {
   const stationMarkup = station ? `
     <div class="card station-card">
       <div class="station-top">
-        <span class="station-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-train"/></svg>${primary ? '추천 만남 거점' : '가장 가까운 역'}</span>
+        <span class="station-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-train"/></svg>${primary ? (station.kind === 'landmark' ? '추천 만남 장소' : '추천 만남 거점') : '가장 가까운 곳'}</span>
         <span class="station-dist">중심에서 ${formatKm(primary ? primary.km : station.km)}</span>
       </div>
-      <div class="station-name">${esc(station.name)} ${lineBadges(station.lines)}</div>
+      <div class="station-name">${esc(station.name)} ${lineBadges(station.lines)}${station.kind === 'landmark' && station.note ? `<em>${esc(station.note)}</em>` : ''}</div>
       <div class="station-actions">
         <div class="station-meta">
           <span>도보 <b>${walkingMinutes(primary ? primary.km : station.km)}분</b></span>
           <span>가장 먼 참가자 <b>${formatKm(stats.max)}</b></span>
         </div>
-        <button class="mini-btn" type="button" data-focus-station="${esc(station.name)}">
+        <button class="mini-btn" type="button" data-focus-lat="${station.lat}" data-focus-lng="${station.lng}">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg>지도에서
         </button>
       </div>
@@ -585,12 +591,13 @@ function renderResult(result) {
   }
   const inlineShare = el.result.querySelector('#shareBtnInline');
   if (inlineShare) inlineShare.addEventListener('click', copyLink);
-  const focusStation = el.result.querySelector('[data-focus-station]');
-  if (focusStation) {
-    focusStation.addEventListener('click', () => {
-      const row = STATION_INDEX.get(focusStation.dataset.focusStation);
-      if (row) {
-        map.setView([row[1], row[2]], 15, { animate: true });
+  const focusSpot = el.result.querySelector('[data-focus-lat]');
+  if (focusSpot) {
+    focusSpot.addEventListener('click', () => {
+      const lat = Number(focusSpot.dataset.focusLat);
+      const lng = Number(focusSpot.dataset.focusLng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        map.setView([lat, lng], 15, { animate: true });
         if (isMobile()) setSheet('peek');
       }
     });

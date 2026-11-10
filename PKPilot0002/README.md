@@ -35,7 +35,7 @@
 - 참가자별 거리 막대와 합계
 
 **추천 만남 거점**
-- 중간 지점에서 가장 가까운 지하철역(수도권 589개 역 스냅샷) + 노선 배지 + 도보 시간
+- 중간 지점에서 가장 가까운 **지하철역(수도권 589개 역 스냅샷) 또는 랜드마크** + 노선 배지 + 도보 시간
 - 후보 중 **가장 먼 참가자의 거리를 최소로 하는 역**을 "더 공평한 역"으로 함께 제안
 
 **공유 · 반응형**
@@ -59,7 +59,7 @@ PKPilot0002/
 ├── tools/build_stations.py   stations.js 생성기 (Wikidata SPARQL)
 ├── tests/
 │   ├── run_tests.py      단위 테스트 러너 (Playwright + http.server)
-│   ├── unit/             테스트 하네스·케이스 58개
+│   ├── unit/             테스트 하네스·케이스 61개
 │   └── visual/capture.py 화면 검증 + 스크린샷
 └── docs/screenshots/     데스크톱·모바일 스크린샷
 ```
@@ -77,12 +77,12 @@ ES 모듈을 쓰므로 `file://`로 열면 동작하지 않습니다. 정적 서
 ## 테스트
 
 ```sh
-python3 tests/run_tests.py            # 단위 테스트 58개
+python3 tests/run_tests.py            # 단위 테스트 61개
 python3 tests/visual/capture.py --check   # Chromium 화면 검증
 python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 ```
 
-- 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역 추천, 표시 형식
+- 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역·랜드마크 추천, 표시 형식
 - 화면 검증: 타일 로드, 핀/마커 수, 결과 카드, URL 상태, 공유 링크 왕복, 모드 전환, 삭제/초기화, 모바일 시트 접힘·펼침
 - Node.js 없이 Playwright(Chromium)만 사용합니다. `pip install playwright && playwright install chromium` 필요.
 
@@ -93,7 +93,7 @@ python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 | 지도 타일 | OpenStreetMap 표준 타일 | 다크 테마는 CSS 필터(`invert + hue-rotate`)로 톤만 바꿉니다. 외부 키 불필요 |
 | 지오코딩 | Nominatim (search / reverse) | 공개 인스턴스 정책에 맞춰 요청을 1초 간격으로 큐잉, 결과 캐시 |
 | 지하철역 좌표 | Wikidata (CC0) | `tools/build_stations.py`로 수도권 589개 역 생성 |
-| 랜드마크 | OpenStreetMap Nominatim | `js/landmarks.js` |
+| 랜드마크 | OpenStreetMap Nominatim | `js/landmarks.js` — 추천 후보에 함께 사용 |
 
 > 지도 타일은 초기 기획의 CartoDB Dark Matter를 쓰지 않습니다. 2026년 11월 확인 결과 `basemaps.cartocdn.com`의 dark_all 타일이 **API 키 없이는 "API KEY REQUIRED" 워터마크 타일**을 돌려주기 때문입니다(키 없는 대안 중 OSM 타일을 선택). 필요하면 `app.js`의 `TILES` 상수만 교체하면 됩니다.
 

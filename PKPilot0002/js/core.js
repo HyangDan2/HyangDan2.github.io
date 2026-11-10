@@ -430,7 +430,13 @@ export function parseShareState(input) {
    ------------------------------------------------------------------ */
 
 export function stationObjects(stations) {
-  return (stations || []).map(([name, lat, lng, lines]) => ({ name, lat, lng, lines: lines || [] }));
+  return (stations || []).map(([name, lat, lng, lines, meta]) => ({
+    name,
+    lat,
+    lng,
+    lines: lines || [],
+    ...(meta || {}),
+  }));
 }
 
 export function nearestStations(point, stations, limit = 3, maxKm = Infinity) {
@@ -467,14 +473,17 @@ export function fairestStation(points, stations, options = {}) {
   return best;
 }
 
-export function recommendMeetingSpot(points, stations, options = {}) {
+export function recommendMeetingSpot(points, spots, options = {}) {
   const list = (points || []).filter(Boolean);
   if (list.length < 2) return null;
   const center = midpoint(list, options.mode || 'fair');
   if (!center) return null;
-  const nearBy = nearestStations(center, stations, 3, options.primaryMaxKm ?? 4);
+  const nearBy = nearestStations(center, spots, 3, options.primaryMaxKm ?? 4);
   const primary = nearBy[0] || null;
-  const fair = fairestStation(list, stations, { mode: options.mode, radiusKm: options.radiusKm ?? 15 });
+  const fair = fairestStation(list, options.stations || spots, {
+    mode: options.mode,
+    radiusKm: options.radiusKm ?? 15,
+  });
   const alternative = fair && primary && fair.name !== primary.name && fair.maxKm < primary.maxKm - 0.15 ? fair : null;
   return { center, primary, nearBy, alternative };
 }

@@ -26,6 +26,7 @@ import {
   parseShareState,
   recommendMeetingSpot,
   sanitizeName,
+  stationObjects,
   sphericalCentroid,
   walkingMinutes,
 } from '../../js/core.js';
@@ -467,6 +468,41 @@ test('recommendMeetingSpot: 실제 좌표에서 가까운 역이 강남역', () 
   const rec = recommendMeetingSpot([GANGNAM, { lat: 37.4985, lng: 127.0260 }], STATIONS);
   assertEqual(rec.primary.name, '강남역');
   assert(rec.primary.km < 0.5);
+});
+
+test('recommendMeetingSpot: 랜드마크도 만남 후보가 된다', () => {
+  const spots = [
+    ['역A', 37.5, 127.0, ['2'], { kind: 'station' }],
+    ['공원B', 37.51, 127.0, [], { kind: 'landmark', note: '테스트 공원' }],
+  ];
+  const points = [{ lat: 37.51, lng: 127.0 }, { lat: 37.512, lng: 127.0 }];
+  const rec = recommendMeetingSpot(points, spots, { stations: [['역A', 37.5, 127.0, ['2']]] });
+  assertEqual(rec.primary.name, '공원B');
+  assertEqual(rec.primary.kind, 'landmark');
+  assertEqual(rec.primary.note, '테스트 공원');
+  assert(rec.primary.km < 0.3, `랜드마크 거리: ${rec.primary.km}`);
+});
+
+test('recommendMeetingSpot: 가장 가까운 역이 이기면 역을 추천', () => {
+  const spots = [
+    ['역A', 37.5, 127.0, ['2'], { kind: 'station' }],
+    ['공원B', 37.6, 127.0, [], { kind: 'landmark' }],
+  ];
+  const rec = recommendMeetingSpot(
+    [{ lat: 37.5, lng: 127.0 }, { lat: 37.502, lng: 127.001 }],
+    spots,
+    { stations: [['역A', 37.5, 127.0, ['2']]] },
+  );
+  assertEqual(rec.primary.name, '역A');
+  assertEqual(rec.primary.kind, 'station');
+});
+
+test('stationObjects: 5번째 메타데이터를 합친다', () => {
+  const [spot] = stationObjects([['X', 37.5, 127.0, ['3'], { kind: 'landmark', note: 'n' }]]);
+  assertEqual(spot.name, 'X');
+  assertEqual(spot.kind, 'landmark');
+  assertEqual(spot.note, 'n');
+  assertEqual(spot.lines.length, 1);
 });
 
 test('recommendMeetingSpot: 2명 미만이면 null', () => {
