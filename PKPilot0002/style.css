@@ -421,6 +421,7 @@ a {
 .search {
   position: relative;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 8px;
   padding: 5px 5px 5px 12px;
@@ -532,9 +533,107 @@ a {
   background: none;
 }
 
+/* 자동완성 행 — 역·거점·외부 검색 결과 공통 */
+.search-results .res-row {
+  align-items: center;
+}
+
+.search-results .res-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.search-results .res-landmark .res-ic,
+.search-results .res-remote .res-ic {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+}
+
+.search-results .res-body {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-results .res-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-results .res-lines {
+  display: block;
+  margin-top: 4px;
+}
+
+.search-results .res-lines .line-badges {
+  gap: 3px;
+}
+
+.search-results .res-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-results .res-hint {
+  flex: none;
+  align-self: center;
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  opacity: 0.75;
+  transition: opacity 0.15s var(--ease);
+}
+
+.search-results li:hover .res-hint,
+.search-results li.is-active .res-hint {
+  opacity: 1;
+}
+
+.search-results .res-more {
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  padding: 10px;
+  border-top: 1px solid var(--border-soft);
+  border-radius: 0 0 9px 9px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.search-results .res-more .ic {
+  flex: none;
+  color: var(--muted-2);
+}
+
+.search-results .res-more:hover {
+  color: var(--text);
+}
+
 .presets {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;      /* 패널이 스크롤돼도 뱃지 줄이 찌그러지지 않게 */
+  align-content: flex-start;
+  min-height: 34px;
   gap: 7px;
   margin-top: -6px;
 }
@@ -562,6 +661,18 @@ a {
 
 .chip:active {
   transform: scale(0.97);
+}
+
+/* 모바일 터치 — 더블탭 확대와 300ms 탭 지연을 없앤다.
+   (지도 컨테이너는 Leaflet이 직접 핀치·더블탭 줌을 다루므로 건드리지 않는다) */
+button,
+input,
+textarea,
+select,
+a,
+.chip,
+.search-results li {
+  touch-action: manipulation;
 }
 
 /* ------------------------------------------------------------------
@@ -1846,11 +1957,17 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
     display: none;
   }
 
+  /* 참가자가 늘어 패널이 스크롤돼도 프리셋 뱃지 줄은 높이를 지킨다 (flex 축소 금지) */
   .presets {
     flex-wrap: nowrap;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: 34px;
     overflow-x: auto;
+    overflow-y: hidden;
     padding-bottom: 3px;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
 
   .presets::-webkit-scrollbar {
@@ -1859,6 +1976,56 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
 
   .chip {
     flex: none;
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12.5px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* iOS 사파리는 16px 미만 입력창에 포커스하면 화면을 강제로 확대한다 — 16px로 고정 */
+  .search input,
+  input[type='search'],
+  .p-name {
+    font-size: 16px;
+  }
+
+  .search input {
+    height: 38px;
+    line-height: 38px;
+  }
+
+  .search-btn {
+    height: 36px;
+    padding: 0 15px;
+    font-size: 13px;
+  }
+
+  .search-results {
+    left: -1px;
+    right: -1px;
+    z-index: 60;
+    max-height: min(54vh, 340px);
+    padding: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .search-results li {
+    min-height: 46px;
+    padding: 10px;
+    align-items: center;
+  }
+
+  .search-results .res-name {
+    font-size: 14px;
+  }
+
+  .search-results .res-sub {
+    font-size: 11.5px;
+  }
+
+  .search-results .res-hint {
+    font-size: 11px;
   }
 
   .participant {

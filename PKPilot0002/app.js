@@ -20,6 +20,7 @@ import {
   parseShareState,
   recommendMeetingSpot,
   sanitizeName,
+  suggestPlaces,
   walkingMinutes,
 } from './js/core.js';
 import { LINES, STATIONS } from './js/stations.js';
@@ -342,10 +343,123 @@ function addressLabel(point) {
 }
 
 /* ------------------------------------------------------------------
-   검색 (Nominatim forward)
+   검색 — 내장 역·거점 자동완성 + Nominatim 외부 검색
    ------------------------------------------------------------------ */
-let searchResults = [];
+const SUGGEST_LIMIT = 7;
+const SUGGEST_DELAY = 120;
+
+let searchRows = [];   // 지금 드롭다운에 그려진 항목들
 let searchToken = 0;
+let suggestTimer = null;
+let activeIndex = -1;
+
+function lineText(codes) {
+  return (codes || []).map(code => lineMeta(code, LINES).name).join(' · ');
+}
+
+// 내장 데이터(589개 역 + 랜드마크)에서 즉시 찾는다 — 네트워크 없음
+function localSuggestions(term) {
+  return suggestPlaces(term, { stations: STATIONS, landmarks: LANDMARKS, limit: SUGGEST_LIMIT })
+    .map(item => ({
+      name: item.name,
+      lat: item.lat,
+      lng: item.lng,
+      kind: item.kind,
+      lines: item.lines,
+      address: item.kind === 'station' ? lineText(item.lines) : (item.note || ''),
+    }));
+}
+
+function emptyRow(text) {
+  return `<li class="res-empty">${esc(text)}</li>`;
+}
+
+function remoteRowHtml(term) {
+  if (!term) return '';
+  const text = term.length > 14 ? `${term.slice(0, 14)}…` : term;
+  return `<li class="res-more" role="option" aria-selected="false" data-remote="${esc(term)}">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+      <span>‘${esc(text)}’ 주소·장소까지 찾기</span>
+    </li>`;
+}
+
+function renderSearchRows(rows, options = {}) {
+  searchRows = rows;
+  activeIndex = -1;
+  el.searchInput.removeAttribute('aria-activedescendant');
+  if (!el.searchInput.value.trim()) {
+    hideSearchResults();
+    return;
+  }
+  if (!rows.length && !options.empty && !options.remoteTerm) {
+    hideSearchResults();
+    return;
+  }
+  el.searchResults.hidden = false;
+  el.searchInput.setAttribute('aria-expanded', 'true');
+
+  const items = rows.map((row, i) => {
+    const icon = row.kind === 'station' ? 'i-train' : 'i-pin';
+    const meta = row.kind === 'station'
+      ? `<span class="res-lines">${lineBadges(row.lines) || '<span class="res-sub">지하철역</span>'}</span>`
+      : `<span class="res-sub">${esc(row.address || '')}</span>`;
+    return `<li role="option" id="search-opt-${i}" data-index="${i}" aria-selected="false" class="res-row res-${esc(row.kind)}">
+        <span class="res-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${icon}"/></svg></span>
+        <span class="res-body"><span class="res-name">${esc(row.name)}</span>${meta}</span>
+        <span class="res-hint">출발지로 추가</span>
+      </li>`;
+  }).join('');
+
+  const empty = rows.length ? '' : emptyRow(options.empty || '검색 결과가 없어요. 지도에서 직접 찍어 보세요.');
+  el.searchResults.innerHTML = items + empty + remoteRowHtml(options.remoteTerm);
+}
+
+function hideSearchResults() {
+  el.searchResults.hidden = true;
+  el.searchResults.innerHTML = '';
+  el.searchInput.setAttribute('aria-expanded', 'false');
+  el.searchInput.removeAttribute('aria-activedescendant');
+  searchRows = [];
+  activeIndex = -1;
+}
+
+function highlightRow(index) {
+  const nodes = [...el.searchResults.querySelectorAll('[data-index]')];
+  if (!nodes.length) return;
+  activeIndex = index < 0 ? -1 : (index >= nodes.length ? 0 : index);
+  nodes.forEach((node, i) => {
+    const on = i === activeIndex;
+    node.classList.toggle('is-active', on);
+    node.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) node.scrollIntoView({ block: 'nearest' });
+  });
+  if (activeIndex >= 0) el.searchInput.setAttribute('aria-activedescendant', `search-opt-${activeIndex}`);
+  else el.searchInput.removeAttribute('aria-activedescendant');
+}
+
+// 드롭다운 항목 하나를 출발지로 추가
+function applySearchRow(row) {
+  if (!row) return false;
+  const added = addPoint({
+    lat: row.lat,
+    lng: row.lng,
+    name: row.name,
+    address: row.address,
+    source: 'search',
+  });
+  if (added) {
+    el.searchInput.value = '';
+    hideSearchResults();
+    // iOS 키보드를 접어 결과 지도를 보여준다
+    if (document.activeElement === el.searchInput) el.searchInput.blur();
+  }
+  return true;
+}
+
+function chooseSearchRow(index) {
+  if (index < 0 || !searchRows[index]) return false;
+  return applySearchRow(searchRows[index]);
+}
 
 async function runSearch(term) {
   const query = term.trim();
@@ -358,42 +472,48 @@ async function runSearch(term) {
     if (!response.ok) throw new Error(String(response.status));
     const data = await response.json();
     if (token !== searchToken) return;
-    searchResults = data.map(item => ({
+    const rows = data.map(item => ({
       name: item.name || (item.display_name || '').split(',')[0],
-      address: item.display_name || '',
+      address: (item.display_name || '').split(',').slice(0, 3).join(' ').trim(),
       lat: Number(item.lat),
       lng: Number(item.lon),
+      kind: 'remote',
+      lines: [],
     })).filter(item => Number.isFinite(item.lat) && Number.isFinite(item.lng));
-    renderSearchResults();
+    renderSearchRows(rows, { empty: `‘${query}’ 주소를 찾지 못했어요. 지도에서 직접 찍어 보세요.` });
   } catch {
-    if (token === searchToken) {
-      searchResults = [];
-      renderSearchResults('검색에 실패했어요. 잠시 후 다시 시도해 주세요.');
-    }
+    if (token !== searchToken) return;
+    renderSearchRows([], { empty: '검색에 실패했어요. 잠시 후 다시 시도해 주세요.' });
   } finally {
     if (token === searchToken) el.searchBtn.disabled = false;
   }
 }
 
-function renderSearchResults(emptyText) {
-  if (!el.searchInput.value.trim()) {
+// 입력하는 즉시 내장 역·거점을 120ms 디바운스로 보여준다
+function scheduleSuggest() {
+  clearTimeout(suggestTimer);
+  const term = el.searchInput.value.trim();
+  if (!term) {
     hideSearchResults();
     return;
   }
-  el.searchResults.hidden = false;
-  if (!searchResults.length) {
-    el.searchResults.innerHTML = `<li class="res-empty">${esc(emptyText || '검색 결과가 없어요. 지도에서 직접 찍어 보세요.')}</li>`;
-    return;
-  }
-  el.searchResults.innerHTML = searchResults.map((item, i) => `
-    <li role="option" tabindex="-1" data-result="${i}">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent);margin-top:2px"><use href="#i-pin"/></svg>
-      <span><span class="res-name">${esc(item.name)}</span><span class="res-addr">${esc(item.address)}</span></span>
-    </li>`).join('');
+  suggestTimer = setTimeout(() => {
+    if (!el.searchInput.value.trim()) return;
+    renderSearchRows(localSuggestions(term), { remoteTerm: term });
+  }, SUGGEST_DELAY);
 }
 
-function hideSearchResults() {
-  el.searchResults.hidden = true;
+// 엔터·검색 버튼 — 정확히 맞는 역·거점이 있으면 바로 추가, 아니면 외부 검색
+function submitSearch() {
+  const term = el.searchInput.value.trim();
+  if (!term) return;
+  if (activeIndex >= 0 && chooseSearchRow(activeIndex)) return;
+  const exact = localSuggestions(term).find(row => row.name === term || row.name.replace(/역$/, '') === term);
+  if (exact) {
+    applySearchRow(exact);
+    return;
+  }
+  runSearch(term);
 }
 
 /* ------------------------------------------------------------------
@@ -984,34 +1104,45 @@ function initListEvents() {
 function initSearchEvents() {
   el.searchForm.addEventListener('submit', event => {
     event.preventDefault();
-    hideSearchResults();
-    runSearch(el.searchInput.value);
+    clearTimeout(suggestTimer);
+    submitSearch();
   });
 
-  el.searchInput.addEventListener('input', () => {
-    if (!el.searchInput.value.trim()) hideSearchResults();
+  el.searchInput.addEventListener('input', scheduleSuggest);
+  el.searchInput.addEventListener('focus', () => {
+    if (el.searchInput.value.trim()) scheduleSuggest();
   });
 
   el.searchInput.addEventListener('keydown', event => {
-    if (event.key === 'Escape') hideSearchResults();
+    if (event.isComposing || event.keyCode === 229) return; // 한글 조합 중에는 그대로 둔다
+    if (event.key === 'Escape') {
+      hideSearchResults();
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const count = el.searchResults.querySelectorAll('[data-index]').length;
+      if (!count) return;
+      event.preventDefault();
+      if (event.key === 'ArrowDown') highlightRow(activeIndex + 1 >= count ? 0 : activeIndex + 1);
+      else highlightRow(activeIndex <= 0 ? count - 1 : activeIndex - 1);
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault(); // 폼 제출 대신 직접 처리 (조합 중 중복 방지)
+      clearTimeout(suggestTimer);
+      submitSearch();
+    }
   });
 
   el.searchResults.addEventListener('click', event => {
-    const item = event.target.closest('[data-result]');
-    if (!item) return;
-    const result = searchResults[Number(item.dataset.result)];
-    if (!result) return;
-    const point = addPoint({
-      lat: result.lat,
-      lng: result.lng,
-      name: result.name,
-      address: result.address.split(',').slice(0, 3).join(' ').trim(),
-      source: 'search',
-    });
-    if (point) {
-      el.searchInput.value = '';
-      hideSearchResults();
+    const more = event.target.closest('[data-remote]');
+    if (more) {
+      runSearch(more.dataset.remote || el.searchInput.value.trim());
+      return;
     }
+    const item = event.target.closest('[data-index]');
+    if (!item) return;
+    chooseSearchRow(Number(item.dataset.index));
   });
 
   document.addEventListener('click', event => {
@@ -1064,6 +1195,38 @@ function loadPoints(points, mode, notify = true) {
 }
 
 /* ------------------------------------------------------------------
+   모바일 뷰포트 고정 — 페이지 확대/축소 차단
+   (지도 핀치 줌은 Leaflet의 터치 핸들러가 직접 처리하므로 그대로 둔다)
+   ------------------------------------------------------------------ */
+function initViewportLock() {
+  // iOS 사파리 전용 제스처 이벤트 — 페이지 자체의 핀치 확대를 막는다.
+  const blockGesture = event => {
+    if (event.cancelable) event.preventDefault();
+  };
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(name => {
+    document.addEventListener(name, blockGesture, { passive: false });
+  });
+
+  const insideMap = target => Boolean(el.map && target && el.map.contains(target));
+
+  // 더블탭 확대 방지 — 지도(Leaflet 더블탭 줌)와 입력·버튼은 건드리지 않는다.
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', event => {
+    const now = Date.now();
+    const doubleTap = now - lastTouchEnd <= 320;
+    lastTouchEnd = now;
+    if (!doubleTap || !event.cancelable || insideMap(event.target)) return;
+    if (event.target.closest('input, textarea, select, button, a, [contenteditable="true"]')) return;
+    event.preventDefault();
+  }, { passive: false });
+
+  // 두 손가락 확대 (사파리 밖 브라우저) — 지도 영역은 Leaflet이 처리한다.
+  document.addEventListener('touchmove', event => {
+    if (event.touches.length > 1 && !insideMap(event.target) && event.cancelable) event.preventDefault();
+  }, { passive: false });
+}
+
+/* ------------------------------------------------------------------
    시작
    ------------------------------------------------------------------ */
 function boot() {
@@ -1073,6 +1236,7 @@ function boot() {
   initSearchEvents();
   initHeaderEvents();
   initSheet();
+  initViewportLock();
 
   const parsed = parseShareState(location.href);
   if (parsed.present && parsed.points.length) {
