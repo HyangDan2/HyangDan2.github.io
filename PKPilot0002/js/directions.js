@@ -57,9 +57,14 @@ export function kakaoWebRouteUrl({ from, to, travelMode = 'transit' }) {
 }
 
 export function naverDirectionsUrl({ from, to, travelMode = 'transit' }) {
-  const type = travelMode === 'car' ? 'car' : 'transit';
+  const type = travelMode === 'car' ? 'car' : travelMode === 'walk' ? 'walk' : 'transit';
   const start = from ? naverPin(from.name, from.lat, from.lng) : '-';
   return `https://map.naver.com/p/directions/${start}/${naverPin(to.name, to.lat, to.lng)}/${type}`;
+}
+
+/** 카카오맵 웹 길찾기 — by=FOOT 이면 도보 경로로 열린다. */
+export function kakaoWalkRouteUrl({ from, to }) {
+  return `https://map.kakao.com/?sName=${encodeURIComponent(from.name || '출발')}&eName=${encodeURIComponent(to.name || '도착')}&by=FOOT`;
 }
 
 export function tmapRouteUrl({ to }) {
@@ -99,4 +104,30 @@ export function providerList(travelMode) {
   return travelMode === 'car'
     ? ['kakao', 'naver', 'tmap']
     : ['kakao', 'naver'];
+}
+
+/* ------------------------------------------------------------------
+   장소 검색 딥링크 — 등록 POI가 없는 거점의 fallback
+   "강남역 맛집" 처럼 검색어를 만들어 지도 앱/웹 검색으로 넘긴다.
+   ------------------------------------------------------------------ */
+
+export const PLACE_KIND_LABEL = {
+  restaurant: '맛집',
+  cafe: '카페',
+  dessert: '디저트 카페',
+  brunch: '브런치',
+};
+
+/** '강남역 맛집' — 거점 이름 + 종류 */
+export function placeSearchQuery(spotName, kind = 'restaurant') {
+  const label = PLACE_KIND_LABEL[kind] || PLACE_KIND_LABEL.restaurant;
+  const base = String(spotName || '').trim();
+  return base ? `${base} ${label}` : label;
+}
+
+/** 네이버지도·카카오맵 검색 결과로 바로 넘기는 링크 */
+export function placeSearchUrl(provider, query) {
+  const q = encodeURIComponent(String(query || '').trim());
+  if (provider === 'naver') return `https://map.naver.com/p/search/${q}`;
+  return `https://map.kakao.com/link/search/${q}`;
 }

@@ -14,23 +14,36 @@ import {
   fairnessScore,
   formatKm,
   formatLatLng,
+  formatMeters,
   haversineKm,
   lineMeta,
   maxPairwiseKm,
   midpoint,
   nearestStations,
   parseShareState,
+  recommendMeetingCourse,
   recommendMeetingSpot,
   sanitizeName,
   spotKind,
   suggestPlaces,
   travelModeOf,
+  walkMinutesForMeters,
   walkingMinutes,
 } from './js/core.js';
 import { LINES, STATIONS } from './js/stations.js';
 import { DRIVING_SPOTS, ROADS } from './js/driving_spots.js';
 import { LANDMARKS } from './js/landmarks.js';
-import { PROVIDERS, isIOS, isMobileDevice, naverDirectionsUrl, providerList } from './js/directions.js';
+import { HUBS, PLACES } from './js/places.js';
+import {
+  PROVIDERS,
+  isIOS,
+  isMobileDevice,
+  kakaoWalkRouteUrl,
+  naverDirectionsUrl,
+  placeSearchQuery,
+  placeSearchUrl,
+  providerList,
+} from './js/directions.js';
 
 /* ------------------------------------------------------------------
    상수
@@ -94,6 +107,8 @@ const state = {
   travelMode: 'transit',
   activeId: null,
   style: 'dark',
+  placeView: 'course', // course | restaurant | cafe
+  courseIndex: 0,
 };
 
 const el = {
@@ -126,6 +141,7 @@ let map = null;
 let tileLayer = null;
 let personLayer = null;
 let overlayLayer = null;
+let focusLayer = null;
 const markers = new Map();
 let geoTimer = null;
 let toastTimer = null;
@@ -181,6 +197,7 @@ function initMap() {
 
   personLayer = L.layerGroup().addTo(map);
   overlayLayer = L.layerGroup().addTo(map);
+  focusLayer = L.layerGroup().addTo(map);
 
   map.on('click', event => {
     addPoint({ lat: event.latlng.lat, lng: event.latlng.lng, source: 'map' });
@@ -562,7 +579,12 @@ function computeResult() {
     travelMode: state.travelMode,
     stations: STATIONS,
   });
-  return { center, distances, stats, fairness, rec };
+  // 맛집·카페·코스의 기준이 되는 거점 — 추천 거점이 없으면 가장 가까운 역으로 후퇴
+  const anchor = rec?.primary || (rec ? nearestStations(rec.center, SPOTS, 1, Infinity)[0] : null);
+  const nearby = anchor
+    ? recommendMeetingCourse(anchor, PLACES, { hubs: HUBS, travelMode: state.travelMode })
+    : null;
+  return { center, distances, stats, fairness, rec, anchor, nearby };
 }
 
 /* ------------------------------------------------------------------
@@ -687,6 +709,205 @@ function approachLabel(km, car) {
   return walk > 90 ? '<b>KTX·버스로 접근</b>' : `도보 <b>${walk}분</b>`;
 }
 
+/* ------------------------------------------------------------------
+   렌더 — 주변 맛집·카페 · 1차+2차 약속 코스
+   ------------------------------------------------------------------ */
+
+function categoryBadge(place) {
+  return `<span class="place-cat" data-kind="${place.kind}">${esc(place.category || (place.kind === 'cafe' ? '카페' : '음식점'))}</span>`;
+}
+
+function tagBadges(tags, category) {
+  return (tags || [])
+    .filter(tag => tag !== '영업시간' && tag !== category)
+    .slice(0, 3)
+    .map(tag => `<span class="place-tag">${esc(tag)}</span>`)
+    .join('');
+}
+
+/** 네이버·카카오 지도 검색(리뷰) 링크 — POI에 저장된 링크가 없을 때 대비 */
+function reviewLinks(place) {
+  const query = `${place.name}`;
+  const naver = place.naverUrl || placeSearchUrl('naver', query);
+  const kakao = place.kakaoUrl || placeSearchUrl('kakao', query);
+  return `<a class="place-link is-naver" href="${esc(naver)}" target="_blank" rel="noopener noreferrer" title="${esc(place.name)} 네이버지도 검색">네이버</a>
+    <a class="place-link is-kakao" href="${esc(kakao)}" target="_blank" rel="noopener noreferrer" title="${esc(place.name)} 카카오맵 검색">카카오</a>`;
+}
+
+function focusButton(place) {
+  return `<button class="mini-btn" type="button" data-focus-lat="${place.lat}" data-focus-lng="${place.lng}" data-focus-name="${esc(place.name)}">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg>지도에서
+  </button>`;
+}
+
+function placeCardHtml(place) {
+  const walk = place.fromSpotMinutes ?? walkMinutesForMeters(place.fromSpotMeters);
+  return `
+    <li class="place-card">
+      <div class="place-top">
+        <span class="place-name">${esc(place.name)}</span>
+        ${categoryBadge(place)}
+      </div>
+      <div class="place-meta">
+        <span class="place-walk"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-walk"/></svg>도보 ${walk}분</span>
+        <span class="place-dist">${esc(formatMeters(place.fromSpotMeters ?? 0))}</span>
+        ${tagBadges(place.tags, place.category)}
+      </div>
+      <div class="place-actions">
+        ${reviewLinks(place)}
+        ${focusButton(place)}
+      </div>
+    </li>`;
+}
+
+/** 등록 POI가 없을 때 — 카카오·네이버 지도 실시간 탐색으로 넘긴다 */
+function fallbackSearchHtml(anchor, view) {
+  const restaurantQuery = placeSearchQuery(anchor.name, 'restaurant');
+  const cafeQuery = placeSearchQuery(anchor.name, 'cafe');
+  const dessertQuery = placeSearchQuery(anchor.name, 'dessert');
+  const rows = [
+    { kind: '맛집', query: restaurantQuery },
+    { kind: '카페', query: cafeQuery },
+    ...(view === 'course' ? [{ kind: '디저트 카페', query: dessertQuery }] : []),
+  ];
+  return `
+    <div class="nearby-links">
+      ${rows.map(row => `
+        <div class="nearby-link-row">
+          <span class="nearby-link-label">${esc(row.kind)}</span>
+          <a class="nav-chip" href="${esc(placeSearchUrl('naver', row.query))}" target="_blank" rel="noopener noreferrer">네이버지도</a>
+          <a class="nav-chip" href="${esc(placeSearchUrl('kakao', row.query))}" target="_blank" rel="noopener noreferrer">카카오맵</a>
+        </div>`).join('')}
+    </div>`;
+}
+
+function emptyNearbyHtml(anchor, view, counts = {}, radiusKm = 1) {
+  const noRestaurant = !counts.restaurant;
+  const noCafe = !counts.cafe;
+  let message;
+  if (view === 'restaurant') message = '이 거점 주변에 등록된 맛집이 아직 없어요.';
+  else if (view === 'cafe') message = '이 거점 주변에 등록된 카페가 아직 없어요.';
+  else if (!noRestaurant && noCafe) message = '1차 식당은 있지만 이어 걸을 카페를 찾지 못했어요. 카페 탭에서 골라 보세요.';
+  else if (noRestaurant && !noCafe) message = '카페는 있지만 1차 식당 정보가 없어 코스를 만들지 못했어요.';
+  else message = '이 거점 주변에는 식당·카페 조합 정보가 아직 없어요.';
+  const radiusLabel = Number.isInteger(radiusKm) ? String(radiusKm) : radiusKm.toFixed(1);
+  return `
+    <div class="nearby-empty">
+      <p>${esc(anchor.name)} 반경 ${radiusLabel}km · ${message}</p>
+      <p class="nearby-empty-hint">카카오·네이버 지도에서 바로 찾아보세요.</p>
+      ${fallbackSearchHtml(anchor, view)}
+    </div>`;
+}
+
+function courseCardHtml(course, index, active) {
+  const restaurant = course.restaurant;
+  const cafe = course.cafe;
+  const cafeMeta = (cafe.tags || [])
+    .filter(tag => tag !== '영업시간' && tag !== '체인')
+    .slice(0, 2)
+    .join(' · ')
+    || cafe.category
+    || '카페';
+  return `
+    <button class="course-card${active ? ' is-active' : ''}" type="button" data-course="${index}" aria-pressed="${active}">
+      <span class="course-head">
+        <b>${index + 1}순위</b>
+        <span class="course-total">총 도보 ${course.totalMinutes}분</span>
+      </span>
+      <span class="course-leg">
+        <span class="leg-num">1차</span>
+        <span class="leg-body">
+          <span class="leg-name">${esc(restaurant.name)}</span>
+          <span class="leg-meta">${esc(restaurant.category || '음식점')} · 도보 ${restaurant.fromSpotMinutes}분</span>
+        </span>
+      </span>
+      <span class="course-move">➔ 도보 ${course.walkMinutes}분 <em>${esc(formatMeters(course.walkMeters))} 이동</em></span>
+      <span class="course-leg">
+        <span class="leg-num is-cafe">2차</span>
+        <span class="leg-body">
+          <span class="leg-name">${esc(cafe.name)}</span>
+          <span class="leg-meta">${esc(cafeMeta)} · 도보 ${cafe.fromSpotMinutes}분</span>
+        </span>
+      </span>
+    </button>`;
+}
+
+function courseActionsHtml(course, anchor) {
+  const restaurant = course.restaurant;
+  const cafe = course.cafe;
+  const toRestaurantNaver = naverDirectionsUrl({ from: anchor, to: restaurant, travelMode: 'walk' });
+  const toRestaurantKakao = kakaoWalkRouteUrl({ from: anchor, to: restaurant });
+  const toCafeNaver = naverDirectionsUrl({ from: restaurant, to: cafe, travelMode: 'walk' });
+  const toCafeKakao = kakaoWalkRouteUrl({ from: restaurant, to: cafe });
+  return `
+    <div class="course-actions">
+      <div class="course-action-row">
+        <span class="course-action-label">1차 맛집 길찾기</span>
+        <a class="nav-chip" href="${esc(toRestaurantNaver)}" target="_blank" rel="noopener noreferrer">네이버지도</a>
+        <a class="nav-chip" href="${esc(toRestaurantKakao)}" target="_blank" rel="noopener noreferrer">카카오맵</a>
+      </div>
+      <div class="course-action-row">
+        <span class="course-action-label">식당➔카페 도보</span>
+        <a class="nav-chip" href="${esc(toCafeNaver)}" target="_blank" rel="noopener noreferrer">네이버지도</a>
+        <a class="nav-chip" href="${esc(toCafeKakao)}" target="_blank" rel="noopener noreferrer">카카오맵</a>
+      </div>
+    </div>`;
+}
+
+function morePlacesHtml(anchor, view) {
+  const query = placeSearchQuery(anchor.name, view === 'cafe' ? 'cafe' : 'restaurant');
+  return `
+    <div class="nearby-more">
+      <span>${esc(anchor.name)} 주변을 지도에서 더 보기</span>
+      <a class="nav-chip" href="${esc(placeSearchUrl('naver', query))}" target="_blank" rel="noopener noreferrer">네이버지도</a>
+      <a class="nav-chip" href="${esc(placeSearchUrl('kakao', query))}" target="_blank" rel="noopener noreferrer">카카오맵</a>
+    </div>`;
+}
+
+function nearbyMarkup(result) {
+  const anchor = result?.anchor;
+  const courseResult = result?.nearby;
+  const nearby = courseResult?.nearby;
+  if (!anchor || !courseResult || !nearby) return '';
+
+  const courses = courseResult.courses || [];
+  if (state.courseIndex >= courses.length) state.courseIndex = 0;
+  const view = state.placeView;
+  const counts = nearby.counts || { restaurant: 0, cafe: 0 };
+  const tabs = [
+    { key: 'course', label: '📍 추천 코스' },
+    { key: 'restaurant', label: `🍽️ 맛집 (${counts.restaurant})` },
+    { key: 'cafe', label: `☕ 카페 (${counts.cafe})` },
+  ];
+
+  const radiusKm = nearby.radiusKm || 1;
+  const radiusLabel = Number.isInteger(radiusKm) ? String(radiusKm) : radiusKm.toFixed(1);
+  let body = '';
+  if (view === 'course') {
+    body = courses.length
+      ? `${courses.map((course, i) => courseCardHtml(course, i, i === state.courseIndex)).join('')}
+         ${courseActionsHtml(courses[state.courseIndex] || courses[0], anchor)}`
+      : emptyNearbyHtml(anchor, 'course', counts, radiusKm);
+  } else {
+    const list = view === 'restaurant' ? nearby.restaurants : nearby.cafes;
+    body = list.length
+      ? `<ul class="place-list">${list.map(placeCardHtml).join('')}</ul>${morePlacesHtml(anchor, view)}`
+      : emptyNearbyHtml(anchor, view, counts, radiusKm);
+  }
+  return `
+    <section class="nearby" id="nearbySection" aria-label="주변 맛집·카페와 약속 코스">
+      <div class="nearby-head">
+        <h3><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-course"/></svg>약속 코스 · 맛집·카페</h3>
+        <span class="nearby-anchor">${esc(anchor.name)} 반경 ${radiusLabel}km</span>
+      </div>
+      <div class="nearby-tabs" role="tablist" aria-label="맛집·카페 보기">
+        ${tabs.map(tab => `<button type="button" role="tab" data-place-view="${tab.key}" aria-selected="${view === tab.key}">${tab.label}</button>`).join('')}
+      </div>
+      <div class="nearby-body">${body}</div>
+      <p class="nearby-note">장소·좌표 OpenStreetMap(ODbL) · 도보 시간은 직선거리 보정값 · 평점은 네이버·카카오 리뷰로 확인</p>
+    </section>`;
+}
+
 function renderResult(result) {
   if (!result || state.points.length < 2) {
     el.result.hidden = true;
@@ -702,8 +923,7 @@ function renderResult(result) {
   const primary = rec?.primary || null;
   const alternative = rec?.alternative || null;
 
-  const stationFallback = !primary && rec ? nearestStations(rec.center, SPOTS, 1, Infinity)[0] : null;
-  const station = primary || stationFallback;
+  const station = result.anchor;
   const car = isCarMode();
 
   const spreadRows = state.points.map((point, i) => {
@@ -775,6 +995,8 @@ function renderResult(result) {
 
     ${stationMarkup}
 
+    ${nearbyMarkup(result)}
+
     ${alternative ? `
       <div class="alt-station">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>
@@ -805,7 +1027,39 @@ function renderResult(result) {
       const lat = Number(button.dataset.focusLat);
       const lng = Number(button.dataset.focusLng);
       if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        map.setView([lat, lng], 15, { animate: true });
+        map.setView([lat, lng], button.dataset.focusName ? 16 : 15, { animate: true });
+        if (button.dataset.focusName) {
+          focusPlace({ lat, lng, name: button.dataset.focusName });
+        }
+        if (isMobile()) setSheet('peek');
+      }
+    });
+  });
+  el.result.querySelectorAll('[data-place-view]').forEach(button => {
+    button.addEventListener('click', () => {
+      if (state.placeView === button.dataset.placeView) return;
+      state.placeView = button.dataset.placeView;
+      focusLayer?.clearLayers();
+      render();
+    });
+  });
+  el.result.querySelectorAll('[data-course]').forEach(button => {
+    button.addEventListener('click', () => {
+      const next = Number(button.dataset.course);
+      if (!Number.isFinite(next)) return;
+      const changed = next !== state.courseIndex;
+      state.courseIndex = next;
+      focusLayer?.clearLayers();
+      if (changed) render();
+      const course = computeResult()?.nearby?.courses?.[state.courseIndex];
+      if (course && map) {
+        map.fitBounds(
+          L.latLngBounds([
+            [course.restaurant.lat, course.restaurant.lng],
+            [course.cafe.lat, course.cafe.lng],
+          ]),
+          { padding: [46, 46], maxZoom: 17 },
+        );
         if (isMobile()) setSheet('peek');
       }
     });
@@ -983,6 +1237,81 @@ function drawOverlays(result) {
       .bindPopup(`<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : (walkingMinutes(station.km) > 90 ? 'KTX·버스로 접근' : `도보 ${walkingMinutes(station.km)}분`)}`)
       .addTo(overlayLayer);
   }
+
+  // 1차 식당 ➔ 2차 카페 약속 코스
+  const course = state.placeView === 'course' ? result.nearby?.courses?.[state.courseIndex] : null;
+  if (course && result.anchor) drawCourseOverlay(course, result.anchor);
+}
+
+/** 지도에서 찾은 장소 한 곳을 강조한다 — 목록의 “지도에서” 버튼 */
+function focusPlace(place) {
+  if (!map || !focusLayer) return;
+  focusLayer.clearLayers();
+  L.marker([place.lat, place.lng], {
+    icon: L.divIcon({
+      className: 'focus-wrap',
+      html: '<span class="pin-focus"></span>',
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    }),
+    keyboard: false,
+    zIndexOffset: 1200,
+  })
+    .bindPopup(`<strong>${esc(place.name)}</strong><br/>지도에서 위치 확인`)
+    .addTo(focusLayer)
+    .openPopup();
+}
+
+function coursePin(place, number, kind) {
+  const glyph = number === 1 ? '①' : number === 2 ? '②' : String(number);
+  const popup = `<div class="popup-place">
+      <strong>${esc(place.name)}</strong>
+      <span>${esc(place.category || '')} · 도보 ${place.fromSpotMinutes ?? place.walkMinutes}분</span>
+      <span class="popup-links">${reviewLinks(place)}</span>
+    </div>`;
+  return L.marker([place.lat, place.lng], {
+    icon: L.divIcon({
+      className: 'course-pin-wrap',
+      html: `<span class="pin-course is-${kind}"><b>${glyph}</b><i></i></span>`,
+      iconSize: [36, 44],
+      iconAnchor: [18, 38],
+    }),
+    riseOnHover: true,
+    keyboard: false,
+    zIndexOffset: 1000,
+  }).bindPopup(popup);
+}
+
+function drawCourseOverlay(course, anchor) {
+  const restaurant = course.restaurant;
+  const cafe = course.cafe;
+
+  L.polyline(
+    [[anchor.lat, anchor.lng], [restaurant.lat, restaurant.lng]],
+    { color: '#ffa77f', weight: 2, opacity: 0.8, dashArray: '4 7', interactive: false },
+  ).addTo(overlayLayer);
+
+  L.polyline(
+    [[restaurant.lat, restaurant.lng], [cafe.lat, cafe.lng]],
+    { color: '#ffb366', weight: 3.5, opacity: 0.95, dashArray: '9 8', interactive: false },
+  ).addTo(overlayLayer);
+
+  const midLat = (restaurant.lat + cafe.lat) / 2;
+  const midLng = (restaurant.lng + cafe.lng) / 2;
+  L.marker([midLat, midLng], {
+    icon: L.divIcon({
+      className: 'course-label-wrap',
+      html: `<span class="course-label">도보 ${course.walkMinutes}분</span>`,
+      iconSize: [1, 1],
+      iconAnchor: [0, 0],
+    }),
+    interactive: false,
+    keyboard: false,
+    zIndexOffset: 950,
+  }).addTo(overlayLayer);
+
+  coursePin(restaurant, '1', 'rest').addTo(overlayLayer);
+  coursePin(cafe, '2', 'cafe').addTo(overlayLayer);
 }
 
 /* ------------------------------------------------------------------

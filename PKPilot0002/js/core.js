@@ -678,3 +678,218 @@ export function suggestPlaces(query, options = {}) {
 
   return scored.slice(0, Math.max(1, limit)).map(({ item }) => ({ ...item, lines: [...item.lines] }));
 }
+
+/* ------------------------------------------------------------------
+   주변 맛집·카페 · 1차+2차 약속 코스
+   places: [{ id, hubId, hubName, name, kind: 'restaurant'|'cafe', category,
+              lat, lng, distMeters(허브 기준), walkMinutes, tags: [...] }, …]
+   ------------------------------------------------------------------ */
+
+/** 거점에서 이만큼 안의 장소를 보여 준다 (km). */
+export const PLACE_RADIUS_KM = 1.0;
+/** 1차 식당 → 2차 카페 도보 구간의 이상 범위(m) — 도보 2~5분. */
+export const COURSE_MIN_M = 100;
+export const COURSE_MAX_M = 350;
+/** 코스 후보를 찾을 때 쓰는 여유 범위(m) — 이상 범위에 없을 때만 쓴다. */
+const COURSE_WIDE_MIN_M = 80;
+const COURSE_WIDE_MAX_M = 600;
+
+const DESSERT_TAGS = new Set(['디저트', '베이커리']);
+const PARKING_TAG = '주차';
+
+/** 도보 속도 4.5km/h(75m/분), 길을 따라 걷는 보정 1.25배. */
+export function walkMinutesForMeters(meters) {
+  if (!Number.isFinite(meters)) return null;
+  return Math.max(1, Math.round((Math.abs(meters) * 1.25) / 75));
+}
+
+/** 거리 표기: 800m / 1.2km */
+export function formatMeters(meters) {
+  if (!Number.isFinite(meters)) return '—';
+  const m = Math.abs(meters);
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m / 1000).toFixed(1)} km`;
+}
+
+/**
+ * 추천 거점(역·IC·랜드마크)에 붙는 맛집·카페 묶음(hub)을 찾는다.
+ * 1) spots 목록에 이름이 있으면 그 허브
+ * 2) 없으면 matchRadiusKm 안에서 가장 가까운 허브
+ */
+export function resolveHub(spot, hubs, options = {}) {
+  if (!spot || !Array.isArray(hubs) || hubs.length === 0) return null;
+  const name = typeof spot.name === 'string' ? spot.name.trim() : '';
+  if (name) {
+    const named = hubs.find(hub =>
+      hub.name === name
+      || hub.label === name
+      || (hub.spots || []).includes(name));
+    if (named) return { ...named, matchedBy: 'name', matchKm: 0 };
+  }
+  const matchRadiusKm = options.matchRadiusKm ?? 1.2;
+  let best = null;
+  for (const hub of hubs) {
+    if (!Number.isFinite(hub?.lat) || !Number.isFinite(hub?.lng)) continue;
+    const km = haversineKm(spot, hub);
+    if (!Number.isFinite(km) || km > matchRadiusKm) continue;
+    if (!best || km < best.matchKm) best = { ...hub, matchedBy: 'near', matchKm: km };
+  }
+  return best;
+}
+
+/**
+ * 거점 반경 radiusKm 안의 맛집·카페를 가까운 순으로 돌려준다.
+ * - travelMode 'car' 이면 '주차' 태그가 있는 곳을 조금 앞세운다.
+ * - kind 를 주면 그 종류만 남긴다('restaurant' | 'cafe').
+ */
+export function findNearbyPlaces(spot, places, options = {}) {
+  const radiusKm = options.radiusKm ?? PLACE_RADIUS_KM;
+  const travelMode = travelModeOf(options.travelMode);
+  const result = {
+    hub: null,
+    places: [],
+    restaurants: [],
+    cafes: [],
+    counts: { restaurant: 0, cafe: 0 },
+    radiusKm,
+  };
+  if (!spot || !Array.isArray(places) || places.length === 0) return result;
+
+  let hub = resolveHub(spot, options.hubs || [], options);
+  const pool = hub
+    ? places.filter(place => place.hubId === hub.id)
+    : places.filter(place => place.hubName === spot.name);
+  if (pool.length === 0) return result;
+  if (!hub) {
+    hub = {
+      id: pool[0].hubId,
+      name: pool[0].hubName,
+      lat: spot.lat,
+      lng: spot.lng,
+      matchedBy: 'hubName',
+      matchKm: 0,
+    };
+  }
+
+  const scored = [];
+  for (const place of pool) {
+    if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lng)) continue;
+    const meters = haversineKm(spot, place) * 1000;
+    if (!Number.isFinite(meters) || meters > radiusKm * 1000) continue;
+    const tags = place.tags || [];
+    scored.push({
+      ...place,
+      tags,
+      fromSpotMeters: Math.round(meters),
+      fromSpotMinutes: walkMinutesForMeters(meters),
+      parking: tags.includes(PARKING_TAG),
+      distanceScore: meters - (travelMode === 'car' && tags.includes(PARKING_TAG) ? 120 : 0),
+    });
+  }
+
+  scored.sort((a, b) =>
+    a.distanceScore - b.distanceScore
+    || a.fromSpotMeters - b.fromSpotMeters
+    || a.name.localeCompare(b.name, 'ko'));
+
+  const restaurants = scored.filter(place => place.kind === 'restaurant');
+  const cafes = scored.filter(place => place.kind === 'cafe');
+  result.hub = hub;
+  result.restaurants = restaurants;
+  result.cafes = cafes;
+  result.counts = { restaurant: restaurants.length, cafe: cafes.length };
+  if (options.kind === 'restaurant') result.places = restaurants;
+  else if (options.kind === 'cafe') result.places = cafes;
+  else result.places = scored;
+  return result;
+}
+
+/**
+ * 1차 맛집 + 2차 카페 약속 코스를 고른다.
+ * - 1차는 거점에서 가까운 식당, 2차는 그 식당에서 도보 2~5분(100~350m) 카페.
+ * - 카페가 야외석·디저트·베이커리 태그를 가지면 분위기 점수를 준다.
+ * - 같은 식당·카페가 겹치지 않는 코스를 최대 limit 개 돌려준다.
+ */
+export function recommendMeetingCourse(spot, places, options = {}) {
+  const nearby = findNearbyPlaces(spot, places, options);
+  const limit = options.limit ?? 3;
+  const out = { hub: nearby.hub, courses: [], nearby, wide: 0 };
+  if (!nearby.restaurants.length || !nearby.cafes.length) return out;
+
+  const restaurantPool = nearby.restaurants.slice(0, options.restaurantPool ?? 14);
+  const cafePool = nearby.cafes.slice(0, options.cafePool ?? 30);
+  const candidates = [];
+
+  for (const restaurant of restaurantPool) {
+    for (const cafe of cafePool) {
+      if (restaurant.id === cafe.id) continue;
+      const straight = haversineKm(restaurant, cafe) * 1000;
+      const walkMeters = Math.round(straight * 1.25);
+      if (walkMeters < COURSE_WIDE_MIN_M || walkMeters > COURSE_WIDE_MAX_M) continue;
+      const inIdeal = walkMeters >= COURSE_MIN_M && walkMeters <= COURSE_MAX_M;
+      const offIdeal = inIdeal
+        ? 0
+        : walkMeters < COURSE_MIN_M
+          ? (COURSE_MIN_M - walkMeters) * 1.2
+          : (walkMeters - COURSE_MAX_M) * 1.8;
+      const cafeTags = cafe.tags || [];
+      const restaurantTags = restaurant.tags || [];
+      const moodBonus =
+        (cafeTags.includes('야외석') ? 30 : 0)
+        + (cafeTags.some(tag => DESSERT_TAGS.has(tag)) ? 20 : 0)
+        + (cafe.category === '베이커리' ? 12 : 0);
+      const chainPenalty =
+        (restaurantTags.includes('체인') ? 30 : 0) + (cafeTags.includes('체인') ? 18 : 0);
+      const score =
+        offIdeal
+        + restaurant.fromSpotMeters * 0.45
+        + cafe.fromSpotMeters * 0.22
+        + walkMeters * 0.15
+        + chainPenalty
+        - moodBonus;
+      candidates.push({
+        restaurant,
+        cafe,
+        walkMeters,
+        walkMinutes: walkMinutesForMeters(walkMeters),
+        totalMinutes: restaurant.fromSpotMinutes + walkMinutesForMeters(walkMeters),
+        ideal: inIdeal,
+        score,
+      });
+    }
+  }
+
+  candidates.sort((a, b) =>
+    a.score - b.score
+    || Number(b.ideal) - Number(a.ideal)
+    || a.walkMeters - b.walkMeters);
+
+  const usedRestaurants = new Set();
+  const usedCafes = new Set();
+  const courses = [];
+  // 1순위: 이상 범위(도보 2~5분) 안의 코스
+  for (const candidate of candidates) {
+    if (courses.length >= limit) break;
+    if (!candidate.ideal) continue;
+    if (usedRestaurants.has(candidate.restaurant.id) || usedCafes.has(candidate.cafe.id)) continue;
+    usedRestaurants.add(candidate.restaurant.id);
+    usedCafes.add(candidate.cafe.id);
+    courses.push(candidate);
+  }
+  // 2순위: 이상 범위 코스가 모자라면 여유 범위에서 채운다
+  for (const candidate of candidates) {
+    if (courses.length >= limit) break;
+    if (usedRestaurants.has(candidate.restaurant.id) || usedCafes.has(candidate.cafe.id)) continue;
+    usedRestaurants.add(candidate.restaurant.id);
+    usedCafes.add(candidate.cafe.id);
+    out.wide += 1;
+    courses.push(candidate);
+  }
+
+  out.courses = courses.map((course, index) => ({
+    ...course,
+    id: `${course.restaurant.id}>${course.cafe.id}`,
+    rank: index + 1,
+  }));
+  return out;
+}

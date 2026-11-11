@@ -13,6 +13,9 @@ docs/screenshots/ 에 데스크톱(1440px)·모바일(390px) 스크린샷을 남
 - 영남권 — 창원·부산 입력 → 대중교통(부산 전철·김해경전) / 자차(남해고속도로 IC)
 - 장거리 — 서울역↔부산역 → 대중교통(KTX 환승역) / 자차(고속도로 휴게소·IC)
 - 길찾기 링크 — 참가자별 카카오맵·네이버지도(자차는 티맵 포함) 딥링크
+- 약속 코스 — 역삼·교대(강남역) · 합정·신촌(홍대입구) · 부전·전포(서면) · 김해시청·부원(김해시청역)
+  에서 코스 카드·맛집/카페 탭·지도 ①·② 마커와 점선 폴리라인 확인
+- fallback — 서울역·강남역(이태원역, 등록 POI 없음) 에서 네이버·카카오 지도 탐색 링크 노출 확인
 """
 from __future__ import annotations
 
@@ -83,6 +86,82 @@ def reset_all(page):
 
 def station_name(page) -> str:
     return page.locator(".station-name").first.inner_text().strip()
+
+
+def nearby_ready(page, timeout_ms: int = 4000):
+    """맛집·카페 섹션이 그려질 때까지 기다린다."""
+    page.wait_for_selector("#nearbySection", timeout=timeout_ms)
+    page.wait_for_timeout(350)
+
+
+def course_scenario(page, terms, expect_spot: str, shots: bool, problems: list, label: str, shot_name: str = None):
+    """두 출발지 검색 → 기대 거점 → 코스 카드·마커·딥링크 검증."""
+    reset_all(page)
+    for term in terms:
+        add_search(page, term)
+    settle(page, 1600)
+    spot = station_name(page)
+    if expect_spot not in spot:
+        problems.append(f"[{label}] 추천 거점이 {expect_spot}가 아니라 {spot}입니다")
+    nearby_ready(page)
+    if not page.locator("#nearbySection").is_visible():
+        problems.append(f"[{label}] 맛집·카페 섹션이 보이지 않습니다")
+        return
+    tabs = page.locator(".nearby-tabs button")
+    if tabs.count() != 3:
+        problems.append(f"[{label}] 탭이 3개가 아닙니다: {tabs.count()}")
+    tab_texts = tabs.all_inner_texts()
+    if "추천 코스" not in tab_texts[0] or "맛집" not in tab_texts[1] or "카페" not in tab_texts[2]:
+        problems.append(f"[{label}] 탭 라벨이 이상합니다: {tab_texts}")
+
+    courses = page.locator(".course-card")
+    if courses.count() == 0:
+        problems.append(f"[{label}] 추천 코스 카드가 없습니다")
+        return
+    first_course = courses.first.inner_text()
+    for keyword in ("1차", "2차", "도보"):
+        if keyword not in first_course:
+            problems.append(f"[{label}] 코스 카드에 '{keyword}' 표기가 없습니다: {first_course}")
+    if page.locator(".course-card.is-active").count() != 1:
+        problems.append(f"[{label}] 선택된 코스 카드가 1개가 아닙니다")
+    if page.locator(".pin-course").count() != 2:
+        problems.append(f"[{label}] 지도 코스 마커가 2개가 아닙니다: {page.locator('.pin-course').count()}")
+    if page.locator(".course-label").count() < 1:
+        problems.append(f"[{label}] 코스 도보 라벨이 없습니다")
+
+    # 코스 액션 링크 — 네이버 도보 / 카카오 도보
+    walk_hrefs = page.locator(".course-actions a").evaluate_all("nodes => nodes.map(n => n.href)")
+    if not any(href.endswith("/walk") and "map.naver.com" in href for href in walk_hrefs):
+        problems.append(f"[{label}] 네이버 도보 길찾기 링크가 없습니다: {walk_hrefs}")
+    if not any("map.kakao.com" in href and "by=FOOT" in href for href in walk_hrefs):
+        problems.append(f"[{label}] 카카오 도보 길찾기 링크가 없습니다: {walk_hrefs}")
+
+    # 맛집·카페 탭
+    page.click(".nearby-tabs button[data-place-view='restaurant']")
+    page.wait_for_timeout(450)
+    restaurants = page.locator(".place-card").count()
+    if restaurants == 0:
+        problems.append(f"[{label}] 맛집 목록이 비었습니다")
+    if page.locator(".pin-course").count() != 0:
+        problems.append(f"[{label}] 맛집 탭에서 코스 마커가 남아 있습니다")
+    page.click(".nearby-tabs button[data-place-view='cafe']")
+    page.wait_for_timeout(450)
+    cafes = page.locator(".place-card").count()
+    if cafes == 0:
+        problems.append(f"[{label}] 카페 목록이 비었습니다")
+    place_links = page.locator(".place-card .place-link").count()
+    if place_links < cafes * 2:
+        problems.append(f"[{label}] 장소별 네이버·카카오 링크가 모자랍니다: {place_links}")
+    if page.locator(".place-card .mini-btn").count() < cafes:
+        problems.append(f"[{label}] '지도에서' 버튼이 모자랍니다")
+
+    page.click(".nearby-tabs button[data-place-view='course']")
+    page.wait_for_timeout(450)
+    if shots:
+        page.eval_on_selector("#nearbySection", "n => n.scrollIntoView({block: 'start'})")
+        page.wait_for_timeout(350)
+        shot(page, shot_name or f"desktop-{label}-course")
+    return restaurants, cafes
 
 
 def main() -> int:
@@ -275,6 +354,74 @@ def main() -> int:
         if "t=car" in page.url:
             problems.append("대중교통 복귀 후에도 URL에 t=car가 남아 있습니다")
 
+        # ---------------- 약속 코스 · 맛집·카페 ----------------
+        restaurants, cafes = course_scenario(page, ["역삼역", "교대역"], "강남역", shots, problems, "강남", "desktop-course-view")
+        if restaurants < 10 or cafes < 5:
+            problems.append(f"강남역 주변 목록이 적습니다: 맛집 {restaurants} · 카페 {cafes}")
+
+        # 코스 2순위 선택 → 선택 표시와 마커가 유지된다
+        if page.locator(".course-card").count() >= 2:
+            page.locator(".course-card").nth(1).click()
+            page.wait_for_timeout(650)
+            active_text = page.locator(".course-card.is-active").first.inner_text()
+            if "2순위" not in active_text:
+                problems.append(f"코스 선택이 바뀌지 않았습니다: {active_text[:40]}")
+            if page.locator(".pin-course").count() != 2:
+                problems.append("코스 변경 후 지도 마커가 사라졌습니다")
+            page.locator(".course-card").first.click()
+            page.wait_for_timeout(500)
+
+        # 맛집 목록 스크린샷 + '지도에서' 동작
+        page.click(".nearby-tabs button[data-place-view='restaurant']")
+        page.wait_for_timeout(500)
+        page.eval_on_selector("#nearbySection", "n => n.scrollIntoView({block: 'start'})")
+        page.wait_for_timeout(350)
+        if shots:
+            shot(page, "desktop-places-list")
+        page.locator(".place-card .mini-btn").first.click()
+        page.wait_for_timeout(700)
+        if page.locator(".pin-focus").count() != 1:
+            problems.append("'지도에서' 버튼이 지도에 장소를 표시하지 않습니다")
+        page.click(".nearby-tabs button[data-place-view='course']")
+        page.wait_for_timeout(400)
+
+        # 홍대입구 — 합정·신촌
+        course_scenario(page, ["합정역", "신촌역"], "홍대입구역", shots, problems, "홍대", "desktop-hongdae-course")
+
+        # 영남권 — 부전·전포(서면), 김해시청·부원(김해시청역)
+        course_scenario(page, ["부전역", "전포역"], "서면역", shots, problems, "서면", "desktop-seomyeon-course")
+        course_scenario(page, ["김해시청역", "부원역"], "김해시청역", shots, problems, "김해", "desktop-gimhae-course")
+
+        # fallback — 등록 POI가 없는 거점(이태원역)
+        reset_all(page)
+        add_preset(page, "서울역")
+        add_preset(page, "강남")
+        settle(page, 1600)
+        nearby_ready(page)
+        fallback_spot = station_name(page)
+        if "이태원역" not in fallback_spot:
+            problems.append(f"fallback 시나리오 거점이 이태원역이 아닙니다: {fallback_spot}")
+        if page.locator(".nearby-empty").count() == 0:
+            problems.append(f"[{fallback_spot}] 등록 POI 없음 안내가 없습니다")
+        fallback_links = page.locator(".nearby-links a").evaluate_all("nodes => nodes.map(n => n.href)")
+        if not any("map.naver.com/p/search" in href for href in fallback_links):
+            problems.append(f"네이버 지도 검색 fallback 링크가 없습니다: {fallback_links}")
+        if not any("map.kakao.com/link/search" in href for href in fallback_links):
+            problems.append(f"카카오맵 검색 fallback 링크가 없습니다: {fallback_links}")
+        if len(fallback_links) < 4:
+            problems.append(f"fallback 링크가 모자랍니다: {len(fallback_links)}")
+        if shots:
+            page.eval_on_selector("#nearbySection", "n => n.scrollIntoView({block: 'start'})")
+            page.wait_for_timeout(350)
+            shot(page, "desktop-places-fallback")
+
+        # 자차 모드에서도 코스 섹션이 깨지지 않는다 (거점이 IC면 fallback)
+        set_travel(page, "car")
+        page.wait_for_timeout(600)
+        if page.locator("#nearbySection").count() == 0:
+            problems.append("자차 모드에서 맛집·카페 섹션이 사라졌습니다")
+        set_travel(page, "transit")
+
         # ---------------- 모바일 ----------------
         m = browser.new_page(viewport=MOBILE, device_scale_factor=2, is_mobile=True, has_touch=True)
         m.on("pageerror", lambda exc: console_errors.append("mobile: " + str(exc)))
@@ -314,6 +461,45 @@ def main() -> int:
             problems.append("시트가 다시 접히지 않습니다")
         if shots:
             shot(m, "mobile-peek")
+
+        # 모바일 약속 코스 — 역삼·교대 → 강남역
+        reset_all(m)
+        add_search(m, "역삼역")
+        add_search(m, "교대역")
+        settle(m, 1800)
+        if m.locator("#panel").get_attribute("data-sheet") != "full":
+            m.click("#sheetGrab")
+            m.wait_for_timeout(700)
+        nearby_ready(m)
+        if m.locator(".course-card").count() == 0:
+            problems.append("모바일에서 추천 코스 카드가 없습니다")
+        if m.locator(".nearby").evaluate("node => node.scrollWidth > node.clientWidth + 1"):
+            problems.append("모바일에서 맛집·카페 섹션이 가로로 넘칩니다")
+        m.eval_on_selector("#nearbySection", "n => n.scrollIntoView({block: 'start'})")
+        m.wait_for_timeout(450)
+        if shots:
+            shot(m, "mobile-course-view")
+        m.click(".nearby-tabs button[data-place-view='cafe']")
+        m.wait_for_timeout(600)
+        if m.locator(".place-card").count() == 0:
+            problems.append("모바일 카페 목록이 비었습니다")
+        m.eval_on_selector("#nearbySection", "n => n.scrollIntoView({block: 'start'})")
+        m.wait_for_timeout(400)
+        if shots:
+            shot(m, "mobile-places-list")
+        m.click(".nearby-tabs button[data-place-view='course']")
+        m.wait_for_timeout(450)
+
+        # 코스 카드 탭 → 지도로 내려가기 (핀 유지)
+        m.locator(".course-card").first.click()
+        m.wait_for_timeout(900)
+        if m.locator("#panel").get_attribute("data-sheet") != "peek":
+            problems.append("모바일에서 코스 선택 후 패널이 접히지 않습니다")
+        if m.locator(".pin-course").count() != 2:
+            problems.append("모바일 코스 선택 후 지도 마커가 2개가 아닙니다")
+        if shots:
+            shot(m, "mobile-course-map")
+
 
         if console_errors:
             problems.extend(f"[console] {e}" for e in console_errors)

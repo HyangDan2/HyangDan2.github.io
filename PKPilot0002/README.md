@@ -9,6 +9,12 @@
 
 ![데스크톱 — 영남권 대중교통 추천](docs/screenshots/desktop-yeongnam-transit.jpg)
 
+| 약속 코스 — 강남역 | 맛집·카페 목록 |
+| --- | --- |
+| ![약속 코스](docs/screenshots/desktop-course-view.jpg) | ![맛집·카페 목록](docs/screenshots/desktop-places-list.jpg) |
+| **부산 서면 코스** | **모바일 코스** |
+| ![서면 코스](docs/screenshots/desktop-seomyeon-course.jpg) | ![모바일 코스](docs/screenshots/mobile-course-view.jpg) |
+
 | 영남권 자차 모드 | 장거리(서울↔부산) KTX 환승역 |
 | --- | --- |
 | ![영남권 자차](docs/screenshots/desktop-yeongnam-car.jpg) | ![장거리](docs/screenshots/desktop-longdistance-transit.jpg) |
@@ -51,6 +57,22 @@
   - 자차 모드: 카카오내비 · 네이버지도 자동차 경로 · 티맵 내비 앱 스킴
 - 원클릭으로 각자 전철로 몇 분, 차로 몇 분 걸리는지 바로 확인
 
+**🍽️ 주변 맛집·카페 · 1차+2차 약속 코스**
+- 추천 거점 반경 1km(직선 800m 데이터) 안의 **맛집 875곳 · 카페 560곳**, 전국 30개 모임 거점
+  (강남·홍대·신촌·종로·서울역·용산·왕십리·성수·잠실·영등포·사당·고속터미널·신림·혜화·광화문·노원·판교·수원,
+  부산 서면·해운대·부산역, 대구 동성로·동대구, 대전 둔산·대전역, 광주 상무지구·광주송정, 창원 상남동·창원중앙, 김해시청)
+- 결과 카드 하단에 **[📍 추천 코스 | 🍽️ 맛집 (N) | ☕ 카페 (N)]** 서브탭
+- **추천 코스 카드** — `1차: {맛집} ({분류}, 도보 N분)` ➔ `도보 M분 (D m 이동)` ➔ `2차: {카페} ({특징}, 도보 N분)`
+  - 1차는 거점에서 가까운 식당, 2차는 그 식당에서 **도보 2~5분(100~350m)** 카페. 야외석·디저트·베이커리 카페에 가산점, 체인은 감점
+  - 식당·카페가 겹치지 않는 코스 3개 제안 (이상 구간이 모자라면 80~600m까지 넓혀서)
+  - **1차 맛집 길찾기 · 식당➔카페 도보 길찾기** 원클릭 (네이버지도 `/walk` · 카카오맵 `by=FOOT`)
+- **맛집·카페 목록** — 카테고리 배지(한식·일식·중식·양식·고기·치킨·분식·해산물·아시아·베이커리·디저트·카페), 도보 분·거리,
+  특징 태그(야외석·포장·주차·무장애·체인), 네이버·카카오 리뷰 링크, **지도에서** 버튼
+- **지도 시각화** — 코스 선택 시 `① 식당`(오렌지 핀) `② 카페`(앰버 핀)와 거점➔식당➔카페 **점선 폴리라인**, 구간에 도보 분 라벨,
+  핀 클릭 시 이름·분류·리뷰 링크 팝업
+- 자차 모드에서는 '주차' 태그가 있는 장소를 앞세워 정렬
+- 등록 POI가 없는 거점은 **카카오맵·네이버지도 실시간 검색 딥링크**(`맛집/카페/디저트 카페`)로 빈틈없이 fallback
+
 **공유 · 반응형**
 - 상태를 URL에 인코딩: `?p=37.5665,126.978|37.4979,127.0276&n=재혁~민지&m=centroid&t=car`
   (좌표 5자리 ≈ 1m 정밀도, `n`은 이름을 바꿨을 때만, `m`은 기본값 `fair`가 아닐 때만, `t`는 자차 모드일 때만)
@@ -67,20 +89,22 @@ PKPilot0002/
 ├── style.css             HD2Lab 다크 테마 · 지도/패널/시트 레이아웃
 ├── app.js                Leaflet 지도 · 참가자 · 모드 토글 · 결과 UI
 ├── js/
-│   ├── core.js           순수 계산 (거리·중간 지점·공평도·URL·거점 추천) — DOM 의존 없음
+│   ├── core.js           순수 계산 (거리·중간 지점·공평도·URL·거점 추천·주변 장소·약속 코스) — DOM 의존 없음
 │   ├── stations.js       전국 도시철도·KTX/SRT·터미널 스냅샷 957곳 (자동 생성)
 │   ├── driving_spots.js  전국 고속도로 IC·휴게소·주차 거점 스냅샷 799곳 (자동 생성)
-│   ├── directions.js     카카오맵·네이버지도·티맵 길찾기 딥링크
+│   ├── places.js         모임 거점 30곳 주변 맛집·카페 1,435곳 (자동 생성 · OSM ODbL)
+│   ├── directions.js     카카오맵·네이버지도·티맵 길찾기·도보 딥링크 · 지도 검색 링크
 │   └── landmarks.js      만남 거점 랜드마크 9곳 (Nominatim 확인)
 ├── vendor/leaflet/       Leaflet 1.9.4 (CDN 장애 없이 동작하도록 로컬 번들)
 ├── tools/
 │   ├── build_network.py      stations.js·driving_spots.js 생성기 (Wikidata + OSM Overpass)
+│   ├── build_places.py       places.js 생성기 (OSM Overpass — 이름·좌표·영업 태그·주차장)
 │   ├── build_stations.py     (구버전 수도권 전용 생성기 — build_network.py로 대체)
-│   └── data/                 KTX/SRT·터미널·주차 거점 좌표 (직접 확인한 값)
+│   └── data/                 거점 정의(hubs.json)·장소 스냅샷(places.json)·KTX/터미널 좌표
 ├── tests/
 │   ├── run_tests.py      단위 테스트 러너 (Playwright + http.server)
-│   ├── unit/             테스트 하네스·케이스 83개
-│   └── visual/capture.py 화면 검증 + 스크린샷 (기본·모드 토글·영남권·장거리)
+│   ├── unit/             테스트 하네스·케이스 114개 (core + places)
+│   └── visual/capture.py 화면 검증 + 스크린샷 (기본·모드 토글·영남권·장거리·약속 코스·fallback)
 └── docs/screenshots/     데스크톱·모바일 스크린샷
 ```
 
@@ -88,12 +112,21 @@ PKPilot0002/
 
 - 도시철도역 좌표·노선: Wikidata (CC0)
 - 고속도로 IC·휴게소·본선 도로명: OpenStreetMap (ODbL)
+- 맛집·카페 POI: OpenStreetMap Overpass API (ODbL) — 이름 있는 `restaurant`·`cafe`·`fast_food`·`bakery`·`ice_cream`,
+  `shop=bakery|coffee|dessert`, 반경 800m, 주차장(`amenity=parking`) 150m 이내 여부로 '주차' 태그
 - KTX/SRT 정차역·버스터미널·대형 주차 거점: `tools/data/*.json` (직접 확인)
 
 ```sh
 python3 tools/build_network.py            # 캐시 재사용
 python3 tools/build_network.py --refresh  # 원본부터 다시 받기
+python3 tools/build_places.py             # 맛집·카페 수집 (캐시 재사용)
+python3 tools/build_places.py --all       # 남은 거점을 한 번의 Overpass 요청으로 수집
+python3 tools/build_places.py --emit-only # 캐시만으로 js/places.js 재생성
 ```
+
+> OSM에는 평점이 없습니다. 그래서 '맛집' 순위는 **거점에서 가까운 순**(도보 분)이고,
+> 평점·리뷰는 각 장소의 네이버·카카오 지도 링크에서 확인하도록 넘깁니다.
+> 지방 일부 거점은 OSM 등재 장소가 적어 목록이 짧고, 그만큼 fallback 검색 링크가 앞에 나옵니다.
 
 ## 로컬에서 실행
 
@@ -108,13 +141,15 @@ ES 모듈을 쓰므로 `file://`로 열면 동작하지 않습니다. 정적 서
 ## 테스트
 
 ```sh
-python3 tests/run_tests.py            # 단위 테스트 68개
+python3 tests/run_tests.py            # 단위 테스트 114개
 python3 tests/visual/capture.py --check   # Chromium 화면 검증
 python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 ```
 
-- 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역·랜드마크 추천, 검색 자동완성(완전 일치·부분 일치·초성·랜드마크), 표시 형식
-- 화면 검증: 타일 로드, 핀/마커 수, 결과 카드, URL 상태, 공유 링크 왕복, 모드 전환, 삭제/초기화, 모바일 시트 접힘·펼침
+- 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역·랜드마크 추천, 검색 자동완성(완전 일치·부분 일치·초성·랜드마크), 표시 형식,
+  **거점↔허브 매칭, 반경 필터·종류 필터·주차 우선, 코스 페어링(도보 100~350m·중복 없음·합계), 검색·도보 딥링크, POI 데이터 정합성(반경 800m·좌표·링크)**
+- 화면 검증: 타일 로드, 핀/마커 수, 결과 카드, URL 상태, 공유 링크 왕복, 모드 전환, 삭제/초기화, 모바일 시트 접힘·펼침,
+  **강남·홍대·서면·김해 코스 카드·탭 전환·지도 ①·② 마커·폴리라인, fallback 링크, 모바일 가로 넘침**
 - Node.js 없이 Playwright(Chromium)만 사용합니다. `pip install playwright && playwright install chromium` 필요.
 
 ## 데이터 · 타일
@@ -124,6 +159,7 @@ python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 | 지도 타일 | OpenStreetMap 표준 타일 | 다크 테마는 CSS 필터(`invert + hue-rotate`)로 톤만 바꿉니다. 외부 키 불필요 |
 | 지오코딩 | Nominatim (search / reverse) | 공개 인스턴스 정책에 맞춰 요청을 1초 간격으로 큐잉, 결과 캐시 |
 | 지하철역 좌표 | Wikidata (CC0) | `tools/build_stations.py`로 수도권 589개 역 생성 |
+| 맛집·카페 POI | OpenStreetMap Overpass (ODbL) | `tools/build_places.py` — 30개 거점 반경 800m, 1,435곳. 평점 없음 → 네이버·카카오 리뷰 링크 |
 | 랜드마크 | OpenStreetMap Nominatim | `js/landmarks.js` — 추천 후보에 함께 사용 |
 
 > 지도 타일은 초기 기획의 CartoDB Dark Matter를 쓰지 않습니다. 2026년 11월 확인 결과 `basemaps.cartocdn.com`의 dark_all 타일이 **API 키 없이는 "API KEY REQUIRED" 워터마크 타일**을 돌려주기 때문입니다(키 없는 대안 중 OSM 타일을 선택). 필요하면 `app.js`의 `TILES` 상수만 교체하면 됩니다.
@@ -134,6 +170,8 @@ python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 - Nominatim 공개 인스턴스는 초당 1회 수준으로만 호출합니다. 대량 사용 시 자체 프록시가 필요합니다.
 - 거리는 직선(대권) 거리이고 도보 시간은 4.5km/h 기준 추정치입니다. 실제 이동 시간·경로는 반영하지 않습니다.
 - 역 추천은 좌표 최근접 방식이라 출입구·환승 동선은 고려하지 않습니다.
+- 맛집·카페 목록은 OSM에 이름이 등재된 곳만 담습니다. 등재되지 않은 곳은 지도 검색 링크로 넘깁니다. 영업 여부·평점은 지도 리뷰에서 확인해야 합니다.
+- 코스의 도보 거리는 두 좌표의 직선거리에 1.25배 보정을 준 값입니다. 실제 보행 경로·횡단보도는 반영하지 않습니다.
 
 ## 브라우저
 
