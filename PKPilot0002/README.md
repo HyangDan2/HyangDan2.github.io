@@ -117,7 +117,7 @@ PKPilot0002/
 │   └── data/                 거점 정의(hubs.json)·장소 스냅샷(places.json)·KTX/터미널 좌표
 ├── tests/
 │   ├── run_tests.py      단위 테스트 러너 (Playwright + http.server)
-│   ├── unit/             테스트 하네스·케이스 141개 (core + places + live_places)
+│   ├── unit/             테스트 하네스·케이스 143개 (core + places + live_places)
 │   └── visual/capture.py 화면 검증 + 스크린샷 (기본·모드 토글·영남권·장거리·약속 코스·실시간 인앱 탐색·fallback)
 └── docs/screenshots/     데스크톱·모바일 스크린샷
 ```
@@ -158,7 +158,7 @@ ES 모듈을 쓰므로 `file://`로 열면 동작하지 않습니다. 정적 서
 ## 테스트
 
 ```sh
-python3 tests/run_tests.py            # 단위 테스트 141개
+python3 tests/run_tests.py            # 단위 테스트 143개
 python3 tests/visual/capture.py --check   # Chromium 화면 검증
 python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 ```
