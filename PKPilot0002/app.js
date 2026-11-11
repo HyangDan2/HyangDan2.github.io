@@ -18,9 +18,11 @@ import {
   haversineKm,
   lineMeta,
   maxPairwiseKm,
+  mergePlaceSources,
   midpoint,
   nearestStations,
   parseShareState,
+  rankPlacesAround,
   recommendMeetingCourse,
   recommendMeetingSpot,
   sanitizeName,
@@ -30,6 +32,12 @@ import {
   walkMinutesForMeters,
   walkingMinutes,
 } from './js/core.js';
+import {
+  LIVE_RADIUS_KM,
+  MAX_LIVE_RADIUS_KM,
+  loadLivePlaces,
+  needsLiveSearch,
+} from './js/live_places.js';
 import { LINES, STATIONS } from './js/stations.js';
 import { DRIVING_SPOTS, ROADS } from './js/driving_spots.js';
 import { LANDMARKS } from './js/landmarks.js';
@@ -40,7 +48,6 @@ import {
   isMobileDevice,
   kakaoWalkRouteUrl,
   naverDirectionsUrl,
-  placeSearchQuery,
   placeSearchUrl,
   providerList,
 } from './js/directions.js';
@@ -109,6 +116,7 @@ const state = {
   style: 'dark',
   placeView: 'course', // course | restaurant | cafe
   courseIndex: 0,
+  liveRadiusKm: LIVE_RADIUS_KM, // 실시간 주변 조회 반경 (1 → 2 → 3km)
 };
 
 const el = {
@@ -581,10 +589,105 @@ function computeResult() {
   });
   // 맛집·카페·코스의 기준이 되는 거점 — 추천 거점이 없으면 가장 가까운 역으로 후퇴
   const anchor = rec?.primary || (rec ? nearestStations(rec.center, SPOTS, 1, Infinity)[0] : null);
-  const nearby = anchor
-    ? recommendMeetingCourse(anchor, PLACES, { hubs: HUBS, travelMode: state.travelMode })
-    : null;
+  const nearby = anchor ? buildNearby(anchor) : null;
   return { center, distances, stats, fairness, rec, anchor, nearby };
+}
+
+/* ------------------------------------------------------------------
+   주변 맛집·카페 — 내장 스냅샷 + 실시간 조회 결합
+   ------------------------------------------------------------------ */
+
+// 실시간 조회 상태 — 거점 하나에 대해 한 번에 하나만 돌린다.
+const liveRuntime = {
+  anchorKey: '',
+  key: '',
+  status: 'idle', // idle | loading | ready | empty | error
+  places: [],
+  radiusKm: LIVE_RADIUS_KM,
+  source: '',
+  error: '',
+  token: 0,
+};
+
+const anchorKeyOf = anchor => (anchor ? `${anchor.lat.toFixed(3)},${anchor.lng.toFixed(3)}` : '');
+const liveKeyFor = anchor => `${anchorKeyOf(anchor)}@${state.liveRadiusKm}`;
+
+/** 지금 손에 있는 재료(내장 POI + 실시간 POI)로 목록·코스를 만든다. */
+function buildNearby(anchor) {
+  const livePlaces = liveRuntime.key === liveKeyFor(anchor) && liveRuntime.status === 'ready'
+    ? liveRuntime.places
+    : [];
+  const merged = mergePlaceSources(anchor, PLACES, livePlaces, {
+    radiusKm: state.liveRadiusKm,
+    travelMode: state.travelMode,
+  });
+  const course = recommendMeetingCourse(anchor, merged.places, {
+    hubs: [merged.hub],
+    travelMode: state.travelMode,
+    radiusKm: state.liveRadiusKm,
+  });
+  return {
+    ...course,
+    sources: { snapshot: merged.baseCount, live: merged.liveCount, total: merged.places.length },
+  };
+}
+
+function liveStatus(anchor) {
+  const same = liveRuntime.key === liveKeyFor(anchor);
+  return {
+    status: same ? liveRuntime.status : 'idle',
+    source: same ? liveRuntime.source : '',
+    error: same ? liveRuntime.error : '',
+    count: same ? liveRuntime.places.length : 0,
+    radiusKm: state.liveRadiusKm,
+  };
+}
+
+/**
+ * 내장 POI 가 모자란 거점이면 실시간 조회를 시작한다.
+ * 30개 허브는 스냅샷만으로 0ms 에 그려지고, 그 밖의 전국 거점만 네트워크를 쓴다.
+ */
+function ensureLiveNearby(result) {
+  const anchor = result?.anchor;
+  if (!anchor) return;
+  const anchorKey = anchorKeyOf(anchor);
+  if (liveRuntime.anchorKey !== anchorKey) {
+    // 거점이 바뀌면 반경은 기본값으로 되돌린다 (같은 거점의 반경 조절은 유지)
+    liveRuntime.anchorKey = anchorKey;
+    state.liveRadiusKm = LIVE_RADIUS_KM;
+  }
+  const ranked = rankPlacesAround(anchor, PLACES, { radiusKm: state.liveRadiusKm });
+  if (!needsLiveSearch(ranked.counts)) return; // 내장 스냅샷으로 충분한 거점
+  const key = liveKeyFor(anchor);
+  if (liveRuntime.key === key && liveRuntime.status !== 'idle') return;
+  startLiveJob(anchor);
+}
+
+async function startLiveJob(anchor) {
+  const token = liveRuntime.token + 1;
+  liveRuntime.token = token;
+  const radiusKm = state.liveRadiusKm;
+  liveRuntime.key = liveKeyFor(anchor);
+  liveRuntime.radiusKm = radiusKm;
+  liveRuntime.status = 'loading';
+  liveRuntime.places = [];
+  liveRuntime.source = '';
+  liveRuntime.error = '';
+  scheduleRender();
+  try {
+    const found = await loadLivePlaces({ lat: anchor.lat, lng: anchor.lng, radiusKm });
+    if (token !== liveRuntime.token) return;
+    liveRuntime.places = found.places;
+    liveRuntime.source = found.source || '';
+    liveRuntime.status = found.places.length ? 'ready' : 'empty';
+  } catch (error) {
+    if (token !== liveRuntime.token) return;
+    liveRuntime.places = [];
+    liveRuntime.status = 'error';
+    liveRuntime.error = String((error && error.message) || error);
+  }
+  if (token !== liveRuntime.token) return;
+  render();
 }
 
 /* ------------------------------------------------------------------
@@ -760,42 +863,68 @@ function placeCardHtml(place) {
     </li>`;
 }
 
-/** 등록 POI가 없을 때 — 카카오·네이버 지도 실시간 탐색으로 넘긴다 */
-function fallbackSearchHtml(anchor, view) {
-  const restaurantQuery = placeSearchQuery(anchor.name, 'restaurant');
-  const cafeQuery = placeSearchQuery(anchor.name, 'cafe');
-  const dessertQuery = placeSearchQuery(anchor.name, 'dessert');
-  const rows = [
-    { kind: '맛집', query: restaurantQuery },
-    { kind: '카페', query: cafeQuery },
-    ...(view === 'course' ? [{ kind: '디저트 카페', query: dessertQuery }] : []),
-  ];
+function formatRadius(km) {
+  const value = Number.isFinite(km) ? km : LIVE_RADIUS_KM;
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+/** 실시간 조회 상태 칩 — 화면을 떠나지 않고 무엇을 하는지 보여 준다. */
+function liveChipHtml(live) {
+  const status = live?.status || 'idle';
+  if (status === 'idle') return '';
+  const label = status === 'loading' ? '찾는 중'
+    : status === 'ready' ? `실시간 ${live.count}곳`
+      : status === 'empty' ? '실시간 0곳'
+        : '조회 안 됨';
+  const title = status === 'error'
+    ? '실시간 조회 서버가 응답하지 않았어요'
+    : 'OpenStreetMap 실시간 조회 결과';
+  return `<span class="nearby-live" data-live="${status}" title="${esc(title)}"><i></i>${esc(label)}</span>`;
+}
+
+/** 실시간 조회 중 스켈레톤 — 화면이 멈추지 않게 자리부터 잡아 둔다. */
+function liveLoadingHtml(anchor, radiusLabel) {
+  const rows = Array.from({ length: 3 }, () => `
+    <li class="skel-row">
+      <span class="skel-dot"></span>
+      <span class="skel-lines"><i></i><i></i></span>
+    </li>`).join('');
   return `
-    <div class="nearby-links">
-      ${rows.map(row => `
-        <div class="nearby-link-row">
-          <span class="nearby-link-label">${esc(row.kind)}</span>
-          <a class="nav-chip" href="${esc(placeSearchUrl('naver', row.query))}" target="_blank" rel="noopener noreferrer">네이버지도</a>
-          <a class="nav-chip" href="${esc(placeSearchUrl('kakao', row.query))}" target="_blank" rel="noopener noreferrer">카카오맵</a>
-        </div>`).join('')}
+    <div class="nearby-loading" role="status" aria-live="polite">
+      <p class="nearby-loading-head">
+        <span class="spinner" aria-hidden="true"></span>
+        <b>주변 맛집·카페 찾는 중…</b>
+      </p>
+      <p class="nearby-loading-sub">${esc(anchor.name)} 반경 ${radiusLabel}km · 실시간 조회</p>
+      <ul class="skel-list">${rows}</ul>
     </div>`;
 }
 
-function emptyNearbyHtml(anchor, view, counts = {}, radiusKm = 1) {
+/** 반경 안에 아무것도 없을 때 — 앱 안에서 반경을 넓혀 다시 찾는다. */
+function emptyNearbyHtml(anchor, view, counts = {}, live = {}, radiusKm = LIVE_RADIUS_KM) {
+  const radiusLabel = formatRadius(radiusKm);
   const noRestaurant = !counts.restaurant;
   const noCafe = !counts.cafe;
   let message;
-  if (view === 'restaurant') message = '이 거점 주변에 등록된 맛집이 아직 없어요.';
-  else if (view === 'cafe') message = '이 거점 주변에 등록된 카페가 아직 없어요.';
-  else if (!noRestaurant && noCafe) message = '1차 식당은 있지만 이어 걸을 카페를 찾지 못했어요. 카페 탭에서 골라 보세요.';
-  else if (noRestaurant && !noCafe) message = '카페는 있지만 1차 식당 정보가 없어 코스를 만들지 못했어요.';
-  else message = '이 거점 주변에는 식당·카페 조합 정보가 아직 없어요.';
-  const radiusLabel = Number.isInteger(radiusKm) ? String(radiusKm) : radiusKm.toFixed(1);
+  if (view === 'restaurant') message = `반경 ${radiusLabel}km 안에서 식당을 찾지 못했어요.`;
+  else if (view === 'cafe') message = `반경 ${radiusLabel}km 안에서 카페를 찾지 못했어요.`;
+  else if (!noRestaurant && noCafe) message = '1차 식당은 찾았지만 이어 걸을 카페가 반경 안에 없어요.';
+  else if (noRestaurant && !noCafe) message = '카페는 찾았지만 1차 식당이 반경 안에 없어 코스를 만들지 못했어요.';
+  else message = `반경 ${radiusLabel}km 안에서 식당·카페를 찾지 못했어요.`;
+  const failed = live.status === 'error';
+  const hint = failed
+    ? '실시간 조회 서버(OpenStreetMap)가 지금 붐비네요. 잠시 뒤 다시 찾아볼 수 있어요.'
+    : '산길·공단처럼 상가가 드문 곳이에요. 반경을 넓히면 앱 안에서 계속 찾아볼 수 있어요.';
+  const nextRadius = Math.min(MAX_LIVE_RADIUS_KM, Math.round(radiusKm) + 1);
+  const canWiden = !failed && nextRadius > radiusKm;
   return `
-    <div class="nearby-empty">
-      <p>${esc(anchor.name)} 반경 ${radiusLabel}km · ${message}</p>
-      <p class="nearby-empty-hint">카카오·네이버 지도에서 바로 찾아보세요.</p>
-      ${fallbackSearchHtml(anchor, view)}
+    <div class="nearby-empty${failed ? ' is-error' : ''}">
+      <p>${esc(anchor.name)} · ${esc(message)}</p>
+      <p class="nearby-empty-hint">${esc(hint)}</p>
+      <div class="nearby-actions">
+        ${canWiden ? `<button class="nearby-btn" type="button" data-widen="${nextRadius}">반경 ${nextRadius}km로 넓혀 찾기</button>` : ''}
+        <button class="nearby-btn is-ghost" type="button" data-retry-live>다시 찾기</button>
+      </div>
     </div>`;
 }
 
@@ -854,16 +983,6 @@ function courseActionsHtml(course, anchor) {
     </div>`;
 }
 
-function morePlacesHtml(anchor, view) {
-  const query = placeSearchQuery(anchor.name, view === 'cafe' ? 'cafe' : 'restaurant');
-  return `
-    <div class="nearby-more">
-      <span>${esc(anchor.name)} 주변을 지도에서 더 보기</span>
-      <a class="nav-chip" href="${esc(placeSearchUrl('naver', query))}" target="_blank" rel="noopener noreferrer">네이버지도</a>
-      <a class="nav-chip" href="${esc(placeSearchUrl('kakao', query))}" target="_blank" rel="noopener noreferrer">카카오맵</a>
-    </div>`;
-}
-
 function nearbyMarkup(result) {
   const anchor = result?.anchor;
   const courseResult = result?.nearby;
@@ -874,37 +993,48 @@ function nearbyMarkup(result) {
   if (state.courseIndex >= courses.length) state.courseIndex = 0;
   const view = state.placeView;
   const counts = nearby.counts || { restaurant: 0, cafe: 0 };
+  const live = liveStatus(anchor);
   const tabs = [
     { key: 'course', label: '📍 추천 코스' },
     { key: 'restaurant', label: `🍽️ 맛집 (${counts.restaurant})` },
     { key: 'cafe', label: `☕ 카페 (${counts.cafe})` },
   ];
 
-  const radiusKm = nearby.radiusKm || 1;
-  const radiusLabel = Number.isInteger(radiusKm) ? String(radiusKm) : radiusKm.toFixed(1);
+  const radiusKm = nearby.radiusKm || state.liveRadiusKm || LIVE_RADIUS_KM;
+  const radiusLabel = formatRadius(radiusKm);
+  const list = view === 'restaurant' ? nearby.restaurants : nearby.cafes;
+  const hasContent = view === 'course' ? courses.length > 0 : list.length > 0;
   let body = '';
-  if (view === 'course') {
+  if (live.status === 'loading' && !hasContent) {
+    body = liveLoadingHtml(anchor, radiusLabel);
+  } else if (view === 'course') {
     body = courses.length
       ? `${courses.map((course, i) => courseCardHtml(course, i, i === state.courseIndex)).join('')}
          ${courseActionsHtml(courses[state.courseIndex] || courses[0], anchor)}`
-      : emptyNearbyHtml(anchor, 'course', counts, radiusKm);
+      : emptyNearbyHtml(anchor, 'course', counts, live, radiusKm);
   } else {
-    const list = view === 'restaurant' ? nearby.restaurants : nearby.cafes;
     body = list.length
-      ? `<ul class="place-list">${list.map(placeCardHtml).join('')}</ul>${morePlacesHtml(anchor, view)}`
-      : emptyNearbyHtml(anchor, view, counts, radiusKm);
+      ? `<ul class="place-list">${list.map(placeCardHtml).join('')}</ul>`
+      : emptyNearbyHtml(anchor, view, counts, live, radiusKm);
   }
+
+  const sourceNote = live.status === 'ready'
+    ? `실시간 OpenStreetMap 조회 ${live.count}곳 · `
+    : '';
   return `
     <section class="nearby" id="nearbySection" aria-label="주변 맛집·카페와 약속 코스">
       <div class="nearby-head">
         <h3><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-course"/></svg>약속 코스 · 맛집·카페</h3>
-        <span class="nearby-anchor">${esc(anchor.name)} 반경 ${radiusLabel}km</span>
+        <span class="nearby-side">
+          <span class="nearby-anchor">${esc(anchor.name)} 반경 ${radiusLabel}km</span>
+          ${liveChipHtml(live)}
+        </span>
       </div>
       <div class="nearby-tabs" role="tablist" aria-label="맛집·카페 보기">
         ${tabs.map(tab => `<button type="button" role="tab" data-place-view="${tab.key}" aria-selected="${view === tab.key}">${tab.label}</button>`).join('')}
       </div>
       <div class="nearby-body">${body}</div>
-      <p class="nearby-note">장소·좌표 OpenStreetMap(ODbL) · 도보 시간은 직선거리 보정값 · 평점은 네이버·카카오 리뷰로 확인</p>
+      <p class="nearby-note">${sourceNote}장소·좌표 OpenStreetMap(ODbL) · 도보 시간은 직선거리 보정값 · 평점은 네이버·카카오 리뷰로 확인</p>
     </section>`;
 }
 
@@ -1062,6 +1192,24 @@ function renderResult(result) {
         );
         if (isMobile()) setSheet('peek');
       }
+    });
+  });
+  // 실시간 조회 — 반경 넓히기·다시 찾기 (앱 안에서 계속 탐색)
+  el.result.querySelectorAll('[data-widen]').forEach(button => {
+    button.addEventListener('click', () => {
+      const next = Number(button.dataset.widen);
+      if (!Number.isFinite(next)) return;
+      state.liveRadiusKm = Math.min(MAX_LIVE_RADIUS_KM, Math.max(LIVE_RADIUS_KM, Math.round(next)));
+      liveRuntime.key = '';
+      liveRuntime.status = 'idle';
+      render();
+    });
+  });
+  el.result.querySelectorAll('[data-retry-live]').forEach(button => {
+    button.addEventListener('click', () => {
+      liveRuntime.key = '';
+      liveRuntime.status = 'idle';
+      render();
     });
   });
   const coordBtn = el.result.querySelector('#coordBtn');
@@ -1319,6 +1467,7 @@ function drawCourseOverlay(course, anchor) {
    ------------------------------------------------------------------ */
 function render() {
   const result = computeResult();
+  ensureLiveNearby(result);
   renderList(result);
   renderResult(result);
   syncMarkers(result);
