@@ -29,13 +29,14 @@
 </head>
 <body>
   <h1>PKPilot0002 · Midpoint 단위 테스트</h1>
-  <p class="meta">core.js — 거리·중간 지점·공평도·URL 상태·역 추천 · places.js — 주변 맛집·카페와 약속 코스</p>
+  <p class="meta">core.js — 거리·중간 지점·공평도·URL 상태·역 추천 · places.js — 주변 맛집·카페와 약속 코스 · live_places.js — 전국 실시간 POI 조회</p>
   <ul id="list"><li>실행 중…</li></ul>
   <p id="summary">실행 중…</p>
 
   <script type="module">
     import './core.test.js';
     import './places.test.js';
+    import './live_places.test.js';
     import { runAll } from './harness.js';
 
     const results = await runAll();

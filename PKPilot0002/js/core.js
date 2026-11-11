@@ -738,13 +738,63 @@ export function resolveHub(spot, hubs, options = {}) {
 }
 
 /**
+ * 거점 반경 radiusKm 안의 장소를 가까운 순으로 정렬한다 — 허브 매칭 없이 좌표만 본다.
+ * 내장 POI와 실시간 POI를 한 목록으로 합칠 때 공통으로 쓴다.
+ * - travelMode 'car' 이면 '주차' 태그가 있는 곳을 조금 앞세운다.
+ * - kind 를 주면 그 종류만 남긴다('restaurant' | 'cafe').
+ */
+export function rankPlacesAround(spot, places, options = {}) {
+  const radiusKm = options.radiusKm ?? PLACE_RADIUS_KM;
+  const travelMode = travelModeOf(options.travelMode);
+  const result = {
+    places: [],
+    restaurants: [],
+    cafes: [],
+    counts: { restaurant: 0, cafe: 0 },
+    radiusKm,
+  };
+  if (!spot || !Array.isArray(places) || places.length === 0) return result;
+
+  const scored = [];
+  for (const place of places) {
+    if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lng)) continue;
+    const meters = haversineKm(spot, place) * 1000;
+    if (!Number.isFinite(meters) || meters > radiusKm * 1000) continue;
+    const tags = place.tags || [];
+    scored.push({
+      ...place,
+      tags,
+      fromSpotMeters: Math.round(meters),
+      fromSpotMinutes: walkMinutesForMeters(meters),
+      parking: tags.includes(PARKING_TAG),
+      distanceScore: meters - (travelMode === 'car' && tags.includes(PARKING_TAG) ? 120 : 0),
+    });
+  }
+
+  scored.sort((a, b) =>
+    a.distanceScore - b.distanceScore
+    || a.fromSpotMeters - b.fromSpotMeters
+    || a.name.localeCompare(b.name, 'ko'));
+
+  const restaurants = scored.filter(place => place.kind === 'restaurant');
+  const cafes = scored.filter(place => place.kind === 'cafe');
+  result.restaurants = restaurants;
+  result.cafes = cafes;
+  result.counts = { restaurant: restaurants.length, cafe: cafes.length };
+  if (options.kind === 'restaurant') result.places = restaurants;
+  else if (options.kind === 'cafe') result.places = cafes;
+  else result.places = scored;
+  return result;
+}
+
+/**
  * 거점 반경 radiusKm 안의 맛집·카페를 가까운 순으로 돌려준다.
+ * - 허브(내장 스냅샷) 단위로 후보를 고른 뒤 거리로 거른다.
  * - travelMode 'car' 이면 '주차' 태그가 있는 곳을 조금 앞세운다.
  * - kind 를 주면 그 종류만 남긴다('restaurant' | 'cafe').
  */
 export function findNearbyPlaces(spot, places, options = {}) {
   const radiusKm = options.radiusKm ?? PLACE_RADIUS_KM;
-  const travelMode = travelModeOf(options.travelMode);
   const result = {
     hub: null,
     places: [],
@@ -771,37 +821,77 @@ export function findNearbyPlaces(spot, places, options = {}) {
     };
   }
 
-  const scored = [];
-  for (const place of pool) {
-    if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lng)) continue;
-    const meters = haversineKm(spot, place) * 1000;
-    if (!Number.isFinite(meters) || meters > radiusKm * 1000) continue;
-    const tags = place.tags || [];
-    scored.push({
-      ...place,
-      tags,
-      fromSpotMeters: Math.round(meters),
-      fromSpotMinutes: walkMinutesForMeters(meters),
-      parking: tags.includes(PARKING_TAG),
-      distanceScore: meters - (travelMode === 'car' && tags.includes(PARKING_TAG) ? 120 : 0),
-    });
+  const ranked = rankPlacesAround(spot, pool, options);
+  result.hub = hub;
+  result.places = ranked.places;
+  result.restaurants = ranked.restaurants;
+  result.cafes = ranked.cafes;
+  result.counts = ranked.counts;
+  return result;
+}
+
+/* ------------------------------------------------------------------
+   내장 스냅샷 + 실시간 POI 합치기
+   ------------------------------------------------------------------ */
+
+const normPlaceName = name => String(name ?? '').toLowerCase().replace(/[\s()·.,'"-]+/g, '');
+
+/** 같은 곳으로 볼 만한 두 POI — 이름이 같거나(포함 관계 포함) 60m 안. */
+export function isSamePlace(a, b) {
+  if (!a || !b) return false;
+  const meters = haversineKm(a, b) * 1000;
+  if (!Number.isFinite(meters) || meters > 60) return false;
+  const na = normPlaceName(a.name);
+  const nb = normPlaceName(b.name);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const shorter = na.length <= nb.length ? na : nb;
+  const longer = shorter === na ? nb : na;
+  return shorter.length >= 3 && longer.includes(shorter);
+}
+
+/**
+ * 내장 POI(basePlaces)와 실시간 POI(livePlaces)를 거점 주변 하나의 목록으로 합친다.
+ * - 중복(같은 이름·60m 이내)은 내장 스냅샷을 남긴다 — 큐레이션 태그·리뷰 링크가 붙어 있다.
+ * - 결과의 hub 는 거점 자체를 가리키는 합성 허브라, findNearbyPlaces 가 그대로 쓸 수 있다.
+ */
+export function mergePlaceSources(spot, basePlaces, livePlaces = [], options = {}) {
+  const radiusKm = options.radiusKm ?? PLACE_RADIUS_KM;
+  const hubId = options.hubId || `near:${spot.lat.toFixed(3)},${spot.lng.toFixed(3)}:${radiusKm}`;
+  const hub = {
+    id: hubId,
+    name: spot.name || '중간 지점',
+    lat: spot.lat,
+    lng: spot.lng,
+    matchedBy: 'merged',
+    matchKm: 0,
+    radiusKm,
+  };
+  const out = { hub, places: [], baseCount: 0, liveCount: 0 };
+  if (!spot) return out;
+
+  const inRange = list => (Array.isArray(list) ? list : []).filter(place =>
+    Number.isFinite(place?.lat)
+    && Number.isFinite(place?.lng)
+    && haversineKm(spot, place) <= radiusKm);
+
+  const base = inRange(basePlaces);
+  const live = inRange(livePlaces);
+  const chosen = [];
+  for (const place of base) {
+    if (chosen.some(other => isSamePlace(other, place))) continue;
+    chosen.push({ ...place, hubId, hubName: hub.name, source: 'snapshot' });
+  }
+  out.baseCount = chosen.length;
+
+  for (const place of live) {
+    if (chosen.some(other => isSamePlace(other, place))) continue;
+    chosen.push({ ...place, hubId, hubName: hub.name, source: place.source || 'live' });
+    out.liveCount += 1;
   }
 
-  scored.sort((a, b) =>
-    a.distanceScore - b.distanceScore
-    || a.fromSpotMeters - b.fromSpotMeters
-    || a.name.localeCompare(b.name, 'ko'));
-
-  const restaurants = scored.filter(place => place.kind === 'restaurant');
-  const cafes = scored.filter(place => place.kind === 'cafe');
-  result.hub = hub;
-  result.restaurants = restaurants;
-  result.cafes = cafes;
-  result.counts = { restaurant: restaurants.length, cafe: cafes.length };
-  if (options.kind === 'restaurant') result.places = restaurants;
-  else if (options.kind === 'cafe') result.places = cafes;
-  else result.places = scored;
-  return result;
+  out.places = chosen;
+  return out;
 }
 
 /**
