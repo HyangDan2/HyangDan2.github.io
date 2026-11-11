@@ -12,6 +12,7 @@ import {
   cleanPlaceName,
   clearLiveCache,
   getCachedLive,
+  isFoodPoi,
   isNonFoodName,
   liveAttemptPlan,
   liveCacheKey,
@@ -147,6 +148,16 @@ test('classifyPlace: 업종 태그 → 종류·카테고리', () => {
   assertEqual(classifyPlace({ amenity: 'restaurant' }).category, '음식점');
 });
 
+test('isFoodPoi: 음식 업종 태그만 통과', () => {
+  assert(isFoodPoi({ amenity: 'restaurant' }));
+  assert(isFoodPoi({ amenity: 'cafe' }));
+  assert(isFoodPoi({ shop: 'bakery' }));
+  assert(!isFoodPoi({ highway: 'residential', name: '원남로1길' }));
+  assert(!isFoodPoi({ railway: 'rail', name: '경부선' }));
+  assert(!isFoodPoi({ amenity: 'place_of_worship', name: '금강사' }));
+  assert(!isFoodPoi({ building: 'yes', name: '구미 상가' }));
+});
+
 test('refineCategory: cuisine 이 없으면 상호명으로 보정', () => {
   assertEqual(refineCategory('사당 초밥', 'restaurant', '음식점'), '일식');
   assertEqual(refineCategory('사당 김밥천국', 'restaurant', '음식점'), '분식');
@@ -222,6 +233,26 @@ test('parseLiveElements: OSM 지도 API(way nodes) 응답도 중심 좌표를 �
   assertEqual(places[0].name, '구이 마을');
   assertEqual(places[0].category, '고기');
   assertClose(places[0].lng, 126.9815, 0.0005);
+});
+
+test('parseLiveElements: 이름 있는 도로·철도·교회·건물은 식당·카페가 아니다', () => {
+  // OSM 지도 API(bbox) 는 도로·철도·건물까지 모두 돌려준다 — 음식 업종 태그만 남겨야 한다.
+  const payload = {
+    elements: [
+      { type: 'way', id: 301, center: { lat: 37.4766, lon: 126.9816 }, tags: { highway: 'residential', name: '원남로1길' } },
+      { type: 'way', id: 302, center: { lat: 37.4767, lon: 126.9817 }, tags: { railway: 'rail', name: '경부선' } },
+      { type: 'way', id: 303, center: { lat: 37.4768, lon: 126.9818 }, tags: { amenity: 'place_of_worship', name: '금강사' } },
+      { type: 'node', id: 304, lat: 37.4769, lon: 126.9819, tags: { building: 'yes', name: '구미 상가' } },
+      { type: 'node', id: 305, lat: 37.4770, lon: 126.9820, tags: { amenity: 'restaurant', name: '진짜 식당' } },
+      { type: 'node', id: 306, lat: 37.4771, lon: 126.9821, tags: { shop: 'coffee', name: '진짜 커피' } },
+    ],
+  };
+  const places = parseLivePayload(payload, SADANG, { radiusKm: 1 });
+  const names = places.map(place => place.name);
+  assertEqual(places.length, 2, `음식점이 아닌 요소가 섮었다: ${names}`);
+  assert(names.includes('진짜 식당') && names.includes('진짜 커피'), names);
+  assertEqual(places.find(place => place.name === '진짜 식당').kind, 'restaurant');
+  assertEqual(places.find(place => place.name === '진짜 커피').kind, 'cafe');
 });
 
 test('parseLiveElements: 빈 응답·잘못된 입력에 예외 없이 빈 배열', () => {

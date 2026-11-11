@@ -30,6 +30,9 @@ const OSM_MAP_ENDPOINT = 'https://api.openstreetmap.org/api/0.6/map.json';
 
 const AMENITY_PATTERN = '^(restaurant|cafe|fast_food|bakery|ice_cream)$';
 const SHOP_PATTERN = '^(bakery|coffee|dessert|ice_cream)$';
+/** 음식점으로 볼 수 있는 OSM 태그 — OSM 지도 API 응답에는 도로·철도·건물도 섞여 온다. */
+export const FOOD_AMENITIES = ['restaurant', 'cafe', 'fast_food', 'bakery', 'ice_cream'];
+export const FOOD_SHOPS = ['bakery', 'coffee', 'dessert', 'ice_cream'];
 const PARKING_SEARCH_M = 150;
 const MAX_RESTAURANTS = 36;
 const MAX_CAFES = 28;
@@ -128,6 +131,11 @@ export function isNonFoodName(name) {
   if (!lowered) return true;
   if (NON_FOOD_EXACT.includes(lowered)) return true;
   return NON_FOOD_HINTS.some(hint => lowered.includes(hint));
+}
+
+/** 식당·카페로 볼 수 있는 태그인가 — 이름만 있는 도로·철도·건물·종교시설을 걸러낸다. */
+export function isFoodPoi(tags = {}) {
+  return FOOD_AMENITIES.includes(tags.amenity) || FOOD_SHOPS.includes(tags.shop);
 }
 
 /** OSM 태그 → { kind: 'restaurant'|'cafe', category } */
@@ -293,6 +301,8 @@ export function parseLiveElements(elements, origin, options = {}) {
       parking.push(coords);
       continue;
     }
+    // OSM 지도 API 응답에는 이름 있는 도로·철도·건물도 들어 있다 — 음식점만 남긴다.
+    if (!isFoodPoi(tags)) continue;
     const name = cleanPlaceName(tags);
     if (!name || isNonFoodName(name)) continue;
     candidates.push({ element, tags, coords, name });
