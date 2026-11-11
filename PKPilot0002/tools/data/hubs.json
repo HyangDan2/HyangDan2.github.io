@@ -1,0 +1,44 @@
+{
+  "note": "맛집·카페 데이터를 묶는 모임 거점(hub) 정의. 좌표는 Wikidata 역 좌표 또는 OpenStreetMap Nominatim 확인값(2026-11). spots 는 이 거점으로 들어오는 추천 거점 이름(역·랜드마크)이며, 이름이 같으면 바로 이 허브의 장소를 쓴다. 이름이 없으면 matchRadiusKm 안에서 가장 가까운 허브로 붙는다.",
+  "matchRadiusKm": 1.2,
+  "radiusM": 800,
+  "hubs": [
+    { "id": "gangnam", "name": "강남역", "label": "강남", "city": "서울", "lat": 37.497928, "lng": 127.027583, "spots": ["강남역"] },
+    { "id": "hongdae", "name": "홍대입구역", "label": "홍대", "city": "서울", "lat": 37.556667, "lng": 126.923611, "spots": ["홍대입구역"] },
+    { "id": "sinchon", "name": "신촌역", "label": "신촌", "city": "서울", "lat": 37.555145, "lng": 126.936836, "spots": ["신촌역", "신촌"] },
+    { "id": "jongno", "name": "종로3가역", "label": "종로", "city": "서울", "lat": 37.570000, "lng": 126.991667, "spots": ["종로3가역", "종로5가역"] },
+    { "id": "seoul-station", "name": "서울역", "label": "서울역", "city": "서울", "lat": 37.555800, "lng": 126.972000, "spots": ["서울역"] },
+    { "id": "jamsil", "name": "잠실역", "label": "잠실", "city": "서울", "lat": 37.513333, "lng": 127.100278, "spots": ["잠실역", "잠실새내역"] },
+    { "id": "yeongdeungpo", "name": "영등포역", "label": "영등포", "city": "서울", "lat": 37.515570, "lng": 126.907500, "spots": ["영등포역", "영등포구청역"] },
+    { "id": "pangyo", "name": "판교역", "label": "판교", "city": "성남", "lat": 37.394762, "lng": 127.111137, "spots": ["판교역"] },
+    { "id": "suwon", "name": "수원역", "label": "수원역", "city": "수원", "lat": 37.265510, "lng": 127.000210, "spots": ["수원역"] },
+
+    { "id": "yongsan", "name": "용산역", "label": "용산", "city": "서울", "lat": 37.530140, "lng": 126.965090, "spots": ["용산역", "이촌역"] },
+    { "id": "wangsimni", "name": "왕십리역", "label": "왕십리", "city": "서울", "lat": 37.561310, "lng": 127.038632, "spots": ["왕십리역"] },
+    { "id": "seongsu", "name": "성수역", "label": "성수", "city": "서울", "lat": 37.544444, "lng": 127.056111, "spots": ["성수역", "서울숲역"] },
+    { "id": "sadang", "name": "사당역", "label": "사당", "city": "서울", "lat": 37.476500, "lng": 126.981611, "spots": ["사당역"] },
+    { "id": "express-bus-terminal", "name": "고속터미널역", "label": "고속터미널", "city": "서울", "lat": 37.505939, "lng": 127.004469, "spots": ["고속터미널역", "반포한강공원"] },
+    { "id": "sillim", "name": "신림역", "label": "신림", "city": "서울", "lat": 37.484167, "lng": 126.929722, "spots": ["신림역"] },
+    { "id": "hyehwa", "name": "혜화역", "label": "혜화", "city": "서울", "lat": 37.582281, "lng": 127.001869, "spots": ["혜화역", "대학로"] },
+    { "id": "gwanghwamun", "name": "광화문역", "label": "광화문", "city": "서울", "lat": 37.571583, "lng": 126.976583, "spots": ["광화문역", "광화문광장", "청계광장", "시청역"] },
+    { "id": "nowon", "name": "노원역", "label": "노원", "city": "서울", "lat": 37.656369, "lng": 127.063450, "spots": ["노원역"] },
+
+    { "id": "seomyeon", "name": "부산 서면", "label": "서면", "city": "부산", "lat": 35.157778, "lng": 129.059167, "spots": ["서면역", "부전역"] },
+    { "id": "haeundae", "name": "부산 해운대", "label": "해운대", "city": "부산", "lat": 35.163667, "lng": 129.158889, "spots": ["해운대역", "해운대해수욕장"] },
+    { "id": "busan-station", "name": "부산역", "label": "부산역", "city": "부산", "lat": 35.115531, "lng": 129.039819, "spots": ["부산역"] },
+
+    { "id": "dongseongno", "name": "대구 동성로", "label": "동성로", "city": "대구", "lat": 35.872970, "lng": 128.595830, "spots": ["중앙로역", "반월당역", "대구역"] },
+    { "id": "dongdaegu", "name": "동대구역", "label": "동대구역", "city": "대구", "lat": 35.878000, "lng": 128.628000, "spots": ["동대구역"] },
+
+    { "id": "dunsan", "name": "대전 둔산", "label": "둔산", "city": "대전", "lat": 36.351400, "lng": 127.382200, "spots": ["시청역 (대전)", "정부청사역", "시청역(대전)"] },
+    { "id": "daejeon-station", "name": "대전역", "label": "대전역", "city": "대전", "lat": 36.331300, "lng": 127.433000, "spots": ["대전역"] },
+
+    { "id": "sangmu", "name": "광주 상무지구", "label": "상무지구", "city": "광주", "lat": 35.146700, "lng": 126.849000, "spots": ["상무역", "운천역", "김대중컨벤션센터역"] },
+    { "id": "gwangju-songjeong", "name": "광주송정역", "label": "광주송정", "city": "광주", "lat": 35.137400, "lng": 126.791000, "spots": ["광주송정역"] },
+
+    { "id": "sangnam", "name": "창원 상남동", "label": "상남동", "city": "창원", "lat": 35.226350, "lng": 128.682190, "spots": ["창원광장", "상남동"] },
+    { "id": "changwon-jungang", "name": "창원중앙역", "label": "창원중앙", "city": "창원", "lat": 35.242270, "lng": 128.701860, "spots": ["창원중앙역"] },
+
+    { "id": "gimhae-cityhall", "name": "김해시청역", "label": "김해시청", "city": "김해", "lat": 35.227200, "lng": 128.890000, "spots": ["김해시청역"] }
+  ]
+}

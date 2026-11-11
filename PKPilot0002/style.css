@@ -1507,6 +1507,442 @@ a,
 }
 
 /* ------------------------------------------------------------------
+   8b. 주변 맛집·카페 · 1차+2차 약속 코스
+   ------------------------------------------------------------------ */
+.nearby {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(280px 140px at 0% 0%, rgba(255, 179, 102, 0.1), transparent 72%),
+    linear-gradient(180deg, #1c1f1b, #181a17);
+  box-shadow: var(--shadow-sm);
+}
+
+.nearby-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nearby-head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.nearby-head h3 .ic {
+  width: 15px;
+  height: 15px;
+  color: #ffb366;
+}
+
+.nearby-anchor {
+  font-size: 10.5px;
+  color: var(--muted-2);
+  white-space: nowrap;
+}
+
+.nearby-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px;
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border-soft);
+}
+
+.nearby-tabs button {
+  min-width: 0;
+  height: 30px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.16s var(--ease);
+}
+
+.nearby-tabs button[aria-selected='true'] {
+  background: linear-gradient(180deg, #ffae80, var(--accent));
+  color: #1b1206;
+  box-shadow: 0 4px 12px rgba(255, 130, 79, 0.28);
+}
+
+.nearby-tabs button:hover:not([aria-selected='true']) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.nearby-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nearby-note {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #6b6f64;
+}
+
+/* 추천 코스 카드 */
+.course-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: linear-gradient(180deg, #23261f, #1b1e19);
+  text-align: left;
+  transition: all 0.18s var(--ease);
+}
+
+.course-card:hover {
+  border-color: var(--accent-line);
+}
+
+.course-card.is-active {
+  border-color: var(--accent-line);
+  background:
+    radial-gradient(220px 120px at 100% 0%, rgba(255, 179, 102, 0.16), transparent 70%),
+    linear-gradient(180deg, #2a2419, #1d1c15);
+  box-shadow: inset 0 0 0 1px rgba(255, 179, 102, 0.18);
+}
+
+.course-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.course-head b {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.course-card.is-active .course-head b {
+  background: var(--accent);
+  color: #1b1206;
+}
+
+.course-total {
+  font-size: 10.5px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.course-leg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.leg-num {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(255, 130, 79, 0.18);
+  color: #ffbe96;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.leg-num.is-cafe {
+  background: rgba(255, 209, 102, 0.16);
+  color: #ffd166;
+}
+
+.leg-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.leg-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leg-meta {
+  font-size: 10.5px;
+  color: var(--muted-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 42px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffb366;
+  font-variant-numeric: tabular-nums;
+}
+
+.course-move em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--muted-2);
+}
+
+.course-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border);
+}
+
+.course-action-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.course-action-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 맛집·카페 목록 */
+.place-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.place-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-soft);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.022);
+  transition: border-color 0.16s var(--ease);
+}
+
+.place-card:hover {
+  border-color: var(--border-strong);
+}
+
+.place-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.place-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.place-cat {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(255, 130, 79, 0.16);
+  color: #ffbe96;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.place-cat[data-kind='cafe'] {
+  background: rgba(255, 209, 102, 0.14);
+  color: #ffd166;
+}
+
+.place-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.place-walk {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #ffbe96;
+  font-weight: 700;
+}
+
+.place-walk .ic {
+  width: 11px;
+  height: 11px;
+}
+
+.place-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.place-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.place-link {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  transition: all 0.16s var(--ease);
+}
+
+.place-link:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.place-link.is-naver:hover {
+  border-color: rgba(3, 199, 90, 0.5);
+  color: #7ddba3;
+}
+
+.place-link.is-kakao:hover {
+  border-color: rgba(254, 229, 0, 0.45);
+  color: #ffe066;
+}
+
+.place-actions .mini-btn {
+  margin-left: auto;
+}
+
+/* 등록 POI 없음 — 지도 탐색 fallback */
+.nearby-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nearby-empty p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.nearby-empty .nearby-empty-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-2);
+}
+
+.nearby-links {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.nearby-link-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nearby-link-label {
+  flex: 1;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.nearby-more {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-top: 3px;
+  font-size: 10.5px;
+  color: var(--muted-2);
+}
+
+.nearby-more span {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------------
    9. 패널 하단
    ------------------------------------------------------------------ */
 .panel-foot {
@@ -1732,6 +2168,101 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
 }
 
+/* 약속 코스 마커 — ① 식당(오랜지) ② 카페(앰버) */
+.pin-course {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(145deg, #ffb487, #ff7a3f);
+  border: 2px solid #2a1206;
+  box-shadow: 0 0 0 3px rgba(255, 130, 79, 0.24), 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+.pin-course b {
+  transform: rotate(45deg);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 800;
+  color: #2a1206;
+}
+
+.pin-course.is-cafe {
+  background: linear-gradient(145deg, #ffe3a1, #ffbb33);
+  box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.22), 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+.pin-course i {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 2px;
+  height: 7px;
+  margin-left: -1px;
+  background: rgba(255, 179, 102, 0.9);
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.course-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(28, 22, 12, 0.92);
+  border: 1px solid rgba(255, 179, 102, 0.55);
+  color: #ffcf9e;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+}
+
+.pin-focus {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2.5px dashed #ffb366;
+  background: rgba(255, 130, 79, 0.16);
+  animation: focusSpin 9s linear infinite;
+}
+
+@keyframes focusSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.popup-place {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.popup-place strong {
+  font-size: 13px;
+}
+
+.popup-place span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.popup-place .popup-links {
+  display: flex;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.popup-place .place-link {
+  height: 22px;
+  padding: 0 7px;
+}
+
 /* Leaflet 기본 divIcon/툴팁 스타일 초기화 */
 .leaflet-div-icon {
   background: transparent;
@@ -1741,7 +2272,10 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
 .pin-wrap,
 .mid-wrap,
 .station-wrap,
-.label-wrap {
+.label-wrap,
+.focus-wrap,
+.course-pin-wrap,
+.course-label-wrap {
   background: transparent;
   border: 0;
 }
