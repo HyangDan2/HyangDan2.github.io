@@ -2142,8 +2142,12 @@ a,
 }
 
 #map {
+  /* 네이버 지도 엔진이 컨테이너에 position:relative 를 인라인으로 덮어쓰기 때문에
+     절대 배치뿐 아니라 100% 크기도 같이 잡아 둔다(인라인 relative 에서 inset:0 만으로는 높이가 0) */
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
   background: #e8ebe1;
   font-family: var(--font);
@@ -2161,6 +2165,32 @@ a,
   width: 30px;
   height: 30px;
   overflow: visible;
+  touch-action: none; /* 핀을 끌 때 지도·페이지 스크롤이 같이 움직이지 않게 */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.pin-station,
+.pin-course,
+.pin-focus {
+  cursor: pointer;
+}
+
+/* 마커 래퍼는 pointer-events:none 이라 content 가 직접 이벤트를 받는다 */
+.pin-holder,
+.above-holder,
+.pin-course,
+.pin-focus {
+  pointer-events: auto;
+}
+
+body.is-dragging-pin {
+  cursor: grabbing;
+}
+
+body.is-dragging-pin .pin-person {
+  transform: scale(1.1);
 }
 
 /* 마커 좌표 지점에 놓인 content 를 스스로 옮기는 홀더 */
@@ -2504,7 +2534,7 @@ a,
 }
 
 /* 확대·축소 — 지도 오른쪽 아래 (네이버 기본 컨트롤 대신 앱 UI로 그린다) */
-.map-zoom {
+.map-tools.map-zoom {
   top: auto;
   bottom: 22px;
   right: 14px;
@@ -2884,6 +2914,12 @@ a,
     right: 10px;
   }
 
+  /* 확대·축소는 아래쪽 — 시트 위로 올린다 */
+  .map-tools.map-zoom {
+    top: auto;
+    bottom: calc(var(--peek-h) + 12px + env(safe-area-inset-bottom, 0px));
+  }
+
   .map-tool {
     width: 32px;
     height: 32px;
@@ -2920,12 +2956,9 @@ a,
     font-size: 19px;
   }
 
-  .map-zoom {
-    bottom: calc(var(--peek-h) + 12px + env(safe-area-inset-bottom, 0px));
-  }
-
-  /* 네이버 로고·저작권 컨트롤이 바텀 시트에 가리지 않게 위로 올린다 */
-  #map > div:last-child {
+  /* 네이버 로고·저작권 컨트롤이 바텀 시트에 가리지 않게 위로 올린다
+     (네이버가 지도 컨테이너에 넣는 컨트롤 div 는 클래스가 없어 인라인 스타일로 고른다) */
+  #map > div[style*='bottom: 0px'] {
     bottom: calc(var(--peek-h) + 6px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }

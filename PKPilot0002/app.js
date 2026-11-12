@@ -220,6 +220,8 @@ function initMap() {
     if (onOverlayClick(event)) return;
     addPoint({ lat: event.coord.lat(), lng: event.coord.lng(), source: 'map' });
   });
+
+  installMapInteractions();
 }
 
 function applyMapType(type) {
@@ -282,7 +284,10 @@ function clearLayer(layer) {
     }
   });
   layers[layer].clear();
-  if (layer !== 'person') closeInfo();
+  if (layer !== 'person') {
+    tapHandlers.clear();
+    closeInfo();
+  }
 }
 
 function closeInfo() {
@@ -306,21 +311,123 @@ function openInfo(lat, lng, html, offsetY = 0) {
   infoWindow.open(map, latlng(lat, lng));
 }
 
+// 네이버 마커의 DOM 요소는 지도가 그린 뒤에 생긴다 — 그때까지 기다렸다가 손본다.
+function whenElement(marker, callback) {
+  let tries = 0;
+  const tick = () => {
+    const node = marker.getElement();
+    if (node) {
+      callback(node);
+      return;
+    }
+    if (tries++ < 180) requestAnimationFrame(tick);
+  };
+  tick();
+}
+
 // HTML 마커 — L.divIcon 대체. anchor는 마커 좌표가 content 안에서 놓이는 지점(px)이다.
-function htmlMarker(layer, { lat, lng, html, size = [1, 1], anchor = [0, 0], zIndex = 0, clickable = false }) {
+// 마커 래퍼(네이버가 만드는 div)는 클릭을 가로채므로 pointer-events 를 끄고,
+// 실제 상호작용은 content(.pin-holder·.above-holder·.pin-course)와 #map 위임 리스너가 맡는다.
+function htmlMarker(layer, { lat, lng, html, size = [1, 1], anchor = [0, 0], zIndex = 0 }) {
   if (!mapReady()) return null;
-  return track(layer, new naver.maps.Marker({
+  const marker = track(layer, new naver.maps.Marker({
     position: latlng(lat, lng),
     map,
-    clickable,
+    clickable: false,
     zIndex,
-    cursor: clickable ? 'pointer' : 'default',
     icon: {
       content: html,
       size: new naver.maps.Size(size[0], size[1]),
       anchor: new naver.maps.Point(anchor[0], anchor[1]),
     },
   }));
+  whenElement(marker, node => {
+    node.style.pointerEvents = 'none';
+  });
+  return marker;
+}
+
+/* ------------------------------------------------------------------
+   지도 위 상호작용 — 마커 DOM 요소는 지도가 다시 그릴 때 새로 만들어지므로
+   #map 에 위임 리스너 하나만 붙인다 (핀 드래그 · 알약/코스 핀 탭 · 활성 선택).
+   ------------------------------------------------------------------ */
+const tapHandlers = new Map();
+let tapSeq = 0;
+let pinDrag = null;
+
+// 탭 대상이 될 content 에 붙일 id 를 발급하고 처리기를 보관한다.
+function registerTap(handler) {
+  tapSeq += 1;
+  const id = `tap${tapSeq}`;
+  tapHandlers.set(id, handler);
+  return id;
+}
+
+function installMapInteractions() {
+  const host = el.map;
+
+  host.addEventListener('pointerdown', event => {
+    const holder = event.target.closest?.('.pin-holder[data-pin]');
+    if (!holder || event.button > 0 || !mapReady()) return;
+    const point = state.points.find(p => p.id === holder.dataset.pin);
+    if (!point) return;
+    pinDrag = { point, pointerId: event.pointerId, moved: false };
+    try {
+      holder.setPointerCapture(event.pointerId);
+    } catch {
+      /* 캡처를 못 해도 window 리스너가 받는다 */
+    }
+    map.setOptions({ draggable: false }); // 끄는 동안 지도 팬 잠금
+    document.body.classList.add('is-dragging-pin');
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
+  window.addEventListener('pointermove', event => {
+    if (!pinDrag || event.pointerId !== pinDrag.pointerId) return;
+    const coord = map.getProjection().fromPageXYToCoord(new naver.maps.Point(event.pageX, event.pageY));
+    if (!coord) return;
+    pinDrag.moved = true;
+    const { point } = pinDrag;
+    point.lat = coord.lat();
+    point.lng = coord.lng();
+    markers.get(point.id)?.setPosition(coord);
+    updateOverlaysOnly();
+    scheduleLightResult();
+    event.preventDefault();
+  }, { passive: false });
+
+  const endDrag = () => {
+    if (!pinDrag) return;
+    const { point, moved } = pinDrag;
+    pinDrag = null;
+    if (mapReady()) map.setOptions({ draggable: true });
+    document.body.classList.remove('is-dragging-pin');
+    if (!moved) return;
+    point.address = '';
+    point.addressState = 'idle';
+    requestAddress(point);
+    render();
+  };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+
+  host.addEventListener('click', event => {
+    const tap = event.target.closest?.('[data-tap]');
+    if (tap) {
+      const handler = tapHandlers.get(tap.dataset.tap);
+      if (handler) {
+        event.stopPropagation();
+        handler();
+      }
+      return;
+    }
+    const holder = event.target.closest?.('.pin-holder[data-pin]');
+    if (holder) {
+      state.activeId = holder.dataset.pin;
+      scheduleRender();
+    }
+  });
 }
 
 function boundsOf(coords) {
@@ -344,7 +451,7 @@ function moveTo(lat, lng, zoom, animate = true) {
 // 마커·도형 위를 누른 것은 지도 클릭(출발지 추가)이 아니다.
 function onOverlayClick(event) {
   const node = event.pointerEvent?.target;
-  return Boolean(node?.closest?.('.pin-holder, .pin-tip, .pin-mid, .pin-station, .pin-label, .pin-course, .pin-focus, .map-popup'));
+  return Boolean(node?.closest?.('.pin-holder, .pin-tip, .pin-mid, .pin-station, .pin-label, .pin-course, .pin-focus, [data-tap], .map-popup'));
 }
 
 /* ------------------------------------------------------------------
@@ -1338,32 +1445,13 @@ function syncMarkers(result) {
       marker = new naver.maps.Marker({
         position: latlng(point.lat, point.lng),
         map,
-        draggable: true,
-        clickable: true,
-        cursor: 'grab',
+        clickable: false, // 클릭·드래그는 #map 위임 리스너가 처리한다
         zIndex: 300 + i,
         icon: {
-          content: `<span class="pin-holder"><span class="pin-person" style="--c:${color}"><span>${i + 1}</span><span class="pin-tail"></span></span><span class="pin-tip">${esc(point.name)}</span></span>`,
+          content: `<span class="pin-holder" data-pin="${point.id}"><span class="pin-person" style="--c:${color}"><span>${i + 1}</span><span class="pin-tail"></span></span><span class="pin-tip">${esc(point.name)}</span></span>`,
           size: new naver.maps.Size(30, 36),
           anchor: new naver.maps.Point(15, 30),
         },
-      });
-      naver.maps.Event.addListener(marker, 'drag', () => {
-        const pos = marker.getPosition();
-        point.lat = pos.lat();
-        point.lng = pos.lng();
-        updateOverlaysOnly();
-        scheduleLightResult();
-      });
-      naver.maps.Event.addListener(marker, 'dragend', () => {
-        point.address = '';
-        point.addressState = 'idle';
-        requestAddress(point);
-        render();
-      });
-      naver.maps.Event.addListener(marker, 'click', () => {
-        state.activeId = point.id;
-        scheduleRender();
       });
       layers.person.add(marker);
       markers.set(point.id, marker);
@@ -1459,33 +1547,26 @@ function drawOverlays(result) {
     htmlMarker('overlay', {
       lat: center.lat,
       lng: center.lng,
-      size: [52, 52],
-      anchor: [26, 26],
       zIndex: 800,
-      html: '<span class="pin-mid"><span class="pulse"></span><span class="pulse"></span><span class="core"></span></span>',
+      html: '<span class="center-holder"><span class="pin-mid"><span class="pulse"></span><span class="pulse"></span><span class="core"></span></span></span>',
     });
   }
 
   const station = result.rec?.primary;
   if (station) {
     const car = isCarMode();
-    const marker = htmlMarker('overlay', {
+    const tap = registerTap(() => openInfo(
+      station.lat,
+      station.lng,
+      `<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : (walkingMinutes(station.km) > 90 ? 'KTX·버스로 접근' : `도보 ${walkingMinutes(station.km)}분`)}`,
+      -32,
+    ));
+    htmlMarker('overlay', {
       lat: station.lat,
       lng: station.lng,
-      zIndex: 600,
-      clickable: true,
-      html: `<span class="above-holder"><span class="pin-station"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>${esc(station.name)}</span></span>`,
+      zIndex: 900,
+      html: `<span class="above-holder" data-tap="${tap}"><span class="pin-station"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>${esc(station.name)}</span></span>`,
     });
-    if (marker) {
-      naver.maps.Event.addListener(marker, 'click', () => {
-        openInfo(
-          station.lat,
-          station.lng,
-          `<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : (walkingMinutes(station.km) > 90 ? 'KTX·버스로 접근' : `도보 ${walkingMinutes(station.km)}분`)}`,
-          -32,
-        );
-      });
-    }
   }
 
   // 1차 식당 ➔ 2차 카페 약속 코스
@@ -1515,17 +1596,15 @@ function coursePin(place, number, kind) {
       <span>${esc(place.category || '')} · 도보 ${place.fromSpotMinutes ?? place.walkMinutes}분</span>
       <span class="popup-links">${reviewLinks(place)}</span>
     </div>`;
-  const marker = htmlMarker('overlay', {
+  const tap = registerTap(() => openInfo(place.lat, place.lng, popup, -34));
+  return htmlMarker('overlay', {
     lat: place.lat,
     lng: place.lng,
     size: [36, 44],
     anchor: [18, 38],
     zIndex: 1000,
-    clickable: true,
-    html: `<span class="pin-course is-${kind}"><b>${glyph}</b><i></i></span>`,
+    html: `<span class="pin-course is-${kind}" data-tap="${tap}"><b>${glyph}</b><i></i></span>`,
   });
-  if (marker) naver.maps.Event.addListener(marker, 'click', () => openInfo(place.lat, place.lng, popup, -34));
-  return marker;
 }
 
 function drawCourseOverlay(course, anchor) {
