@@ -137,6 +137,9 @@ const el = {
   styleBtn: document.getElementById('styleBtn'),
   zoomInBtn: document.getElementById('zoomInBtn'),
   zoomOutBtn: document.getElementById('zoomOutBtn'),
+  portalMenu: document.getElementById('portalMenu'),
+  portalMenuBtn: document.getElementById('portalMenuBtn'),
+  portalMenuDropdown: document.getElementById('portalMenuDropdown'),
   mapHint: document.getElementById('mapHint'),
   toast: document.getElementById('toast'),
 };
@@ -1933,6 +1936,112 @@ function initSearchEvents() {
   });
 }
 
+/* ------------------------------------------------------------------
+   HD2Lab 포털 메뉴 (헤더 우측 … 버튼 → 드롭다운)
+   - 클릭/키보드로 열고 닫기, 바깥 탭·Escape 로 닫기, 방향키 이동
+   ------------------------------------------------------------------ */
+function initPortalMenu() {
+  const btn = el.portalMenuBtn;
+  const menu = el.portalMenuDropdown;
+  const root = el.portalMenu;
+  if (!btn || !menu || !root) return;
+
+  // 헤더의 backdrop-filter 는 자식 레이어를 합성하면서 헤더 밖으로 나간 드롭다운 위에
+  // 배경을 한 번 더 그려 지도 도구가 비져 보인다. 메뉴를 헤더 바로 뒤로 옮겨
+  // 탭 순서(헤더 → 메뉴)를 지키면서 합성 간섭을 피한다.
+  const header = root.closest('.app-header');
+  if (header) header.after(menu);
+  else if (menu.parentElement !== document.body) document.body.appendChild(menu);
+
+  const items = () => Array.from(menu.querySelectorAll('.portal-item'));
+  const isOpen = () => btn.getAttribute('aria-expanded') === 'true';
+  const inside = target => root.contains(target) || menu.contains(target);
+
+  // 버튼 바로 아래에 오른쪽 정렬로 배치하고, 화면 밖으로 나가지 않게 조정한다.
+  function place() {
+    const rect = btn.getBoundingClientRect();
+    const width = menu.offsetWidth || 296;
+    const vw = window.innerWidth;
+    let right = vw - rect.right;
+    right = Math.min(right, Math.max(10, vw - width - 10));
+    right = Math.max(right, 10);
+    menu.style.top = `${Math.round(rect.bottom + 10)}px`;
+    menu.style.right = `${Math.round(right)}px`;
+    menu.style.left = 'auto';
+  }
+
+  function open(focusFirst = false) {
+    if (isOpen()) return;
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    place();
+    if (focusFirst) {
+      const first = items()[0];
+      if (first) first.focus();
+    }
+  }
+
+  function close(refocus = false) {
+    if (!isOpen()) return;
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    if (refocus) btn.focus();
+  }
+
+  btn.addEventListener('click', event => {
+    event.stopPropagation();
+    if (isOpen()) close();
+    else open();
+  });
+
+  // 메뉴 밖을 누르면 닫기 (다른 탭으로 이동하는 경우 포함)
+  document.addEventListener('pointerdown', event => {
+    if (isOpen() && !inside(event.target)) close();
+  });
+
+  // 키보드 포커스가 메뉴 밖으로 나가도 닫기
+  document.addEventListener('focusin', event => {
+    if (isOpen() && !inside(event.target)) close();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (!isOpen()) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close(true);
+      return;
+    }
+    const rows = items();
+    if (!rows.length) return;
+    const at = rows.indexOf(document.activeElement);
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      rows[(at + 1 + rows.length) % rows.length].focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      rows[(at - 1 + rows.length) % rows.length].focus();
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      rows[0].focus();
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      rows[rows.length - 1].focus();
+    } else if (event.key === 'Tab' && at === rows.length - 1 && !event.shiftKey) {
+      close();
+    }
+  });
+
+  // 화면 크기가 바뀌면 위치를 다시 잡는다 (모바일 회전 포함)
+  const reposition = () => {
+    if (isOpen()) place();
+  };
+  window.addEventListener('resize', reposition);
+  window.addEventListener('orientationchange', reposition);
+
+  // 다른 탭으로 넘어가기 전에 메뉴를 닫아 둔다 (돌아왔을 때 깔끔하게)
+  items().forEach(item => item.addEventListener('click', () => close()));
+}
+
 function initHeaderEvents() {
   el.fitBtn.addEventListener('click', () => fitAll());
   el.fitBtnMap.addEventListener('click', () => fitAll());
@@ -2029,6 +2138,7 @@ function boot() {
   initListEvents();
   initSearchEvents();
   initHeaderEvents();
+  initPortalMenu();
   initSheet();
   initViewportLock();
 

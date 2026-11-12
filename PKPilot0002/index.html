@@ -8,20 +8,39 @@
   <meta name="description" content="HD2Lab | Midpoint (PKPilot0002) — 전국 어디든 출발지만 찍으면 N명 모두에게 가장 공평한 만남 지점과 만날 거점을 찾아주는 정적 웹앱. 대중교통(전국 전철·KTX·터미널)과 자차(고속도로 IC·휴게소) 모드, 추천 거점 주변 맛집·카페를 앱 안에서 실시간으로 찾아 1차 식사+2차 카페 도보 약속 코스로 묶어 주고, 카카오맵·네이버지도·티맵 길찾기까지 연동합니다." />
   <title>HD2Lab | Midpoint (PKPilot0002)</title>
 
-  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
-  <link rel="icon" href="../assets/favicon-32x32.png" sizes="32x32" type="image/png" />
-  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HD2Lab Midpoint" />
+  <meta name="application-name" content="HD2Lab Midpoint" />
 
+  <!-- Favicons (AGPilot0002 HD2Lab 규격 계승) -->
+  <link rel="icon" href="favicon.ico?v=20261113" sizes="any" />
+  <link rel="icon" href="favicon.svg?v=20261113" type="image/svg+xml" />
+  <link rel="icon" href="favicon-32x32.png?v=20261113" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20261113" sizes="180x180" />
+
+  <!-- Open Graph (카카오톡·SNS 공유 카드) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="HD2Lab" />
+  <meta property="og:locale" content="ko_KR" />
   <meta property="og:title" content="HD2Lab | Midpoint (PKPilot0002)" />
-  <meta property="og:description" content="여럿이 만날 때, 딱 가운데. 전국 어디든 출발지만 찍으면 가장 공평한 만남 지점과 만날 거점을 찾아 주고, 그 주변 맛집·카페를 앱 안에서 실시간으로 찾아 약속 코스까지 만들어 줍니다." />
+  <meta property="og:description" content="여럿이 만날 때, 딱 가운데. 전국 대중교통·자차 공평 중간 지점 &amp; 1차+2차 약속 코스 탐색" />
   <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0002/" />
-  <meta property="og:image" content="https://hyangdan2.github.io/PKPilot0002/docs/screenshots/desktop-result.jpg" />
-  <meta property="og:image:alt" content="HD2Lab Midpoint — 중간 지점 지도 화면" />
+  <meta property="og:image" content="https://hyangdan2.github.io/PKPilot0002/og-image.png?v=20261113" />
+  <meta property="og:image:secure_url" content="https://hyangdan2.github.io/PKPilot0002/og-image.png?v=20261113" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="HD2Lab | Midpoint — 여럿이 만날 때, 딱 가운데" />
+
+  <!-- Twitter Cards -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="HD2Lab | Midpoint (PKPilot0002)" />
-  <meta name="twitter:description" content="여럿이 만날 때, 딱 가운데. 전국 어디든 출발지만 찍으면 가장 공평한 만남 지점을 찾아 줍니다." />
+  <meta name="twitter:description" content="여럿이 만날 때, 딱 가운데. 전국 대중교통·자차 공평 중간 지점 &amp; 1차+2차 약속 코스 탐색" />
+  <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0002/og-image.png?v=20261113" />
+  <meta name="twitter:image:alt" content="HD2Lab | Midpoint — 여럿이 만날 때, 딱 가운데" />
 
   <link rel="preconnect" href="https://oapi.map.naver.com" crossorigin />
   <link rel="preconnect" href="https://nrbe.pstatic.net" crossorigin />
@@ -49,6 +68,11 @@
     <symbol id="i-nav-naver" viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3"/><path d="M8.4 16.2V7.8l7.2 8.4V7.8"/></symbol>
     <symbol id="i-nav-tmap" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.6"/><path d="M6.4 8h11.2M12 8v8.6"/></symbol>
     <symbol id="i-course" viewBox="0 0 24 24"><path d="M5.6 6.4h5.2M5.6 12h5.2M5.6 17.6h5.2"/><circle cx="16.4" cy="6.4" r="2.2"/><circle cx="16.4" cy="12" r="2.2"/><circle cx="16.4" cy="17.6" r="2.2"/><path d="M12.6 6.4h1.6M12.6 12h1.6M12.6 17.6h1.6"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5.4" r="1.85" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.85" fill="currentColor" stroke="none"/><circle cx="12" cy="18.6" r="1.85" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-portal-home" viewBox="0 0 24 24"><path d="M4 10.4L12 4l8 6.4V20a1 1 0 0 1-1 1h-4.6v-6.2H9.6V21H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-portal-apps" viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="7.2" height="7.2" rx="2"/><rect x="13.2" y="3.6" width="7.2" height="7.2" rx="2"/><rect x="3.6" y="13.2" width="7.2" height="7.2" rx="2"/><rect x="13.2" y="13.2" width="7.2" height="7.2" rx="2"/></symbol>
+    <symbol id="i-portal-game" viewBox="0 0 24 24"><path d="M7.4 7.6h9.2a4 4 0 0 1 3.9 3.1l.8 3.6a2.6 2.6 0 0 1-4.5 2.3l-1.4-1.7H8.6l-1.4 1.7a2.6 2.6 0 0 1-4.5-2.3l.8-3.6a4 4 0 0 1 3.9-3.1z"/><path d="M7.2 11.4v2.6M5.9 12.7h2.6"/><circle cx="16.1" cy="12.1" r="1.05" fill="currentColor" stroke="none"/><circle cx="17.9" cy="13.9" r="1.05" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-portal-tech" viewBox="0 0 24 24"><path d="M8.6 8.4L4.4 12l4.2 3.6M15.4 8.4L19.6 12l-4.2 3.6M13.4 5.4l-2.8 13.2"/></symbol>
   </svg>
 
   <a class="skip-link" href="#panel">본문으로 건너뛰기</a>
@@ -69,6 +93,35 @@
       <button class="primary-btn" id="shareBtn" type="button" title="이 결과 링크 복사">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg><span>링크 복사</span>
       </button>
+      <div class="portal-menu" id="portalMenu">
+        <button class="portal-menu-btn" id="portalMenuBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="portalMenuDropdown" aria-label="HD2Lab 포털 메뉴" title="HD2Lab 포털 메뉴">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dots"/></svg>
+        </button>
+        <div class="portal-menu-dropdown" id="portalMenuDropdown" role="menu" aria-label="HD2Lab 포털" hidden>
+          <p class="portal-menu-head">HD2Lab PORTAL</p>
+          <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/" target="_blank" rel="noopener noreferrer" data-portal="web-hq">
+            <span class="portal-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-portal-home"/></svg></span>
+            <span class="portal-text"><b>Web-HQ</b><small>HD2Lab 메인 포털</small></span>
+            <span class="portal-badge" aria-hidden="true">HOME</span>
+          </a>
+          <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/ApplicationHub/" target="_blank" rel="noopener noreferrer" data-portal="application-hub">
+            <span class="portal-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-portal-apps"/></svg></span>
+            <span class="portal-text"><b>ApplicationHub</b><small>웹 애플리케이션 허브</small></span>
+            <span class="portal-badge" aria-hidden="true">APPS</span>
+          </a>
+          <a class="portal-item" href="https://hyangdan2.github.io/GameHub/" target="_blank" rel="noopener noreferrer" role="menuitem" data-portal="game-hub">
+            <span class="portal-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-portal-game"/></svg></span>
+            <span class="portal-text"><b>GameHub</b><small>웹 게임 허브</small></span>
+            <span class="portal-badge" aria-hidden="true">GAME</span>
+          </a>
+          <a class="portal-item" href="https://hyangdan2.github.io/TechnicalHub/" target="_blank" rel="noopener noreferrer" role="menuitem" data-portal="technical-hub">
+            <span class="portal-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-portal-tech"/></svg></span>
+            <span class="portal-text"><b>TechnicalHub</b><small>기술 문서·실험 허브</small></span>
+            <span class="portal-badge" aria-hidden="true">TECH</span>
+          </a>
+          <p class="portal-menu-foot">hyangdan2.github.io</p>
+        </div>
+      </div>
     </div>
   </header>
 

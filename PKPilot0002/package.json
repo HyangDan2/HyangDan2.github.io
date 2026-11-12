@@ -9,6 +9,8 @@
     "test": "python3 tests/run_tests.py",
     "test:unit": "python3 tests/run_tests.py",
     "test:ui": "python3 tests/visual/capture.py --check",
+    "test:portal": "python3 tests/visual/portal_menu_check.py --check",
+    "brand": "python3 tools/generate_brand_assets.py",
     "shots": "python3 tests/visual/capture.py",
     "serve": "python3 -m http.server 8080"
   },
