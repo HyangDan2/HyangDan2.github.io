@@ -290,6 +290,12 @@ def course_scenario(page, terms, expect_spot: str, shots: bool, problems: list, 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="검증만 수행")
+    parser.add_argument(
+        "--base",
+        default=None,
+        help="검증할 앱 주소 (기본: 로컬 서버). NAVER 지도는 NCP 콘솔에 등록된 도메인에서만 뜨므로 "
+             "로컬 127.0.0.1 에서는 지도 타일이 401 로 막힌다 — 그때는 --base https://hyangdan2.github.io/PKPilot0002/ 로 배포본을 검증한다",
+    )
     args = parser.parse_args()
     shots = not args.check
 
@@ -300,8 +306,13 @@ def main() -> int:
         return 1
 
     SHOTS.mkdir(parents=True, exist_ok=True)
-    server, port = serve()
-    base = f"http://127.0.0.1:{port}/PKPilot0002/"
+    server = None
+    base = args.base
+    if not base:
+        server, port = serve()
+        base = f"http://127.0.0.1:{port}/PKPilot0002/"
+    if not base.endswith("/"):
+        base += "/"
     problems: list[str] = []
 
     with sync_playwright() as p:
@@ -325,8 +336,13 @@ def main() -> int:
 
         page.goto(base, wait_until="load")
         settle(page, 2600)
-        if page.locator(".leaflet-tile-loaded").count() == 0:
+        if page.evaluate(
+            "Array.from(document.querySelectorAll('#map img')).filter(i => i.complete && i.naturalWidth > 0).length"
+        ) == 0:
             problems.append("지도 타일이 로드되지 않았습니다")
+        for control in ("#zoomInBtn", "#zoomOutBtn", "#fitBtnMap", "#styleBtn"):
+            if page.locator(control).count() == 0:
+                problems.append(f"지도 도구 {control} 가 없습니다")
         if page.locator("#resultCard").is_visible():
             problems.append("참가자가 없는데 결과 카드가 보입니다")
         if not page.locator("#modeToggle button[data-travel='transit']").is_visible():
@@ -746,7 +762,8 @@ def main() -> int:
 
         browser.close()
 
-    server.shutdown()
+    if server:
+        server.shutdown()
 
     if problems:
         print("검증 실패:")

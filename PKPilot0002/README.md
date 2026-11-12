@@ -6,7 +6,7 @@
 거점이 정해지면 **앱을 떠나지 않고** 그 주변 맛집·카페를 실시간으로 찾아 1차+2차 약속 코스까지 만들어 줍니다.
 
 - 라이브: <https://hyangdan2.github.io/PKPilot0002/>
-- 외부 API 키 없음 · 빌드 없음 · 정적 파일만 (Leaflet 1.9.4 로컬 번들)
+- 외부 API 키는 네이버 지도 하나 · 빌드 없음 · 정적 파일만 (NAVER 지도 Web API v3)
 
 ![데스크톱 — 영남권 대중교통 추천](docs/screenshots/desktop-yeongnam-transit.jpg)
 
@@ -92,7 +92,7 @@
 - 링크를 받은 사람은 같은 결과·같은 모드를 바로 봅니다. 상태가 바뀔 때마다 `history.replaceState`로 주소 갱신
 - 데스크톱(1440px) 좌측 패널 / 모바일(390px) 하단 슬라이드 시트(끌어서 펼침·접힘)
 - 모바일 사파리 대응: 입력창 16px 고정(포커스 시 강제 확대 방지), 페이지 확대·축소 차단
-  (`user-scalable=no` + `gesturestart`/더블탭 차단), 지도 핀치 줌은 Leaflet 그대로 유지
+  (`user-scalable=no` + `gesturestart`/더블탭 차단), 지도 핀치 줌은 네이버 지도 엔진이 직접 처리
 
 ## 파일 구조
 
@@ -100,7 +100,7 @@
 PKPilot0002/
 ├── index.html            화면 마크업 + 아이콘 스프라이트
 ├── style.css             HD2Lab 다크 테마 · 지도/패널/시트 레이아웃
-├── app.js                Leaflet 지도 · 참가자 · 모드 토글 · 결과 UI
+├── app.js                네이버 지도 · 참가자 · 모드 토글 · 결과 UI
 ├── js/
 │   ├── core.js           순수 계산 (거리·중간 지점·공평도·URL·거점 추천·주변 장소·약속 코스) — DOM 의존 없음
 │   ├── stations.js       전국 도시철도·KTX/SRT·터미널 스냅샷 957곳 (자동 생성)
@@ -109,7 +109,6 @@ PKPilot0002/
 │   ├── live_places.js    전국 임의 좌표 실시간 맛집·카페 조회 (Overpass 미러 → OSM 지도 API fallback · 세션 캐시)
 │   ├── directions.js     카카오맵·네이버지도·티맵 길찾기·도보 딥링크 · 지도 검색 링크
 │   └── landmarks.js      만남 거점 랜드마크 9곳 (Nominatim 확인)
-├── vendor/leaflet/       Leaflet 1.9.4 (CDN 장애 없이 동작하도록 로컬 번들)
 ├── tools/
 │   ├── build_network.py      stations.js·driving_spots.js 생성기 (Wikidata + OSM Overpass)
 │   ├── build_places.py       places.js 생성기 (OSM Overpass — 이름·좌표·영업 태그·주차장)
@@ -166,7 +165,7 @@ python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 - 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역·랜드마크 추천, 검색 자동완성(완전 일치·부분 일치·초성·랜드마크), 표시 형식,
   **거점↔허브 매칭, 반경 필터·종류 필터·주차 우선, 코스 페어링(도보 100~350m·중복 없음·합계), 검색·도보 딥링크, POI 데이터 정합성(반경 800m·좌표·링크)**,
   **실시간 POI 파싱(업종 분류·이름 정제·거리·도보·주차·중복 제거·상한), Overpass 쿼리·bbox, 내장+실시간 병합, 실시간 POI 만으로 코스 생성, 미러 fallback·타임아웃·세션 캐시**
-- 화면 검증: 타일 로드, 핀/마커 수, 결과 카드, URL 상태, 공유 링크 왕복, 모드 전환, 삭제/초기화, 모바일 시트 접힘·펼침,
+- 화면 검증: 지도 타일 로드, 핀/마커 수, 결과 카드, URL 상태, 공유 링크 왕복, 모드 전환, 삭제/초기화, 모바일 시트 접힘·펼침,
   **강남·홍대·서면·김해 코스 카드·탭 전환·지도 ①·② 마커·폴리라인,
   비허브 거점(이수·의정부·천안·구미) 실시간 인앱 탐색과 외부 링크 미노출, 0곳·실패 모의 응답에서 스켈레톤 → 반경 2km 넓히기 → 다시 찾기, 모바일 가로 넘침**
 - Node.js 없이 Playwright(Chromium)만 사용합니다. `pip install playwright && playwright install chromium` 필요.
@@ -175,13 +174,13 @@ python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
 
 | 대상 | 출처 | 비고 |
 | --- | --- | --- |
-| 지도 타일 | OpenStreetMap 표준 타일 | 다크 테마는 CSS 필터(`invert + hue-rotate`)로 톤만 바꿉니다. 외부 키 불필요 |
+| 지도 | NAVER 지도 Web API v3 (`ncpKeyId`) | 확대·축소·종류(일반/위성) 컨트롤은 앱 UI 로 직접 그렸습니다. 타일·로고·저작권은 네이버가 그립니다 |
 | 지오코딩 | Nominatim (search / reverse) | 공개 인스턴스 정책에 맞춰 요청을 1초 간격으로 큐잉, 결과 캐시 |
 | 지하철역 좌표 | Wikidata (CC0) | `tools/build_stations.py`로 수도권 589개 역 생성 |
 | 맛집·카페 POI | OpenStreetMap Overpass (ODbL) | `tools/build_places.py` — 30개 거점 반경 800m, 1,435곳 + 브라우저 실시간 조회. 평점 없음 → 네이버·카카오 리뷰 링크 |
 | 랜드마크 | OpenStreetMap Nominatim | `js/landmarks.js` — 추천 후보에 함께 사용 |
 
-> 지도 타일은 초기 기획의 CartoDB Dark Matter를 쓰지 않습니다. 2026년 11월 확인 결과 `basemaps.cartocdn.com`의 dark_all 타일이 **API 키 없이는 "API KEY REQUIRED" 워터마크 타일**을 돌려주기 때문입니다(키 없는 대안 중 OSM 타일을 선택). 필요하면 `app.js`의 `TILES` 상수만 교체하면 됩니다.
+> 지도 엔진은 **NAVER 지도 Web API v3**(NCP Web Dynamic Map)입니다. 키는 `index.html` 의 스크립트 URL(`ncpKeyId=…`)에 있고, 동작하려면 [NAVER Cloud Platform 콘솔](https://console.ncloud.com/maps)의 해당 애플리케이션에 **Web 서비스 URL**로 `https://hyangdan2.github.io` 가 등록되어 있어야 합니다. 등록되지 않은 오리진(예: `http://127.0.0.1:8080` 로컬 서버)에서는 지도가 401 로 막히므로, 로컬에서 지도까지 보려면 `http://localhost` 를 함께 등록하세요. 지도 종류는 일반/위성 토글이며, OSM 시절의 다크 CSS 필터(`invert + hue-rotate`)는 해상도 저하·색 왜곡 때문에 없앴습니다.
 
 ## 제약
 

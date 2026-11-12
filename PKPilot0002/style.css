@@ -2138,70 +2138,43 @@ a,
 .map-stage {
   position: relative;
   min-width: 0;
-  background: #0a0b0a;
+  background: #e8ebe1;
 }
 
 #map {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: #0a0b0a;
+  background: #e8ebe1;
   font-family: var(--font);
 }
 
-.leaflet-container {
-  background: #0a0b0a;
+/* 네이버 지도는 타일·로고·저작권을 엔진이 직접 그린다 — 색 반전 필터 없이 그대로 쓴다. */
+#map:focus {
   outline: none;
 }
 
-/* 다크 지도: OSM 타일에 색 반전 필터를 입혀 HD2Lab 다크 톤으로 (한글 지명 유지) */
-body[data-mapstyle='dark'] .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) saturate(0.3) brightness(0.98) contrast(0.95);
-}
-
-body[data-mapstyle='light'] .leaflet-tile-pane {
-  filter: none;
-}
-
-.leaflet-container a.leaflet-active {
-  outline: 2px solid var(--accent);
-}
-
-.leaflet-control-attribution {
-  background: rgba(12, 13, 12, 0.78) !important;
-  color: #9a9d93 !important;
-  font-size: 10px !important;
-  padding: 2px 8px !important;
-  border-radius: 8px 0 0 0;
-  backdrop-filter: blur(6px);
-}
-
-.leaflet-control-attribution a {
-  color: var(--muted) !important;
-}
-
-.leaflet-bar {
-  border: 1px solid var(--border) !important;
-  border-radius: 11px !important;
-  overflow: hidden;
-  box-shadow: var(--shadow-md) !important;
-}
-
-.leaflet-bar a {
-  width: 32px !important;
-  height: 32px !important;
-  line-height: 30px !important;
-  background: rgba(22, 24, 21, 0.94) !important;
-  color: var(--text) !important;
-  border-bottom-color: var(--border) !important;
-  font-size: 17px !important;
-}
-
-.leaflet-bar a:hover {
-  background: #2a2e27 !important;
-}
-
 /* 지도 위 커스텀 마커 */
+.pin-holder {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 30px;
+  overflow: visible;
+}
+
+/* 마커 좌표 지점에 놓인 content 를 스스로 옮기는 홀더 */
+.center-holder {
+  display: block;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.above-holder {
+  display: block;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
 .pin-person {
   position: relative;
   display: grid;
@@ -2421,27 +2394,39 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
   padding: 0 7px;
 }
 
-/* Leaflet 기본 divIcon/툴팁 스타일 초기화 */
-.leaflet-div-icon {
-  background: transparent;
-  border: 0;
+/* 네이버 지도 말풍선(InfoWindow) 안쪽 — 바탕색은 app.js 의 InfoWindow 옵션과 맞춘다 */
+.map-popup {
+  padding: 1px 1px 0;
+  color: #e7eade;
+  font-family: var(--font);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
-.pin-wrap,
-.mid-wrap,
-.station-wrap,
-.label-wrap,
-.focus-wrap,
-.course-pin-wrap,
-.course-label-wrap {
-  background: transparent;
-  border: 0;
+.map-popup strong {
+  display: block;
+  margin-bottom: 1px;
+  color: #fff;
+  font-size: 13px;
 }
 
-.leaflet-tooltip.pin-tip {
+.map-popup .popup-place span {
+  color: #a9ad9f;
+}
+
+.map-popup a {
+  color: #ffb78c;
+}
+
+/* 네이버 지도 마커 안쪽 이름표 (Leaflet 툴팁 대체) */
+.pin-tip {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
   padding: 2px 7px;
   border-radius: 6px;
-  background: rgba(13, 14, 12, 0.82);
+  background: rgba(13, 14, 12, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #e8eae0;
   font-family: var(--font);
@@ -2450,31 +2435,7 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
   letter-spacing: -0.01em;
   white-space: nowrap;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
-}
-
-.leaflet-tooltip.pin-tip::before {
-  border: 0;
-  display: none;
-}
-
-.leaflet-popup-content-wrapper {
-  background: #1a1c18;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-  font-family: var(--font);
-  font-size: 12px;
-}
-
-.leaflet-popup-content {
-  margin: 10px 12px;
-  line-height: 1.5;
-}
-
-.leaflet-popup-tip {
-  background: #1a1c18;
-  border: 1px solid var(--border);
+  pointer-events: none;
 }
 
 .map-hint {
@@ -2540,6 +2501,14 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
 .map-tool .ic {
   width: 16px;
   height: 16px;
+}
+
+/* 확대·축소 — 지도 오른쪽 아래 (네이버 기본 컨트롤 대신 앱 UI로 그린다) */
+.map-zoom {
+  top: auto;
+  bottom: 22px;
+  right: 14px;
+  flex-direction: column;
 }
 
 .legend {
@@ -2951,16 +2920,13 @@ body[data-mapstyle='light'] .leaflet-tile-pane {
     font-size: 19px;
   }
 
-  .leaflet-bottom {
-    bottom: calc(var(--peek-h) + 4px + env(safe-area-inset-bottom, 0px));
+  .map-zoom {
+    bottom: calc(var(--peek-h) + 12px + env(safe-area-inset-bottom, 0px));
   }
 
-  .leaflet-control-attribution {
-    font-size: 9px !important;
-    max-width: 62vw;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  /* 네이버 로고·저작권 컨트롤이 바텀 시트에 가리지 않게 위로 올린다 */
+  #map > div:last-child {
+    bottom: calc(var(--peek-h) + 6px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

@@ -1,6 +1,6 @@
 /* ==================================================================
    HD2Lab | Midpoint (PKPilot0002)
-   app.js — 지도·참가자·결과 UI (Leaflet + 순수 로직 core.js)
+   app.js — 지도·참가자·결과 UI (NAVER 지도 v3 + 순수 로직 core.js)
    ================================================================== */
 
 import {
@@ -84,15 +84,9 @@ const CAR_PRESETS = [
 
 const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 };
 
-const TILES = {
-  // 외부 API 키가 필요 없는 OSM 표준 타일. 다크 테마는 CSS 필터로 톤을 바꾼다(style.css).
-  url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  options: {
-    maxZoom: 19,
-    crossOrigin: true,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
-  },
-};
+// NAVER 지도 v3 — 확대·축소 한계와 지도 종류(일반·위성)만 앱에서 관리한다. 타일은 네이버가 직접 그린다.
+const MAP_MIN_ZOOM = 6;
+const MAP_MAX_ZOOM = 19;
 
 const STATION_INDEX = new Map(STATIONS.map(row => [row[0], row]));
 const DRIVING_INDEX = new Map(DRIVING_SPOTS.map(row => [row[0], row]));
@@ -113,7 +107,7 @@ const state = {
   mode: 'fair',
   travelMode: 'transit',
   activeId: null,
-  style: 'dark',
+  mapType: 'normal', // normal | hybrid (지도 도구의 레이어 버튼)
   placeView: 'course', // course | restaurant | cafe
   courseIndex: 0,
   liveRadiusKm: LIVE_RADIUS_KM, // 실시간 주변 조회 반경 (1 → 2 → 3km)
@@ -141,16 +135,17 @@ const el = {
   fitBtnMap: document.getElementById('fitBtnMap'),
   shareBtn: document.getElementById('shareBtn'),
   styleBtn: document.getElementById('styleBtn'),
+  zoomInBtn: document.getElementById('zoomInBtn'),
+  zoomOutBtn: document.getElementById('zoomOutBtn'),
   mapHint: document.getElementById('mapHint'),
   toast: document.getElementById('toast'),
 };
 
 let map = null;
-let tileLayer = null;
-let personLayer = null;
-let overlayLayer = null;
-let focusLayer = null;
 const markers = new Map();
+// 마커·도형은 레이어별 Set에 모아 두고 setMap(null)로 한 번에 걷어낸다 (L.layerGroup 대체).
+const layers = { person: new Set(), overlay: new Set(), focus: new Set() };
+let infoWindow = null;
 let geoTimer = null;
 let toastTimer = null;
 let renderQueued = false;
@@ -189,67 +184,167 @@ function scheduleRender() {
    지도
    ------------------------------------------------------------------ */
 function initMap() {
-  map = L.map('map', {
-    center: [SEOUL_CENTER.lat, SEOUL_CENTER.lng],
-    zoom: 11,
-    zoomControl: true,
-    zoomSnap: 0.5,
-    wheelPxPerZoomLevel: 90,
-    minZoom: 6,
-    maxZoom: 16,
-    worldCopyJump: true,
-  });
-  map.zoomControl.setPosition('bottomright');
+  // 인증이 실패하면 네이버가 maps.js 의 클래스를 null 로 만들기 때문에 하나 더 확인한다.
+  if (!window.naver || !naver.maps || !naver.maps.LatLng) {
+    toast('지도를 불러오지 못했어요 — 네트워크와 네이버 지도 인증(등록 도메인)을 확인해 주세요', 6000);
+    return;
+  }
+  // 인증(클라이언트 ID·등록 도메인) 실패는 네이버가 이 전역 함수로 알려 준다.
+  window.navermap_authFailure = () => {
+    toast('네이버 지도 인증에 실패했어요 — NCP 콘솔의 Web 서비스 URL을 확인해 주세요', 6000);
+  };
 
-  applyTileStyle(state.style);
+  try {
+    map = new naver.maps.Map('map', {
+      center: latlng(SEOUL_CENTER.lat, SEOUL_CENTER.lng),
+      zoom: 11,
+      minZoom: MAP_MIN_ZOOM,
+      maxZoom: MAP_MAX_ZOOM,
+      zoomControl: false, // 확대·축소는 앱 지도 도구(.map-zoom)로 직접 그린다
+      mapTypeControl: false,
+      scaleControl: false,
+      mapDataControl: true, // 지도 데이터 저작권(Naver·OSM) 표기는 그대로 노출한다
+      draggable: true,
+      keyboardShortcuts: true,
+    });
+  } catch (error) {
+    map = null;
+    console.error('[PKPilot0002] 네이버 지도 초기화 실패', error);
+    toast('지도를 띄우지 못했어요 — 네이버 지도 인증을 확인해 주세요', 6000);
+    return;
+  }
 
-  personLayer = L.layerGroup().addTo(map);
-  overlayLayer = L.layerGroup().addTo(map);
-  focusLayer = L.layerGroup().addTo(map);
+  applyMapType(state.mapType);
 
-  map.on('click', event => {
-    addPoint({ lat: event.latlng.lat, lng: event.latlng.lng, source: 'map' });
+  naver.maps.Event.addListener(map, 'click', event => {
+    if (onOverlayClick(event)) return;
+    addPoint({ lat: event.coord.lat(), lng: event.coord.lng(), source: 'map' });
   });
 }
 
-function applyTileStyle(style) {
-  state.style = style === 'light' ? 'light' : 'dark';
-  document.body.dataset.mapstyle = state.style;
-  el.styleBtn.setAttribute(
-    'aria-label',
-    state.style === 'dark' ? '지도 스타일: 다크 (누르면 라이트)' : '지도 스타일: 라이트 (누르면 다크)',
-  );
-
-  if (tileLayer) {
-    tileLayer.setUrl(TILES.url);
-    return;
+function applyMapType(type) {
+  state.mapType = type === 'hybrid' ? 'hybrid' : 'normal';
+  if (mapReady()) {
+    map.setMapTypeId(state.mapType === 'hybrid' ? naver.maps.MapTypeId.HYBRID : naver.maps.MapTypeId.NORMAL);
   }
-  tileLayer = L.tileLayer(TILES.url, TILES.options);
-  let failures = 0;
-  tileLayer.on('tileerror', () => {
-    failures += 1;
-    if (failures === 8) toast('지도 타일을 불러오지 못했어요 — 네트워크를 확인해 주세요', 3400);
-  });
-  tileLayer.addTo(map);
-  tileLayer.bringToBack();
+  const label = state.mapType === 'hybrid' ? '지도 종류: 위성 (누르면 일반)' : '지도 종류: 일반 (누르면 위성)';
+  el.styleBtn.setAttribute('aria-label', label);
+  el.styleBtn.setAttribute('aria-pressed', String(state.mapType === 'hybrid'));
+  el.styleBtn.title = state.mapType === 'hybrid' ? '지도 종류: 위성' : '지도 종류: 일반';
+}
+
+function zoomBy(step) {
+  if (!mapReady()) return;
+  const next = Math.max(MAP_MIN_ZOOM, Math.min(MAP_MAX_ZOOM, map.getZoom() + step));
+  map.setZoom(next, true);
 }
 
 function fitAll(animate = true) {
+  if (!mapReady()) return;
   if (!state.points.length) {
-    map.setView([SEOUL_CENTER.lat, SEOUL_CENTER.lng], 11, { animate });
+    moveTo(SEOUL_CENTER.lat, SEOUL_CENTER.lng, 11, animate);
     return;
   }
   if (state.points.length === 1) {
-    map.setView([state.points[0].lat, state.points[0].lng], Math.max(map.getZoom(), 13), { animate });
+    moveTo(state.points[0].lat, state.points[0].lng, Math.max(map.getZoom(), 13), animate);
     return;
   }
-  const bounds = L.latLngBounds(state.points.map(p => [p.lat, p.lng]));
-  const mobile = isMobile();
   const peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peek-h')) || 200;
-  const options = mobile
-    ? { paddingTopLeft: [26, 70], paddingBottomRight: [26, peek + 26], maxZoom: 14, animate }
-    : { paddingTopLeft: [56, 70], paddingBottomRight: [56, 70], maxZoom: 14, animate };
-  map.fitBounds(bounds, options);
+  const padding = isMobile()
+    ? { top: 70, left: 26, bottom: peek + 26, right: 26, maxZoom: 14 }
+    : { top: 70, left: 56, bottom: 70, right: 56, maxZoom: 14 };
+  map.fitBounds(boundsOf(state.points), padding);
+}
+
+/* ------------------------------------------------------------------
+   지도 — 오버레이 유틸 (Leaflet 의 layer/marker/polyline 을 대신한다)
+   ------------------------------------------------------------------ */
+function latlng(lat, lng) {
+  return new naver.maps.LatLng(lat, lng);
+}
+
+// 지도 API 를 실제로 쓸 수 있는 상태인지 — 네이버는 인증 실패 시 naver.maps 를 null 로 만든다.
+function mapReady() {
+  return Boolean(map && window.naver && naver.maps && naver.maps.LatLng);
+}
+
+function track(layer, overlay) {
+  layers[layer].add(overlay);
+  return overlay;
+}
+
+function clearLayer(layer) {
+  layers[layer].forEach(overlay => {
+    try {
+      overlay.setMap(null);
+    } catch {
+      /* 이미 지도에서 떨어진 오버레이 */
+    }
+  });
+  layers[layer].clear();
+  if (layer !== 'person') closeInfo();
+}
+
+function closeInfo() {
+  if (infoWindow) infoWindow.close();
+}
+
+// 말풍선은 하나만 재사용한다 — Leaflet 팝업처럼 한 번에 하나만 열린다.
+function openInfo(lat, lng, html, offsetY = 0) {
+  if (!mapReady()) return;
+  if (!infoWindow) {
+    infoWindow = new naver.maps.InfoWindow({
+      backgroundColor: '#15170f',
+      borderColor: '#3c4136',
+      borderWidth: 1,
+      anchorSize: new naver.maps.Size(12, 8),
+      maxWidth: 280,
+    });
+  }
+  infoWindow.setOptions({ pixelOffset: new naver.maps.Point(0, offsetY) });
+  infoWindow.setContent(`<div class="map-popup">${html}</div>`);
+  infoWindow.open(map, latlng(lat, lng));
+}
+
+// HTML 마커 — L.divIcon 대체. anchor는 마커 좌표가 content 안에서 놓이는 지점(px)이다.
+function htmlMarker(layer, { lat, lng, html, size = [1, 1], anchor = [0, 0], zIndex = 0, clickable = false }) {
+  if (!mapReady()) return null;
+  return track(layer, new naver.maps.Marker({
+    position: latlng(lat, lng),
+    map,
+    clickable,
+    zIndex,
+    cursor: clickable ? 'pointer' : 'default',
+    icon: {
+      content: html,
+      size: new naver.maps.Size(size[0], size[1]),
+      anchor: new naver.maps.Point(anchor[0], anchor[1]),
+    },
+  }));
+}
+
+function boundsOf(coords) {
+  const first = coords[0];
+  const bounds = new naver.maps.LatLngBounds(latlng(first.lat, first.lng), latlng(first.lat, first.lng));
+  coords.slice(1).forEach(coord => bounds.extend(latlng(coord.lat, coord.lng)));
+  return bounds;
+}
+
+function moveTo(lat, lng, zoom, animate = true) {
+  if (!mapReady()) return;
+  const level = Math.max(MAP_MIN_ZOOM, Math.min(MAP_MAX_ZOOM, Math.round(zoom)));
+  if (!animate) {
+    map.setCenter(latlng(lat, lng));
+    map.setZoom(level, false);
+    return;
+  }
+  map.morph(latlng(lat, lng), level, { duration: 320 });
+}
+
+// 마커·도형 위를 누른 것은 지도 클릭(출발지 추가)이 아니다.
+function onOverlayClick(event) {
+  const node = event.pointerEvent?.target;
+  return Boolean(node?.closest?.('.pin-holder, .pin-tip, .pin-mid, .pin-station, .pin-label, .pin-course, .pin-focus, .map-popup'));
 }
 
 /* ------------------------------------------------------------------
@@ -300,7 +395,8 @@ function removePoint(id) {
   state.points.splice(index, 1);
   const marker = markers.get(id);
   if (marker) {
-    personLayer.removeLayer(marker);
+    layers.person.delete(marker);
+    marker.setMap(null);
     markers.delete(id);
   }
   if (state.activeId === id) state.activeId = null;
@@ -310,8 +406,9 @@ function removePoint(id) {
 function resetAll() {
   if (!state.points.length) return;
   state.points = [];
-  markers.forEach(marker => personLayer.removeLayer(marker));
+  markers.forEach(marker => marker.setMap(null));
   markers.clear();
+  layers.person.clear();
   state.activeId = null;
   seq = 0;
   render();
@@ -1157,7 +1254,7 @@ function renderResult(result) {
       const lat = Number(button.dataset.focusLat);
       const lng = Number(button.dataset.focusLng);
       if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        map.setView([lat, lng], button.dataset.focusName ? 16 : 15, { animate: true });
+        moveTo(lat, lng, button.dataset.focusName ? 16 : 15);
         if (button.dataset.focusName) {
           focusPlace({ lat, lng, name: button.dataset.focusName });
         }
@@ -1169,7 +1266,7 @@ function renderResult(result) {
     button.addEventListener('click', () => {
       if (state.placeView === button.dataset.placeView) return;
       state.placeView = button.dataset.placeView;
-      focusLayer?.clearLayers();
+      clearLayer('focus');
       render();
     });
   });
@@ -1179,16 +1276,13 @@ function renderResult(result) {
       if (!Number.isFinite(next)) return;
       const changed = next !== state.courseIndex;
       state.courseIndex = next;
-      focusLayer?.clearLayers();
+      clearLayer('focus');
       if (changed) render();
       const course = computeResult()?.nearby?.courses?.[state.courseIndex];
       if (course && map) {
         map.fitBounds(
-          L.latLngBounds([
-            [course.restaurant.lat, course.restaurant.lng],
-            [course.cafe.lat, course.cafe.lng],
-          ]),
-          { padding: [46, 46], maxZoom: 17 },
+          boundsOf([course.restaurant, course.cafe]),
+          { top: 46, left: 46, bottom: 46, right: 46, maxZoom: 17 },
         );
         if (isMobile()) setSheet('peek');
       }
@@ -1228,60 +1322,64 @@ function renderResult(result) {
    렌더 — 지도
    ------------------------------------------------------------------ */
 function syncMarkers(result) {
+  if (!mapReady()) return;
   const live = new Set(state.points.map(p => p.id));
   for (const [id, marker] of markers) {
-    if (!live.has(id)) {
-      personLayer.removeLayer(marker);
-      markers.delete(id);
-    }
+    if (live.has(id)) continue;
+    layers.person.delete(marker);
+    marker.setMap(null);
+    markers.delete(id);
   }
 
   state.points.forEach((point, i) => {
     const color = PALETTE[i % PALETTE.length];
     let marker = markers.get(point.id);
     if (!marker) {
-      const icon = L.divIcon({
-        className: 'pin-wrap',
-        html: `<span class="pin-person" style="--c:${color}"><span>${i + 1}</span><span class="pin-tail"></span></span>`,
-        iconSize: [30, 36],
-        iconAnchor: [15, 30],
+      marker = new naver.maps.Marker({
+        position: latlng(point.lat, point.lng),
+        map,
+        draggable: true,
+        clickable: true,
+        cursor: 'grab',
+        zIndex: 300 + i,
+        icon: {
+          content: `<span class="pin-holder"><span class="pin-person" style="--c:${color}"><span>${i + 1}</span><span class="pin-tail"></span></span><span class="pin-tip">${esc(point.name)}</span></span>`,
+          size: new naver.maps.Size(30, 36),
+          anchor: new naver.maps.Point(15, 30),
+        },
       });
-      marker = L.marker([point.lat, point.lng], { icon, draggable: true, riseOnHover: true });
-      marker.on('drag', () => {
-        const latlng = marker.getLatLng();
-        point.lat = latlng.lat;
-        point.lng = latlng.lng;
+      naver.maps.Event.addListener(marker, 'drag', () => {
+        const pos = marker.getPosition();
+        point.lat = pos.lat();
+        point.lng = pos.lng();
         updateOverlaysOnly();
         scheduleLightResult();
       });
-      marker.on('dragend', () => {
+      naver.maps.Event.addListener(marker, 'dragend', () => {
         point.address = '';
         point.addressState = 'idle';
         requestAddress(point);
         render();
       });
-      marker.on('click', () => {
+      naver.maps.Event.addListener(marker, 'click', () => {
         state.activeId = point.id;
         scheduleRender();
       });
-      marker.addTo(personLayer);
+      layers.person.add(marker);
       markers.set(point.id, marker);
     } else {
-      marker.setLatLng([point.lat, point.lng]);
-      const dot = marker.getElement()?.querySelector('.pin-person');
+      marker.setPosition(latlng(point.lat, point.lng));
+      marker.setZIndex(300 + i);
+      const holder = marker.getElement();
+      const dot = holder?.querySelector('.pin-person');
       if (dot) {
         dot.style.setProperty('--c', color);
         const num = dot.querySelector('span');
         if (num) num.textContent = String(i + 1);
       }
+      const tip = holder?.querySelector('.pin-tip');
+      if (tip && tip.textContent !== point.name) tip.textContent = point.name;
     }
-    marker.unbindTooltip();
-    marker.bindTooltip(point.name, {
-      permanent: true,
-      direction: 'bottom',
-      offset: [0, 6],
-      className: 'pin-tip',
-    });
   });
 }
 
@@ -1310,80 +1408,84 @@ function updateDistancesInline(result) {
 }
 
 function drawOverlays(result) {
-  overlayLayer.clearLayers();
-  if (!result || state.points.length === 0) return;
+  clearLayer('overlay');
+  if (!mapReady() || !result || state.points.length === 0) return;
 
   if (state.points.length >= 2) {
     const { center } = result;
     const mean = result.stats?.mean || 0;
     if (mean > 0.05) {
-      L.circle([center.lat, center.lng], {
+      track('overlay', new naver.maps.Circle({
+        map,
+        center: latlng(center.lat, center.lng),
         radius: Math.max(mean * 1000, 60),
-        color: '#ff824f',
-        weight: 1,
-        opacity: 0.22,
+        strokeColor: '#ff824f',
+        strokeOpacity: 0.22,
+        strokeWeight: 1,
+        strokeStyle: 'shortdash',
         fillColor: '#ff824f',
         fillOpacity: 0.035,
-        dashArray: '2 8',
-        interactive: false,
-      }).addTo(overlayLayer);
+        clickable: false,
+        zIndex: 110,
+      }));
     }
 
     state.points.forEach((point, i) => {
-      L.polyline([[point.lat, point.lng], [center.lat, center.lng]], {
-        color: '#ff824f',
-        weight: 1.5,
-        opacity: 0.5,
-        dashArray: '5 7',
-        interactive: false,
-      }).addTo(overlayLayer);
+      track('overlay', new naver.maps.Polyline({
+        map,
+        path: [latlng(point.lat, point.lng), latlng(center.lat, center.lng)],
+        strokeColor: '#ff824f',
+        strokeOpacity: 0.5,
+        strokeWeight: 1.5,
+        strokeStyle: 'dashed',
+        clickable: false,
+        zIndex: 120,
+      }));
 
       const t = 0.55;
       const lat = point.lat + (center.lat - point.lat) * t;
       const lng = point.lng + (center.lng - point.lng) * t;
       const d = result.distances[i];
       if (Number.isFinite(d) && d > 0.05) {
-        L.marker([lat, lng], {
-          icon: L.divIcon({
-            className: 'label-wrap',
-            html: `<span class="pin-label">${formatKm(d)}</span>`,
-            iconSize: [1, 1],
-            iconAnchor: [0, 0],
-          }),
-          interactive: false,
-          keyboard: false,
-        }).addTo(overlayLayer);
+        htmlMarker('overlay', {
+          lat,
+          lng,
+          zIndex: 130,
+          html: `<span class="center-holder"><span class="pin-label">${esc(formatKm(d))}</span></span>`,
+        });
       }
     });
 
-    L.marker([center.lat, center.lng], {
-      icon: L.divIcon({
-        className: 'mid-wrap',
-        html: '<span class="pin-mid"><span class="pulse"></span><span class="pulse"></span><span class="core"></span></span>',
-        iconSize: [52, 52],
-        iconAnchor: [26, 26],
-      }),
-      interactive: false,
-      keyboard: false,
-      zIndexOffset: 800,
-    }).addTo(overlayLayer);
+    htmlMarker('overlay', {
+      lat: center.lat,
+      lng: center.lng,
+      size: [52, 52],
+      anchor: [26, 26],
+      zIndex: 800,
+      html: '<span class="pin-mid"><span class="pulse"></span><span class="pulse"></span><span class="core"></span></span>',
+    });
   }
 
   const station = result.rec?.primary;
   if (station) {
     const car = isCarMode();
-    L.marker([station.lat, station.lng], {
-      icon: L.divIcon({
-        className: 'station-wrap',
-        html: `<span class="pin-station"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>${esc(station.name)}</span>`,
-        iconSize: [10, 10],
-        iconAnchor: [5, 26],
-      }),
-      zIndexOffset: 600,
-      keyboard: false,
-    })
-      .bindPopup(`<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : (walkingMinutes(station.km) > 90 ? 'KTX·버스로 접근' : `도보 ${walkingMinutes(station.km)}분`)}`)
-      .addTo(overlayLayer);
+    const marker = htmlMarker('overlay', {
+      lat: station.lat,
+      lng: station.lng,
+      zIndex: 600,
+      clickable: true,
+      html: `<span class="above-holder"><span class="pin-station"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>${esc(station.name)}</span></span>`,
+    });
+    if (marker) {
+      naver.maps.Event.addListener(marker, 'click', () => {
+        openInfo(
+          station.lat,
+          station.lng,
+          `<strong>${esc(station.name)}</strong><br/>중심에서 ${formatKm(station.km)} · ${car ? `차로 ${driveMinutes(station.km)}` : (walkingMinutes(station.km) > 90 ? 'KTX·버스로 접근' : `도보 ${walkingMinutes(station.km)}분`)}`,
+          -32,
+        );
+      });
+    }
   }
 
   // 1차 식당 ➔ 2차 카페 약속 코스
@@ -1393,21 +1495,17 @@ function drawOverlays(result) {
 
 /** 지도에서 찾은 장소 한 곳을 강조한다 — 목록의 “지도에서” 버튼 */
 function focusPlace(place) {
-  if (!map || !focusLayer) return;
-  focusLayer.clearLayers();
-  L.marker([place.lat, place.lng], {
-    icon: L.divIcon({
-      className: 'focus-wrap',
-      html: '<span class="pin-focus"></span>',
-      iconSize: [34, 34],
-      iconAnchor: [17, 17],
-    }),
-    keyboard: false,
-    zIndexOffset: 1200,
-  })
-    .bindPopup(`<strong>${esc(place.name)}</strong><br/>지도에서 위치 확인`)
-    .addTo(focusLayer)
-    .openPopup();
+  if (!mapReady()) return;
+  clearLayer('focus');
+  htmlMarker('focus', {
+    lat: place.lat,
+    lng: place.lng,
+    size: [34, 34],
+    anchor: [17, 17],
+    zIndex: 1200,
+    html: '<span class="pin-focus"></span>',
+  });
+  openInfo(place.lat, place.lng, `<strong>${esc(place.name)}</strong><br/>지도에서 위치 확인`, -24);
 }
 
 function coursePin(place, number, kind) {
@@ -1417,49 +1515,54 @@ function coursePin(place, number, kind) {
       <span>${esc(place.category || '')} · 도보 ${place.fromSpotMinutes ?? place.walkMinutes}분</span>
       <span class="popup-links">${reviewLinks(place)}</span>
     </div>`;
-  return L.marker([place.lat, place.lng], {
-    icon: L.divIcon({
-      className: 'course-pin-wrap',
-      html: `<span class="pin-course is-${kind}"><b>${glyph}</b><i></i></span>`,
-      iconSize: [36, 44],
-      iconAnchor: [18, 38],
-    }),
-    riseOnHover: true,
-    keyboard: false,
-    zIndexOffset: 1000,
-  }).bindPopup(popup);
+  const marker = htmlMarker('overlay', {
+    lat: place.lat,
+    lng: place.lng,
+    size: [36, 44],
+    anchor: [18, 38],
+    zIndex: 1000,
+    clickable: true,
+    html: `<span class="pin-course is-${kind}"><b>${glyph}</b><i></i></span>`,
+  });
+  if (marker) naver.maps.Event.addListener(marker, 'click', () => openInfo(place.lat, place.lng, popup, -34));
+  return marker;
 }
 
 function drawCourseOverlay(course, anchor) {
   const restaurant = course.restaurant;
   const cafe = course.cafe;
 
-  L.polyline(
-    [[anchor.lat, anchor.lng], [restaurant.lat, restaurant.lng]],
-    { color: '#ffa77f', weight: 2, opacity: 0.8, dashArray: '4 7', interactive: false },
-  ).addTo(overlayLayer);
+  track('overlay', new naver.maps.Polyline({
+    map,
+    path: [latlng(anchor.lat, anchor.lng), latlng(restaurant.lat, restaurant.lng)],
+    strokeColor: '#ffa77f',
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    strokeStyle: 'dashed',
+    clickable: false,
+    zIndex: 200,
+  }));
 
-  L.polyline(
-    [[restaurant.lat, restaurant.lng], [cafe.lat, cafe.lng]],
-    { color: '#ffb366', weight: 3.5, opacity: 0.95, dashArray: '9 8', interactive: false },
-  ).addTo(overlayLayer);
+  track('overlay', new naver.maps.Polyline({
+    map,
+    path: [latlng(restaurant.lat, restaurant.lng), latlng(cafe.lat, cafe.lng)],
+    strokeColor: '#ffb366',
+    strokeOpacity: 0.95,
+    strokeWeight: 3.5,
+    strokeStyle: 'dashed',
+    clickable: false,
+    zIndex: 210,
+  }));
 
-  const midLat = (restaurant.lat + cafe.lat) / 2;
-  const midLng = (restaurant.lng + cafe.lng) / 2;
-  L.marker([midLat, midLng], {
-    icon: L.divIcon({
-      className: 'course-label-wrap',
-      html: `<span class="course-label">도보 ${course.walkMinutes}분</span>`,
-      iconSize: [1, 1],
-      iconAnchor: [0, 0],
-    }),
-    interactive: false,
-    keyboard: false,
-    zIndexOffset: 950,
-  }).addTo(overlayLayer);
+  htmlMarker('overlay', {
+    lat: (restaurant.lat + cafe.lat) / 2,
+    lng: (restaurant.lng + cafe.lng) / 2,
+    zIndex: 950,
+    html: `<span class="center-holder"><span class="course-label">도보 ${course.walkMinutes}분</span></span>`,
+  });
 
-  coursePin(restaurant, '1', 'rest').addTo(overlayLayer);
-  coursePin(cafe, '2', 'cafe').addTo(overlayLayer);
+  coursePin(restaurant, '1', 'rest');
+  coursePin(cafe, '2', 'cafe');
 }
 
 /* ------------------------------------------------------------------
@@ -1675,7 +1778,7 @@ function initListEvents() {
     if (row) {
       state.activeId = row.dataset.id;
       const point = state.points.find(p => p.id === state.activeId);
-      if (point && map) map.panTo([point.lat, point.lng], { animate: true });
+      if (point && map) map.panTo(latlng(point.lat, point.lng), { duration: 320 });
       el.list.querySelectorAll('.participant').forEach(node => {
         node.classList.toggle('is-active', node.dataset.id === state.activeId);
       });
@@ -1688,11 +1791,8 @@ function initListEvents() {
     const point = state.points.find(p => p.id === input.dataset.name);
     if (!point) return;
     point.name = sanitizeName(input.value) || DEFAULT_NAMES(state.points.indexOf(point));
-    const marker = markers.get(point.id);
-    if (marker) {
-      marker.unbindTooltip();
-      marker.bindTooltip(point.name, { permanent: true, direction: 'bottom', offset: [0, 6], className: 'pin-tip' });
-    }
+    const tip = markers.get(point.id)?.getElement()?.querySelector('.pin-tip');
+    if (tip) tip.textContent = point.name;
     clearTimeout(geoTimer);
     geoTimer = setTimeout(syncUrl, 400);
   });
@@ -1760,9 +1860,12 @@ function initHeaderEvents() {
   el.shareBtn.addEventListener('click', copyLink);
   el.resetBtn.addEventListener('click', resetAll);
   el.styleBtn.addEventListener('click', () => {
-    applyTileStyle(state.style === 'dark' ? 'light' : 'dark');
-    toast(state.style === 'dark' ? '다크 지도' : '라이트 지도');
+    const next = state.mapType === 'hybrid' ? 'normal' : 'hybrid';
+    applyMapType(next);
+    toast(next === 'hybrid' ? '위성 지도' : '일반 지도');
   });
+  el.zoomInBtn.addEventListener('click', () => zoomBy(1));
+  el.zoomOutBtn.addEventListener('click', () => zoomBy(-1));
 
   document.addEventListener('keydown', event => {
     if (event.target.matches('input, textarea')) return;
@@ -1807,7 +1910,7 @@ function loadPoints(points, mode, notify = true, travelMode = null) {
 
 /* ------------------------------------------------------------------
    모바일 뷰포트 고정 — 페이지 확대/축소 차단
-   (지도 핀치 줌은 Leaflet의 터치 핸들러가 직접 처리하므로 그대로 둔다)
+   (지도 핀치 줌은 네이버 지도 엔진이 직접 처리하므로 그대로 둔다)
    ------------------------------------------------------------------ */
 function initViewportLock() {
   // iOS 사파리 전용 제스처 이벤트 — 페이지 자체의 핀치 확대를 막는다.
@@ -1820,7 +1923,7 @@ function initViewportLock() {
 
   const insideMap = target => Boolean(el.map && target && el.map.contains(target));
 
-  // 더블탭 확대 방지 — 지도(Leaflet 더블탭 줌)와 입력·버튼은 건드리지 않는다.
+  // 더블탭 확대 방지 — 지도(네이버 지도 더블탭 줌)와 입력·버튼은 건드리지 않는다.
   let lastTouchEnd = 0;
   document.addEventListener('touchend', event => {
     const now = Date.now();
@@ -1831,7 +1934,7 @@ function initViewportLock() {
     event.preventDefault();
   }, { passive: false });
 
-  // 두 손가락 확대 (사파리 밖 브라우저) — 지도 영역은 Leaflet이 처리한다.
+  // 두 손가락 확대 (사파리 밖 브라우저) — 지도 영역은 지도 엔진이 처리한다.
   document.addEventListener('touchmove', event => {
     if (event.touches.length > 1 && !insideMap(event.target) && event.cancelable) event.preventDefault();
   }, { passive: false });
@@ -1858,8 +1961,8 @@ function boot() {
     render();
   }
 
-  if (!isMobile()) {
-    setTimeout(() => map.invalidateSize(), 120);
+  if (!isMobile() && map) {
+    setTimeout(() => map.autoResize(), 120);
   }
 }
 
