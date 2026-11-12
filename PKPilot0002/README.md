@@ -94,13 +94,24 @@
 - 모바일 사파리 대응: 입력창 16px 고정(포커스 시 강제 확대 방지), 페이지 확대·축소 차단
   (`user-scalable=no` + `gesturestart`/더블탭 차단), 지도 핀치 줌은 네이버 지도 엔진이 직접 처리
 
+**브랜딩 · 공유 카드 · HD2Lab 포털 메뉴**
+- HD2Lab 표준 파비콘 세트(`favicon.ico`·`favicon.svg`·`favicon-32x32.png`·`apple-touch-icon.png`)와
+  PWA 매니페스트(`manifest.json` — `HD2Lab Midpoint` / 테마 `#101110`)
+- 카카오톡·SNS 공유 카드: 1200×630 `og-image.png`(다크 `#101110` + 오렌지 `#ff824f` 듀얼 스큐 마크,
+  `HD2Lab | Midpoint`, "여럿이 만날 때, 딱 가운데", 미니 지도·거점 타일)와 Open Graph / Twitter `summary_large_image` 태그
+- 헤더 우측 `…` 버튼 → HD2Lab 포털 드롭다운: **Web-HQ** · **ApplicationHub** · GameHub · TechnicalHub
+  (새 탭으로 열어 앱 상태 유지, 바깥 클릭·Esc 로 닫힘, ↑↓·Home·End 키 이동, `aria-expanded` 동기화)
+
 ## 파일 구조
 
 ```
 PKPilot0002/
-├── index.html            화면 마크업 + 아이콘 스프라이트
-├── style.css             HD2Lab 다크 테마 · 지도/패널/시트 레이아웃
-├── app.js                네이버 지도 · 참가자 · 모드 토글 · 결과 UI
+├── index.html            화면 마크업 + 아이콘 스프라이트 + OG/파비콘 메타
+├── style.css             HD2Lab 다크 테마 · 지도/패널/시트 레이아웃 · 포털 드롭다운
+├── app.js                네이버 지도 · 참가자 · 모드 토글 · 결과 UI · 포털 메뉴
+├── manifest.json         PWA 매니페스트 (HD2Lab Midpoint)
+├── favicon.ico · favicon.svg · favicon-32x32.png · apple-touch-icon.png · icon-192.png · icon-512.png
+├── og-image.png          1200×630 공유 썸네일 (social-preview.png 동일본)
 ├── js/
 │   ├── core.js           순수 계산 (거리·중간 지점·공평도·URL·거점 추천·주변 장소·약속 코스) — DOM 의존 없음
 │   ├── stations.js       전국 도시철도·KTX/SRT·터미널 스냅샷 957곳 (자동 생성)
@@ -110,6 +121,7 @@ PKPilot0002/
 │   ├── directions.js     카카오맵·네이버지도·티맵 길찾기·도보 딥링크 · 지도 검색 링크
 │   └── landmarks.js      만남 거점 랜드마크 9곳 (Nominatim 확인)
 ├── tools/
+│   ├── generate_brand_assets.py  파비콘 세트·OG 이미지 생성기 (Pillow + cairosvg)
 │   ├── build_network.py      stations.js·driving_spots.js 생성기 (Wikidata + OSM Overpass)
 │   ├── build_places.py       places.js 생성기 (OSM Overpass — 이름·좌표·영업 태그·주차장)
 │   ├── build_stations.py     (구버전 수도권 전용 생성기 — build_network.py로 대체)
@@ -117,7 +129,9 @@ PKPilot0002/
 ├── tests/
 │   ├── run_tests.py      단위 테스트 러너 (Playwright + http.server)
 │   ├── unit/             테스트 하네스·케이스 143개 (core + places + live_places)
-│   └── visual/capture.py 화면 검증 + 스크린샷 (기본·모드 토글·영남권·장거리·약속 코스·실시간 인앱 탐색·fallback)
+│   └── visual/
+│       ├── capture.py             화면 검증 + 스크린샷 (기본·모드 토글·영남권·장거리·약속 코스·실시간 인앱 탐색·fallback)
+│       └── portal_menu_check.py   헤더 `…` 포털 드롭다운 검증 (데스크톱·모바일 열기/닫기·링크·정렬)
 └── docs/screenshots/     데스크톱·모바일 스크린샷
 ```
 
@@ -160,6 +174,8 @@ ES 모듈을 쓰므로 `file://`로 열면 동작하지 않습니다. 정적 서
 python3 tests/run_tests.py            # 단위 테스트 143개
 python3 tests/visual/capture.py --check   # Chromium 화면 검증
 python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
+python3 tests/visual/portal_menu_check.py --check   # 헤더 `…` 포털 드롭다운 검증
+python3 tools/generate_brand_assets.py             # 파비콘·OG 이미지 재생성
 ```
 
 - 단위 테스트: Haversine, 구면 무게중심, Weiszfeld·최소 외접원, 공평도, 좌표 정규화, URL 인코딩/파싱(잘못된 좌표·인원 초과·해시·전체 URL), 역·랜드마크 추천, 검색 자동완성(완전 일치·부분 일치·초성·랜드마크), 표시 형식,
