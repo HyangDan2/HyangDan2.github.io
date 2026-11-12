@@ -169,6 +169,8 @@ python3 tests/visual/capture.py       # 검증 + 스크린샷 갱신
   **강남·홍대·서면·김해 코스 카드·탭 전환·지도 ①·② 마커·폴리라인,
   비허브 거점(이수·의정부·천안·구미) 실시간 인앱 탐색과 외부 링크 미노출, 0곳·실패 모의 응답에서 스켈레톤 → 반경 2km 넓히기 → 다시 찾기, 모바일 가로 넘침**
 - Node.js 없이 Playwright(Chromium)만 사용합니다. `pip install playwright && playwright install chromium` 필요.
+- NAVER 지도는 NCP 콘솔에 등록된 도메인에서만 뜹니다. 로컬(`http://127.0.0.1`)에서는 지도가 401 로 막히므로
+  화면 검증은 배포본으로 돌립니다: `python3 tests/visual/capture.py --base https://hyangdan2.github.io/PKPilot0002/`
 
 ## 데이터 · 타일
 
