@@ -1,14 +1,22 @@
 :root {
     color-scheme: dark;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #101110;
-    color: #f3f2ec;
+    --sans: system-ui, -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
     --background: #101110;
     --surface: #1b1d1a;
+    --panel-raised: #242220;
     --border: #343630;
+    --line-soft: rgba(255, 255, 255, 0.08);
     --text: #f3f2ec;
+    --text-body: #c6c2bb;
     --muted: #aaa9a1;
+    --text-secondary: #8f8880;
     --accent: #ff824f;
+    --accent-hover: #ffa47b;
+    --accent-soft: rgba(255, 130, 79, 0.12);
+    font-family: var(--sans);
+    background: var(--background);
+    color: var(--text);
 }
 
 * { box-sizing: border-box; }
@@ -70,16 +78,16 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outlin
 
 .hero { min-height: 630px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: center; gap: 32px; padding-block: 82px 72px; }
 .hero-copy { position: relative; z-index: 1; }
-.eyebrow { margin: 0; color: #d0b4a5; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 11px; letter-spacing: .19em; text-transform: uppercase; }
+.eyebrow { margin: 0; color: var(--accent-hover); font-family: var(--mono); font-size: 11px; letter-spacing: .19em; text-transform: uppercase; }
 .eyebrow-dot { display: inline-block; width: 6px; height: 6px; margin: 0 12px 2px 0; border-radius: 50%; background: var(--accent); }
 .hero h1 { margin: 36px 0 28px; font-size: clamp(58px, 6.3vw, 100px); line-height: 1.02; font-weight: 800; letter-spacing: -.075em; }
 .hero h1 span { color: var(--accent); }
-.hero-description { margin: 0; color: #c6c5bf; font-size: 17px; line-height: 1.85; }
+.hero-description { margin: 0; color: var(--text-body); font-size: 17px; line-height: 1.85; }
 .hero-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; min-width: 205px; min-height: 57px; margin-top: 38px; padding: 15px 20px; border-radius: 3px; background: var(--accent); color: #191714; font-size: 13px; font-weight: 750; text-decoration: none; transition: background .2s, transform .2s; }
-.hero-action:hover { background: #ffa47b; transform: translateY(-3px); }
+.hero-action:hover { background: var(--accent-hover); transform: translateY(-3px); }
 .hero-visual { align-self: center; padding-top: 48px; }
 .hero-visual img { display: block; width: 100%; height: auto; }
-.hero-visual p { margin: -2px 0 0; color: #797c72; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 10px; letter-spacing: .18em; text-align: right; text-transform: uppercase; }
+.hero-visual p { margin: -2px 0 0; color: var(--text-secondary); font-family: var(--mono); font-size: 10px; letter-spacing: .18em; text-align: right; text-transform: uppercase; }
 .hero-visual p span { color: var(--accent); }
 
 .explore { padding-block: 36px 72px; border-top: 1px solid var(--border); scroll-margin-top: 105px; }
@@ -88,34 +96,34 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outlin
 .section-heading > p { margin: 0 0 4px; color: var(--muted); font-size: 14px; }
 .hubs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .hub-card { display: flex; flex-direction: column; min-height: 244px; padding: 30px 28px 32px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); text-decoration: none; transition: border-color .2s, background .2s, transform .2s; }
-.hub-card:hover { border-color: var(--accent); background: #242620; transform: translateY(-4px); }
-.card-index { color: #d0b4a5; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 11px; letter-spacing: .18em; }
+.hub-card:hover { border-color: var(--accent); background: var(--panel-raised); transform: translateY(-4px); }
+.card-index { color: var(--accent-hover); font-family: var(--mono); font-size: 11px; letter-spacing: .18em; }
 .hub-card h3 { margin: 36px 0 11px; font-size: clamp(25px, 2.4vw, 33px); line-height: 1.1; letter-spacing: -.05em; }
-.hub-card p { margin: 0; color: #c3c2bb; font-size: 14px; line-height: 1.7; }
-.card-topics { display: block; margin-top: 28px; color: #aaa9a1; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 10px; line-height: 1.7; letter-spacing: .07em; }
+.hub-card p { margin: 0; color: var(--text-body); font-size: 14px; line-height: 1.7; }
+.card-topics { display: block; margin-top: 28px; color: var(--muted); font-family: var(--mono); font-size: 10px; line-height: 1.7; letter-spacing: .07em; }
 
 .closing { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 54px; padding-block: 48px 72px; border-top: 1px solid var(--border); }
 .closing h2 { margin: 0; font-size: clamp(32px, 3.4vw, 50px); line-height: 1.12; letter-spacing: -.06em; }
 .closing h2 span { color: var(--accent); }
-.closing p { margin: 0 0 19px; color: #c2c1ba; font-size: 15px; line-height: 1.7; }
-.closing-note { color: #d0b4a5; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 10px; letter-spacing: .12em; }
+.closing p { margin: 0 0 19px; color: var(--text-body); font-size: 15px; line-height: 1.7; }
+.closing-note { color: var(--accent-hover); font-family: var(--mono); font-size: 10px; letter-spacing: .12em; }
 .site-footer { border-top: 1px solid var(--border); }
-.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 86px; color: #8d9088; font-size: 13px; }
-.footer-inner a { color: #d8d7d0; text-decoration: none; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 86px; color: var(--text-secondary); font-size: 13px; }
+.footer-inner a { color: var(--text); text-decoration: none; }
 .footer-inner a:hover { color: var(--accent); }
 
 html:has(dialog[open]) { overflow: hidden; }
-dialog { width: min(590px, calc(100% - 32px)); max-height: calc(100svh - 48px); padding: 0; border: 1px solid #55574e; border-radius: 7px; background: #1b1d1a; color: #d8d7d0; overscroll-behavior: contain; }
+dialog { width: min(590px, calc(100% - 32px)); max-height: calc(100svh - 48px); padding: 0; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text-body); overscroll-behavior: contain; }
 dialog::backdrop { background: rgb(0 0 0 / 80%); }
 .dialog-content { position: relative; padding: 34px; }
 .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .dialog-heading h2 { margin: 0; color: var(--text); font-size: 28px; letter-spacing: -.04em; }
-.close-button { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border: 1px solid #62645b; border-radius: 5px; background: transparent; color: var(--text); font-size: 28px; }
+.close-button { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 5px; background: transparent; color: var(--text); font-size: 28px; }
 .close-button:hover { border-color: var(--accent); color: var(--accent); }
 .dialog-content p { margin: 22px 0 0; line-height: 1.75; }
 .dialog-content .representative { color: var(--accent); margin-top: 12px; }
 .contact { border-top: 1px solid var(--border); padding-top: 22px; }
-.contact a { color: #ffaf8c; overflow-wrap: anywhere; text-underline-offset: 4px; }
+.contact a { color: var(--accent-hover); overflow-wrap: anywhere; text-underline-offset: 4px; }
 .about-logo { display: block; width: 140px; max-width: 40%; height: auto; margin: 0 auto 24px; border-radius: 5px; }
 
 @media (max-width: 1100px) {
