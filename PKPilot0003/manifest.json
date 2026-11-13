@@ -1,0 +1,21 @@
+{
+  "name": "HD2Lab Shutterplate",
+  "short_name": "Shutterplate",
+  "description": "사진 한 장을 갤러리 플레이트로 — EXIF 기반 포토 플레이트 스튜디오. 업로드 0 B, 100% 브라우저 로컬 처리.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101110",
+  "theme_color": "#101110",
+  "categories": ["photo", "productivity", "utilities"],
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "favicon-32x32.png", "sizes": "32x32", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
