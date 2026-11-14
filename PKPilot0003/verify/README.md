@@ -21,6 +21,17 @@
 iOS 공유 시트 자체는 실기기에서만 확인할 수 있어, 이 배포에서는 `navigator.canShare` 분기와
 폴백·취소 처리를 코드와 스텁 주입 테스트로 검증했습니다(자동화 테스트 목록 참고).
 
+### 라이브 배포 확인 (c0fa20a · 1cb634d)
+
+`https://hyangdan2.github.io/PKPilot0003/` 를 직접 열어 받은 실측본입니다(콘솔 에러 0건).
+
+| 파일 | 내용 |
+| --- | --- |
+| `live-emblem-<브랜드>-gallery.jpg` | 라이브 페이지에서 `SPApp.prepareExport()`로 받은 11종 1:1 출력물 (1752×1414) |
+| `live-ui-emblem-picker-mobile.png` | 라이브 엠블럼 시트 — Leica 원판에 필기체가 뚫려 렌더됨 |
+| `live-ui-export-card-mobile.png` | 라이브 결과 카드 — 파일명·용량·포맷과 큰 미리보기 |
+| `live-og-image.png` | `og-image.png?v=20261114-2` 실물 (저장소 파일과 SHA-256 일치) |
+
 ## 8종 프레임 글자 잘림·겹침 수정 검증 (배포 754ee67)
 
 `live-fit-` 접두사 파일은 **배포본 페이지의 `SPPlate.paint()`를 1:1 해상도로 직접 호출**해 받은
