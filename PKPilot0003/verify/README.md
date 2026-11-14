@@ -67,6 +67,27 @@ iOS 공유 시트 자체는 실기기에서만 확인할 수 있어, 이 배포�
 | `live-ui-export-card-mobile.png` | 라이브 결과 카드 — 파일명·용량·포맷과 큰 미리보기 |
 | `live-og-image.png` | `og-image.png?v=20261114-2` 실물 (저장소 파일과 SHA-256 일치) |
 
+## Film Sprocket 레일 대칭 · Strap Bar 슬림 밴드 (배포 7a61782)
+
+`fix-` 접두사 파일은 배포본 페이지의 `SPPlate.paint()`를 직접 호출해 받은 플레이트 원본입니다
+(내보내기와 같은 루틴, 긴 변 1600px). `fix-film-sprocket-01-portrait.png` · `fix-strap-bar-phone.png`는
+390×844 모바일 화면 캡처입니다. 모두 **로컬 캡처와 라이브 캡처가 바이트 단위로 동일**합니다.
+
+| 파일 | 플레이트 | 내용 |
+| --- | --- | --- |
+| `fix-film-sprocket-02-landscape.png` | 1600×1357 (가로 1:1) | 상·하단 레일 거울 대칭 — 가장자리↔구멍 20.5px = 구멍↔실선 20.5px (위·아래) |
+| `fix-film-sprocket-03-pad0.png` | 894×1600 | 보더 패딩 0% — 레일 26.5px 유지, 실선↔뱃지 8px · 뱃지↔사진 6px, 날짜 줄이 실선 위 |
+| `fix-film-sprocket-01-portrait.png` | 1170×2532 (390×844 @3x) | 모바일 화면의 Film Sprocket — 상하 여백·뱃지 위치 |
+| `fix-strap-bar.png` | 1600×1195 (가로 1:1) | 스트랩 바 123px(사진 높이 12%) — 사진↔첫 줄 27px, 스티치가 바닥을 닫음 |
+| `fix-strap-bar-portrait.png` | 953×1600 | 세로 판 — 바 184px, `HD2LAB · STRAP 04`가 스티치 위 우측 |
+| `fix-strap-bar-phone.png` | 1170×2532 (390×844 @3x) | 모바일 화면 — 바가 낮아 워터마크는 생략되고 두 줄·스티치만 |
+| `fix-emblem-color-desktop.png` · `fix-emblem-allblack-desktop.png` · `fix-emblem-color-mobile.png` | 1440×900 · 390×844 | 엠블럼 탭 원본 컬러 / All Black (PC 인스펙터·모바일 시트) |
+
+- 라이브 파일 SHA-256 = 저장소 파일: `js/plate.js` `6d33638a…`, `tests/run_tests.py` `1ed10bbf…`
+- 자동화 테스트: `python3 tests/run_tests.py` → **PASS 646 · FAIL 0 · SKIP 0**
+  (film 대칭: 레일 높이 동일 · 각 구멍이 자기 레일 정중앙 · 그려진 구멍의 위/아래 간격 · 실선 여유 · 뱃지 자리 /
+  strap 여백: 바 높이 ≤ 사진 높이 13% · 사진 아래 첫 줄 여백 · 스티치 위 여백 · 스티치에 글자 0건)
+
 ## 8종 프레임 글자 잘림·겹침 수정 검증 (배포 754ee67)
 
 `live-fit-` 접두사 파일은 **배포본 페이지의 `SPPlate.paint()`를 1:1 해상도로 직접 호출**해 받은
