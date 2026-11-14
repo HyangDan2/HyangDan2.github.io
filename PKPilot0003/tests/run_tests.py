@@ -570,9 +570,28 @@ def browser_tests(port):
         page.hover("#frameStrip")
         page.mouse.wheel(0, 300)
         page.wait_for_timeout(250)
-        sl = page.evaluate("() => document.querySelector('#frameStrip').scrollLeft")
-        check("wheel scrolls the strip horizontally", sl > 10, f"scrollLeft={sl}")
+        wheel = page.evaluate("""() => { const s = document.querySelector('#frameStrip');
+            return {left: s.scrollLeft, max: s.scrollWidth - s.clientWidth}; }""")
+        check("wheel scrolls the strip horizontally",
+              wheel["max"] > 0 and wheel["left"] >= wheel["max"] - 1, json.dumps(wheel))
+        page.evaluate("() => document.querySelector('#frameStrip').scrollLeft = 0")
         page.evaluate("() => SPApp.setStyle('horizon')")
+        page.wait_for_timeout(120)
+        box = page.locator("#frameStrip").bounding_box()
+        page.mouse.move(box["x"] + box["width"] * 0.72, box["y"] + box["height"] * 0.5)
+        page.mouse.down()
+        page.mouse.move(box["x"] + box["width"] * 0.22, box["y"] + box["height"] * 0.5, steps=10)
+        page.mouse.up()
+        page.wait_for_timeout(220)
+        dragged = page.evaluate("""() => { const s = document.querySelector('#frameStrip');
+            return {left: s.scrollLeft, max: s.scrollWidth - s.clientWidth}; }""")
+        check("drag scrolls the strip horizontally",
+              dragged["max"] > 0 and dragged["left"] >= dragged["max"] - 1, json.dumps(dragged))
+        check("drag across cards does not change the frame",
+              page.evaluate("() => SPApp.state.style") == "horizon",
+              page.evaluate("() => SPApp.state.style"))
+
+        page.evaluate("() => document.querySelector('#frameStrip').scrollLeft = 0")
         page.focus('.frame-card[data-style="horizon"]')
         page.keyboard.press("ArrowRight")
         page.wait_for_timeout(200)

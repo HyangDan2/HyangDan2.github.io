@@ -915,7 +915,9 @@
 
     var scrollDrag = null;
     el.strip.addEventListener('pointerdown', function (e) {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      /* touch swipes are handled natively (overflow-x + momentum); the manual
+         drag exists for mice, where there is no native pan. */
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
       scrollDrag = { x: e.clientX, left: el.strip.scrollLeft, moved: 0 };
       dragMoved = false;
     });
