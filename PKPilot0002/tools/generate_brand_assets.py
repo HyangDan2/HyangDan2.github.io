@@ -63,6 +63,14 @@ MARK_SVG = (
     '<path d="M15 20L35 10V43L15 53ZM29 24L49 14V47L29 57Z" fill="none" '
     'stroke="#ff824f" stroke-width="4"/></svg>'
 )
+# 정식 HD2Lab 로고 — 파비콘 세트(듀얼 스큐)는 그대로 두고, 그 밖의 모든 로고
+# 자리(사이트 헤더·OG/소셜 카드)에는 LOGO.png의 원형 엠블럼을 쓴다.
+LOGO_PATH = os.path.join(ROOT, "..", "assets", "logo-mark.png")
+
+
+def logo_badge(px: int) -> Image.Image:
+    badge = Image.open(LOGO_PATH).convert("RGBA")
+    return badge.resize((px, px), Image.LANCZOS)
 
 FONT_CANDIDATES = [
     os.environ.get("PICKLE_BRAND_FONT", ""),
@@ -244,9 +252,8 @@ def build_og(out_dir: str) -> str:
               DIM, anchor="rs")
 
     # 4) 브랜드 헤더: 마크 + HD2Lab | Midpoint
-    mark_px = 100 * S
-    mark = render_svg(MARK_SVG, mark_px)
-    img.paste(mark, (84 * S, 120 * S), mark)
+    badge = logo_badge(104 * S)
+    img.paste(badge, (82 * S, 118 * S), badge)
 
     base_y = 194
     f_title = font(62 * S, "SemiBold")

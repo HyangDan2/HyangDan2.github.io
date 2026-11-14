@@ -197,21 +197,12 @@ a {
   min-width: 0;
 }
 
-.mark {
-  display: inline-block;
-  width: 14px;
-  height: 19px;
-  border: 2.5px solid var(--accent);
-  transform: skewY(-23deg);
-  position: relative;
+.brand-logo {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   flex: none;
-}
-
-.mark::after {
-  content: '';
-  position: absolute;
-  inset: 4px -6px -6px 4px;
-  border: 1.8px solid var(--accent);
 }
 
 .brand-name {

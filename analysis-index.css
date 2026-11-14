@@ -75,21 +75,13 @@ a, button, input, select { font: inherit; }
     padding-left: 13px;
 }
 
-.mark {
-    display: inline-block;
-    width: 17px;
-    height: 22px;
-    border: 3px solid #ff824f;
-    transform: skewY(-23deg);
-    position: relative;
+/* Official HD2Lab logo — the round emblem from LOGO.png (favicon keeps the dual-skew mark) */
+.brand-logo {
+    display: block;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
     flex-shrink: 0;
-}
-
-.mark:after {
-    content: '';
-    position: absolute;
-    inset: 4px -8px -7px 4px;
-    border: 2px solid #ff824f;
 }
 
 .home-link {

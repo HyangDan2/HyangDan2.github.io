@@ -278,21 +278,12 @@ a {
   margin-left: 1px;
 }
 
-.mark {
-  display: inline-block;
-  width: 15px;
-  height: 20px;
-  border: 3px solid var(--accent);
-  transform: skewY(-23deg);
-  position: relative;
+.brand-logo {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   flex: none;
-}
-
-.mark::after {
-  content: '';
-  position: absolute;
-  inset: 4px -7px -6px 4px;
-  border: 2px solid var(--accent);
 }
 
 .header-actions {

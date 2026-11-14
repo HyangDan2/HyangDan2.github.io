@@ -188,7 +188,11 @@ def static_tests():
 
     # ── header / brand ───────────────────────────────────────────────────────
     print("\n[static] header, portal menu, brief structure")
-    check("header carries the official dual-skew path", MARK_PATH in html)
+    hdr = re.search(r"<header.*?</header>", html, re.S).group(0)
+    check("header carries the official HD2Lab logo",
+          'class="brand-mark"' in hdr and '../assets/logo-mark.png' in hdr)
+    check("header no longer draws the dual-skew mark (favicon only)",
+          MARK_PATH not in hdr)
     check("brand name is Shutterplate", 'class="brand-name">Shutterplate<' in html)
     check("brand badge is HD2Lab", 'class="brand-badge">HD2Lab<' in html)
     check("no PKPilot0003 stamp in the header",
@@ -218,9 +222,10 @@ def static_tests():
     check("the title is no longer a link off the site", '<a class="brand"' not in html)
     hero = re.search(r'<header class="home-hero">.*?</header>', html, re.S)
     hero_html = hero.group(0) if hero else ""
-    check("hero carries the official dual-skew mark in the accent",
-          MARK_PATH in hero_html and "#ff824f" in hero_html)
-    check("hero mark is drawn with mitred joins", 'stroke-linejoin="miter"' in hero_html)
+    check("hero carries the official HD2Lab logo",
+          'class="hero-mark"' in hero_html and '../assets/logo-mark.png' in hero_html)
+    check("hero no longer draws the dual-skew mark (favicon only)",
+          MARK_PATH not in hero_html)
     check("hero names the product, with the HD2Lab badge beside it",
           "<h1>Shutterplate</h1>" in hero_html and 'class="brand-badge hero-badge"' in hero_html)
     check("hero says this is a local EXIF studio", "EXIF" in hero_html and "0 B" in hero_html)
@@ -343,8 +348,10 @@ def static_tests():
         check(f"plate engine covers {kw}", kw.lower() in plate.lower())
 
     emblems = read("js/emblems.js")
-    check("official mark path in emblem engine", MARK_PATH in emblems)
-    check("emblem engine exposes MARK_PATH", "MARK_PATH: MARK_PATH" in emblems)
+    check("the official logo is the HD2Lab emblem",
+          "var LOGO_SRC = '../assets/logo-mark.png'" in emblems)
+    check("emblem engine exposes the logo source", "LOGO_SRC: LOGO_SRC" in emblems)
+    check("no dual-skew path is left in the emblem engine", MARK_PATH not in emblems)
     maker_count = len(re.findall(r"id: '(\w+)', name: '", emblems))
     check("eleven maker emblems kept", maker_count == 11, str(maker_count))
     for maker in ("sony", "canon", "nikon", "fujifilm", "samsung", "leica", "hasselblad",
@@ -371,7 +378,9 @@ def static_tests():
         check(f"emblem {maker} cites its source file",
               ("commons.wikimedia.org" in sources_doc or "nikon.com" in sources_doc or
                "omsystem.com" in sources_doc) and maker in sources_doc.lower())
-    check("hd2lab keeps the project wordmark", "t('HD2LAB'" in emblems)
+    check("hd2lab emblem draws the official logo image",
+          "id: 'hd2lab', name: 'HD2Lab', vb: [100, 100]" in emblems and
+          "i(0, 0, 100, 100)" in emblems)
     # p(d, fill, stroke, sw, rule) — a rule written into the stroke slot silently
     # fills the Leica roundel solid, so the argument positions are checked here
     check("no emblem passes a fill rule as the stroke colour",
@@ -541,9 +550,14 @@ CHROME_UA = ("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML
              "Chrome/124.0.0.0 Mobile Safari/537.36")
 
 
+# Serve the GitHub Pages root, not the app folder: the app is published at
+# /PKPilot0003/ under it, and its header logo really is ../assets/logo-mark.png.
+SITE = os.path.dirname(ROOT)
+
+
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
-        super().__init__(*a, directory=ROOT, **kw)
+        super().__init__(*a, directory=SITE, **kw)
 
     def log_message(self, *a):
         pass
@@ -876,7 +890,7 @@ def browser_tests(port):
         playwright.stop()
         return
 
-    base = f"http://127.0.0.1:{port}/"
+    base = f"http://127.0.0.1:{port}/PKPilot0003/"
     # The landing is the front door now; every studio suite below opens the
     # editor through its #editor shortcut, and the landing gets its own block.
     studio = base + "#editor"
@@ -1760,8 +1774,11 @@ def browser_tests(port):
         check("colour: single-colour marks stay ink",
               all(brand["day"][i]["red"] == 0 for i in ("sony", "nikon", "apple", "hasselblad")),
               json.dumps({k: brand["day"][k]["red"] for k in ("sony", "nikon", "apple", "hasselblad")}))
-        check("colour: HD2Lab keeps its accent orange",
-              "#ff824f" in brand["svg"]["hd2lab"]["day"], brand["svg"]["hd2lab"]["day"][:160])
+        check("colour: HD2Lab paints the official logo artwork",
+              brand["day"]["hd2lab"]["lit"] > 2000 and
+              "<image" in brand["svg"]["hd2lab"]["day"] and
+              "logo-mark.png" in brand["svg"]["hd2lab"]["day"],
+              str(brand["day"]["hd2lab"]) + brand["svg"]["hd2lab"]["day"][:120])
 
         # All Black — one ink for the whole mark, brand colours and accent gone
         mono_brand_left = [i for i in ids
@@ -1775,6 +1792,9 @@ def browser_tests(port):
         check("All Black: dark frames print the mark in the ink that survives there",
               all(brand["monoNight"][i]["lit"] > 200 for i in ("canon", "leica", "samsung")),
               json.dumps({i: brand["monoNight"][i] for i in ("canon", "leica")}))
+        check("All Black: the HD2Lab logo is printed in grayscale",
+              "filter:grayscale(1)" in brand["svg"]["hd2lab"]["mono"] and
+              "filter:grayscale(1)" not in brand["svg"]["hd2lab"]["day"])
         mono_svg = {i: brand["svg"][i]["mono"].lower() for i in ("canon", "leica", "samsung", "hd2lab")}
         check("All Black: the SVG hands over one ink, no brand hex",
               all(("#cc0000" not in v and "#e20613" not in v and
@@ -1807,10 +1827,16 @@ def browser_tests(port):
           return {canon: grab('canon'), leica: grab('leica'), samsung: grab('samsung'), hd2lab: grab('hd2lab')};
         }"""
         tile_colors = page.evaluate(TILE_COLORS_JS)
+        check("emblem pane: the HD2Lab tile is the official logo image",
+              page.evaluate("""() => {
+                const svg = document.querySelector('#emblemGrid [data-emblem="hd2lab"] svg');
+                const img = svg && svg.querySelector('image');
+                return !!img && String(img.getAttribute('href')).indexOf('logo-mark.png') >= 0 &&
+                       !/grayscale/.test(img.getAttribute('style') || '');
+              }"""))
         check("emblem pane: tiles show each maker's own colour by default",
               "#cc0000" in tile_colors["canon"] and
               "#3b6bff" in tile_colors["samsung"] and      # night value: the tiles sit on dark ground
-              "#ff824f" in tile_colors["hd2lab"] and
               "#e20613" in tile_colors["leica"], str(tile_colors))
         page.click('#emblemMonoSeg [data-emblem-mono="mono"]')
         page.wait_for_timeout(260)
@@ -1820,7 +1846,12 @@ def browser_tests(port):
               page.get_attribute('#emblemMonoSeg [data-emblem-mono="color"]', "aria-pressed") == "false")
         mono_tiles = page.evaluate(TILE_COLORS_JS)
         check("emblem pane: All Black repaints every tile in one ink",
-              all(v == ["#d9ded6"] for v in mono_tiles.values()), str(mono_tiles))
+              all(v == ["#d9ded6"] for k, v in mono_tiles.items() if k != "hd2lab") and
+              page.evaluate("""() => {
+                const svg = document.querySelector('#emblemGrid [data-emblem="hd2lab"] svg');
+                const img = svg && svg.querySelector('image');
+                return !!img && /grayscale/.test(img.getAttribute('style') || '');
+              }"""), str(mono_tiles))
         check("emblem pane: the plate follows the switch",
               page.evaluate("() => SPApp.layoutFor(null, 1200, 800).opts.emblemMono") is True)
         page.click('#emblemMonoSeg [data-emblem-mono="color"]')
@@ -2344,9 +2375,9 @@ def browser_tests(port):
                 : {done: true, value: undefined}};
             }});
             return dirHandle('테스트 폴더', [
-              fileHandle('A-sample.jpg', '/assets/samples/sample-01.jpg'),
-              fileHandle('B-sample.jpg', '/assets/samples/sample-02.jpg'),
-              dirHandle('sub', [fileHandle('C-sample.jpg', '/assets/samples/sample-03.jpg')])
+              fileHandle('A-sample.jpg', 'assets/samples/sample-01.jpg'),
+              fileHandle('B-sample.jpg', 'assets/samples/sample-02.jpg'),
+              dirHandle('sub', [fileHandle('C-sample.jpg', 'assets/samples/sample-03.jpg')])
             ]);
           };
         """
