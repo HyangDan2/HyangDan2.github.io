@@ -111,25 +111,38 @@
   }
 
   /**
+   * How far one line may shrink, as a fraction of its nominal size, before the
+   * ellipsis takes over. 0.45 keeps long EXIF and lens names whole on portrait
+   * plates, where the caption band is narrower than the row of text.
+   */
+  var MIN_SHRINK = 0.45;
+
+  /**
    * Draw one line of text; shrinks (then ellipsises) to respect opt.maxW.
    * Returns the advance width actually painted.
    */
   function text(ctx, str, x, y, opt) {
-    var s = opt.upper ? String(str).toUpperCase() : String(str);
+    var raw = String(str);
+    var s = opt.upper ? raw.toUpperCase() : raw;
     if (!s) return 0;
     var size = opt.size, ls = opt.ls || 0;
     ctx.font = fontOf(opt, size);
     var w = trackedWidth(ctx, s, ls);
     if (opt.maxW && w > opt.maxW) {
       var k = opt.maxW / w;
-      size = Math.max(size * 0.62, size * k);
+      size = Math.max(size * MIN_SHRINK, size * k);
       ls = ls * k;
       ctx.font = fontOf(opt, size);
       w = trackedWidth(ctx, s, ls);
+      if (w > opt.maxW && ls > 0) {
+        /* still too wide at the floor — give up the tracking before cutting */
+        ls = 0;
+        w = trackedWidth(ctx, s, ls);
+      }
       while (w > opt.maxW && s.length > 2) {
         s = s.slice(0, -2) + '…';
         w = trackedWidth(ctx, s, ls);
-        if (s.endsWith('……')) break;
+        if (s.slice(-2) === '……') break;
       }
     }
     ctx.fillStyle = opt.color;
@@ -153,7 +166,7 @@
       total += w;
     });
     var k = 1;
-    if (maxW && total > maxW) k = maxW / total;
+    if (maxW && total > maxW) k = Math.max(MIN_SHRINK, maxW / total);
     var sx = align === 'center' ? x - total * k / 2 : align === 'right' ? x - total * k : x;
     ctx.textBaseline = 'alphabetic';
     parts.forEach(function (p, i) {
@@ -231,6 +244,10 @@
 
     var padX = Math.round(PW * padPct / 100);
     var padTop = Math.round(padX * (style === 'film' ? 1.95 : 1));
+    /* a frame that prints in its padding needs a floor to print into:
+       with padPct at 0 the sprocket row and the stock badge would collapse */
+    if (style === 'film') padTop = Math.max(padTop, Math.round(PW * 0.05));
+    if (style === 'dual') padTop = Math.max(padTop, Math.round(PW * 0.034));
     var band = Math.round(padX + PH * extraPct / 100);
     var cap = Math.round(PW * (style === 'strap' ? 0.66 : 0.58));
     if (band > cap) band = cap;
@@ -278,7 +295,11 @@
   }
 
   function sprockets(ctx, x0, x1, cy, h, fill) {
+    /* the hole geometry collapses to zero on a plate with no padding — a zero
+       pitch would make the loop below run forever, so refuse it up front */
+    if (!(h > 0.5) || !(x1 > x0)) return;
     var holeW = h * 1.42, pitch = holeW * 1.9, r = h * 0.2;
+    if (!(holeW > 0.5) || !(pitch > 0.5)) return;
     ctx.save();
     ctx.fillStyle = fill;
     for (var x = x0; x + holeW <= x1; x += pitch) {
@@ -407,26 +428,32 @@
     var topW = measure(ctx, rightTop, { size: primary, family: L.opts.font, weight: 600, ls: u * 0.5 });
     var botW = measure(ctx, rightBot, { size: secondary, family: 'mono', ls: u * 0.9 });
     var widest = Math.max(topW, botW);
-    var divX = Math.max(L.W * 0.5, L.W - inset - widest - u * 34);
+    /* the right column never crosses the divider, and the left column is
+       measured with the emblem already taken out of its run */
+    var rightMaxW = Math.max(u * 90, Math.min(widest, L.W * 0.42 - inset));
+    var divX = Math.max(L.W * 0.52, L.W - inset - rightMaxW - u * 34);
+    var emH = L.emblem ? Math.min(u * 30, band * 0.22) : 0;
+    var emW = L.emblem ? E.widthFor(L.emblem, emH) : 0;
+    var leftMaxW = Math.max(u * 120, divX - inset - (L.emblem ? emW + u * 44 : u * 26));
 
     // left column — exposure, then the signature / date
     text(ctx, join(specParts(f), '   ·   '), inset, row1, {
       size: primary, family: L.opts.font, weight: 600, color: c.ink, ls: u * 0.8,
-      maxW: divX - inset - u * 40
+      maxW: leftMaxW
     });
     text(ctx, f.caption ? 'SHOT BY © ' + f.caption : dateOf(f).full, inset, row2, {
       size: secondary, family: 'mono', color: c.muted, ls: u * 1.4, upper: true,
-      maxW: divX - inset - u * 40
+      maxW: leftMaxW
     });
 
     // right column — body and lens
     text(ctx, rightTop, L.W - inset, row1, {
       size: primary, family: L.opts.font, weight: 600, color: c.ink, ls: u * 0.5,
-      align: 'right', maxW: widest
+      align: 'right', maxW: rightMaxW
     });
     text(ctx, rightBot, L.W - inset, row2, {
       size: secondary, family: 'mono', color: c.muted, ls: u * 0.9,
-      align: 'right', maxW: widest
+      align: 'right', maxW: rightMaxW
     });
 
     // divider rule
@@ -434,8 +461,7 @@
 
     // maker emblem tucked against the divider
     if (L.emblem) {
-      var emH = Math.min(u * 30, band * 0.22);
-      emblemAt(ctx, L, L.emblem, divX - u * 26 - E.widthFor(L.emblem, emH), top + band * 0.5 - emH / 2, emH);
+      emblemAt(ctx, L, L.emblem, divX - u * 26 - emW, top + band * 0.5 - emH / 2, emH);
     }
 
     // strap stitching along the bottom edge
@@ -460,11 +486,16 @@
 
   /* ── 05 Film Sprocket ──────────────────────────────────────────────────── */
   function drawFilmBase(ctx, L) {
-    var u = L.u, pad = L.padX;
+    var u = L.u, pad = L.padX, band = L.padBottom;
     var hole = 'rgba(238,229,210,0.74)';
 
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, L.padTop * 0.26, L.padTop * 0.19, hole);
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, L.H - L.padBottom * 0.085, L.padBottom * 0.075, hole);
+    /* the bottom row of perforations sits against the very edge of the stock so
+       the date line and the corner copy above it never fall inside a hole */
+    var topH = L.padTop * 0.19, topCy = L.padTop * 0.26;
+    var botH = band * 0.06, botCy = L.H - band * 0.065;
+
+    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, topCy, topH, hole);
+    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, botCy, botH, hole);
 
     hairline(ctx, 0, L.padTop * 0.60, L.W, L.padTop * 0.60, L.colors.line, Math.max(1, u * 1.1));
   }
@@ -472,6 +503,7 @@
   function drawFilm(ctx, L) {
     var f = L.fields, c = L.colors, u = L.u, band = L.band, pad = L.inset, W = L.W;
     var top = L.photoBox.y + L.PH;
+    var inner = W - pad * 2;
 
     // frame line around the photo
     ctx.save();
@@ -480,16 +512,39 @@
     ctx.strokeRect(L.photoBox.x, L.photoBox.y, L.photoBox.w, L.photoBox.h);
     ctx.restore();
 
-    // stock badge + frame number ride in the top margin
+    /* stock badge + frame number ride in the top margin, each owning its own
+       share of the inner width so one never runs over the other */
+    var badgeSize = Math.min(u * 12.5, L.padTop * 0.26);
     var badgeY = L.padTop * 0.86;
+    var frameStr = (L.opts.frameNo || '#03') + '   ·   35MM';
+    var frameMaxW = Math.min(
+      measure(ctx, frameStr, { size: badgeSize, family: 'mono', ls: u * 1.8 }), inner * 0.42);
     text(ctx, (L.opts.stock || 'KODAK PORTRA 400'), pad, badgeY, {
-      size: Math.min(u * 12.5, L.padTop * 0.3), family: 'mono', color: c.ink,
-      ls: u * 1.8, maxW: W * 0.6
+      size: badgeSize, family: 'mono', color: c.ink,
+      ls: u * 1.8, maxW: Math.max(u * 120, inner - frameMaxW - u * 24)
     });
-    text(ctx, (L.opts.frameNo || '#03') + '   ·   35MM', W - pad, badgeY, {
-      size: Math.min(u * 12.5, L.padTop * 0.3), family: 'mono', color: c.accent,
-      ls: u * 1.8, align: 'right', maxW: W * 0.3
+    text(ctx, frameStr, W - pad, badgeY, {
+      size: badgeSize, family: 'mono', color: c.accent,
+      ls: u * 1.8, align: 'right', maxW: frameMaxW
     });
+
+    /* right stack — ISO / SEC / F, the way the negative edge prints it.
+       Measured first so the left column gets exactly the room that is left. */
+    var pairs = [
+      { k: 'ISO', v: specKey(f, 'iso') },
+      { k: 'SEC', v: specKey(f, 'shutter') },
+      { k: 'F', v: specKey(f, 'aperture') }
+    ].filter(function (p) { return p.v; });
+
+    var valSize = Math.min(u * 30, band * 0.13);
+    var keySize = Math.min(u * 13, band * 0.058);
+    var stackW = 0;
+    pairs.forEach(function (p) {
+      var vw = measure(ctx, p.v, { size: valSize, family: 'mono', weight: 500 });
+      var kw = measure(ctx, p.k, { size: keySize, family: 'mono', ls: u });
+      stackW = Math.max(stackW, vw + u * 10 + kw);
+    });
+    var leftMaxW = Math.max(u * 140, inner - stackW - u * 24);
 
     if (L.emblem) {
       var emH = Math.min(u * 26, band * 0.16);
@@ -498,32 +553,23 @@
 
     text(ctx, f.caption || camera(f), pad, top + band * 0.41, {
       size: Math.min(u * 22, band * 0.1), family: 'serif', italic: true,
-      color: c.ink, ls: u * 0.3, maxW: W * 0.58
+      color: c.ink, ls: u * 0.3, maxW: leftMaxW
     });
 
     text(ctx, join([camera(f), f.focal], '   ·   '), pad, top + band * 0.6, {
       size: Math.min(u * 13.5, band * 0.062), family: 'mono', color: c.muted,
-      ls: u * 1.1, maxW: W * 0.58
+      ls: u * 1.1, maxW: leftMaxW
     });
     text(ctx, optics(f), pad, top + band * 0.72, {
       size: Math.min(u * 12, band * 0.055), family: 'mono', color: c.muted,
-      ls: u * 0.9, maxW: W * 0.58
+      ls: u * 0.9, maxW: leftMaxW
     });
-    text(ctx, dateOf(f).full, pad, L.H - band * 0.09, {
+    text(ctx, dateOf(f).full, pad, L.H - band * 0.15, {
       size: Math.min(u * 12, band * 0.055), family: 'mono', color: c.muted,
-      ls: u * 1.1, maxW: W * 0.6
+      ls: u * 1.1, maxW: Math.min(leftMaxW, W * 0.6)
     });
-
-    // right stack — ISO / SEC / F, the way the negative edge prints it
-    var pairs = [
-      { k: 'ISO', v: specKey(f, 'iso') },
-      { k: 'SEC', v: specKey(f, 'shutter') },
-      { k: 'F', v: specKey(f, 'aperture') }
-    ].filter(function (p) { return p.v; });
 
     var rx = W - pad, ry = top + band * 0.24;
-    var valSize = Math.min(u * 30, band * 0.13);
-    var keySize = Math.min(u * 13, band * 0.058);
     pairs.forEach(function (p) {
       var vw = text(ctx, p.v, rx, ry, {
         size: valSize, family: 'mono', weight: 500, color: c.ink, align: 'right'
@@ -539,6 +585,7 @@
   function drawStudio(ctx, L) {
     var f = L.fields, c = L.colors, u = L.u, band = L.band;
     var top = L.photoBox.y + L.PH, pad = L.inset, W = L.W;
+    var inner = W - pad * 2, gutter = u * 28;
 
     // accent rail
     var railY = top + band * 0.1;
@@ -548,43 +595,63 @@
     ctx.fillRect(pad, railY - u * 1.4, u * 96, u * 2.8);
     ctx.restore();
 
+    /* the right column is measured first; the left column then claims what is
+       left of the inner width, so a long exposure line never pushes into it */
+    var specStr = join(specParts(f), '   ·   ');
+    var specSize = Math.min(u * 15, band * 0.062);
+    var dateStr = dateOf(f).full;
+    var dateSize = Math.min(u * 12, band * 0.048);
+    var rightW = Math.min(inner * 0.5, Math.max(
+      measure(ctx, specStr, { size: specSize, family: 'mono', ls: u * 0.6 }),
+      measure(ctx, dateStr, { size: dateSize, family: 'mono', ls: u * 0.6 })
+    ));
+
     // emblem + camera block
     var emH = Math.min(u * 32, band * 0.26);
+    if (L.emblem) {
+      var emMaxW = inner - gutter - rightW - u * 30 - u * 240;
+      emH = Math.max(u * 14, Math.min(emH, emMaxW / (E.widthFor(L.emblem, 1) || 1)));
+    }
     var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.34, emH);
     var tx = pad + (L.emblem ? emW + u * 30 : 0);
+    var leftMaxW = Math.max(u * 120, inner - (tx - pad) - gutter - rightW);
 
     text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, top + band * 0.47, {
       size: Math.min(u * 22, band * 0.09), family: L.opts.font, weight: 600,
-      color: c.ink, ls: u * 0.4, maxW: W * 0.52
+      color: c.ink, ls: u * 0.4, maxW: leftMaxW
     });
     text(ctx, optics(f), tx, top + band * 0.62, {
       size: Math.min(u * 13, band * 0.055), family: 'mono', color: c.muted,
-      ls: u * 0.9, maxW: W * 0.52
+      ls: u * 0.9, maxW: leftMaxW
     });
 
-    text(ctx, join(specParts(f), '   ·   '), W - pad, top + band * 0.47, {
-      size: Math.min(u * 15, band * 0.062), family: 'mono', color: c.ink,
-      ls: u * 0.6, align: 'right', maxW: W * 0.44
+    text(ctx, specStr, W - pad, top + band * 0.47, {
+      size: specSize, family: 'mono', color: c.ink,
+      ls: u * 0.6, align: 'right', maxW: rightW
     });
-    text(ctx, dateOf(f).full, W - pad, top + band * 0.61, {
-      size: Math.min(u * 12, band * 0.048), family: 'mono', color: c.muted,
-      ls: u * 0.6, align: 'right', maxW: W * 0.44
+    text(ctx, dateStr, W - pad, top + band * 0.61, {
+      size: dateSize, family: 'mono', color: c.muted,
+      ls: u * 0.6, align: 'right', maxW: rightW
     });
 
+    /* the footer keeps the band's own rhythm and moves clear of the lower
+       corner brackets horizontally, so the two can never sit on each other */
+    var bInset = u * 16, bLen = u * 26;
+    var footX = Math.max(pad, bInset + bLen + u * 8);
     var footY = L.H - band * 0.15;
     if (f.caption) {
-      text(ctx, f.caption, pad, footY, {
+      text(ctx, f.caption, footX, footY, {
         size: Math.min(u * 11.5, band * 0.045), family: 'mono', color: c.muted,
         upper: true, ls: u * 1.4, maxW: W * 0.6
       });
     }
-    text(ctx, 'SHUTTERPLATE · 03', W - pad, footY, {
+    text(ctx, 'SHUTTERPLATE · 03', W - footX, footY, {
       size: Math.min(u * 11.5, band * 0.045), family: 'mono', color: c.muted,
       ls: u * 1.4, align: 'right', maxW: W * 0.4
     });
 
     // signature corner brackets
-    var inset = u * 16, len = u * 26, lw = Math.max(1.2, u * 2);
+    var inset = bInset, len = bLen, lw = Math.max(1.2, u * 2);
     ctx.save();
     ctx.strokeStyle = c.accent;
     ctx.lineWidth = lw;
@@ -623,15 +690,20 @@
 
     var lineX = inset + bullet + u * 14;
     var dateStr = dateOf(f).full;
-    var dateW = dateStr ? measure(ctx, dateStr, { size: Math.min(u * 11, band * 0.16), family: 'mono', ls: u * 1.2 }) : 0;
+    var dateSize = Math.min(u * 11, band * 0.16);
+    var dateMaxW = L.W * 0.34;
+    var dateW = dateStr
+      ? Math.min(measure(ctx, dateStr, { size: dateSize, family: 'mono', ls: u * 1.2 }), dateMaxW)
+      : 0;
     text(ctx, join([camera(f)].concat(specParts(f)), '  ·  '), lineX, rowY, {
       size: Math.min(u * 14, band * 0.2), family: 'mono', weight: 500, color: c.ink,
-      ls: u * 1.4, maxW: L.W - lineX - inset - dateW - u * 30
+      ls: u * 1.4,
+      maxW: Math.max(u * 120, L.W - lineX - inset - (dateW ? dateW + u * 20 : 0))
     });
     if (dateStr) {
       text(ctx, dateStr, L.W - inset, rowY, {
-        size: Math.min(u * 11, band * 0.16), family: 'mono', color: c.muted,
-        ls: u * 1.2, align: 'right', maxW: L.W * 0.4
+        size: dateSize, family: 'mono', color: c.muted,
+        ls: u * 1.2, align: 'right', maxW: dateMaxW
       });
     }
   }
@@ -645,18 +717,26 @@
     var emH = Math.min(u * 28, band * 0.14);
     var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.12, emH);
     var tx = pad + (L.emblem ? emW + u * 24 : 0);
+    /* the date owns its own column on the headline row; the model and lens are
+       measured against what is left after the emblem */
+    var dateStr = dateOf(f).full;
+    var dateSize = Math.min(u * 12, band * 0.045);
+    var dateW = Math.min(
+      measure(ctx, dateStr, { size: dateSize, family: 'mono', ls: u * 1.1 }), inner * 0.32);
+    var usedX = tx - pad;
+    var headMaxW = Math.max(u * 120, inner - usedX - dateW - u * 24);
 
     text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, top + band * 0.21, {
       size: Math.min(u * 22, band * 0.085), family: L.opts.font, weight: 600,
-      color: c.ink, ls: u * 0.3, maxW: inner * 0.6
+      color: c.ink, ls: u * 0.3, maxW: headMaxW
     });
-    text(ctx, dateOf(f).full, W - pad, top + band * 0.21, {
-      size: Math.min(u * 12, band * 0.045), family: 'mono', color: c.muted,
-      ls: u * 1.1, align: 'right', maxW: inner * 0.35
+    text(ctx, dateStr, W - pad, top + band * 0.21, {
+      size: dateSize, family: 'mono', color: c.muted,
+      ls: u * 1.1, align: 'right', maxW: dateW
     });
     text(ctx, optics(f), tx, top + band * 0.30, {
       size: Math.min(u * 12.5, band * 0.048), family: 'mono', color: c.muted,
-      ls: u * 0.8, maxW: inner * 0.65
+      ls: u * 0.8, maxW: Math.max(u * 120, inner - usedX)
     });
 
     hairline(ctx, pad, top + band * 0.37, W - pad, top + band * 0.37, c.line, Math.max(1, u * 1.2));
