@@ -759,7 +759,6 @@
 
     $('#headerSampleBtn').addEventListener('click', loadSample);
     $('#emptySampleBtn').addEventListener('click', loadSample);
-    $('#emptyPickBtn') && $('#emptyPickBtn').addEventListener('click', function () { el.fileInput.click(); });
     $('#changeBtn').addEventListener('click', function () { el.fileInput.click(); });
     $('#clearBtn').addEventListener('click', clearPhoto);
 
