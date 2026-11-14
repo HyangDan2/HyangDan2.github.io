@@ -419,7 +419,11 @@ def static_tests():
     check("exifr bundle vendored", len(vendor) > 50_000 and "exifr" in vendor[:400])
     app = read("app.js")
     check("exifr loaded from local vendor", "js/vendor/exifr.full.umd.js" in html)
-    check("4096px export guard", "4096" in app)
+    check("export: 1:1 first, 4096 → 3072 → 2048 fallback ladder",
+          "FALLBACK_EDGES = [4096, 3072, 2048]" in app and "encodePlate" in app and
+          "exportRungs" in app)
+    check("export: no fixed MAX_EDGE shutter is left",
+          "MAX_EDGE" not in app)
     check("export filename pattern", "Shutterplate_" in read("js/exif-core.js"))
     check("PC breakpoint mirrored in JS", "min-width: 1024px" in app)
     check("workspace reads a real folder handle", "showDirectoryPicker" in app)
@@ -428,7 +432,9 @@ def static_tests():
     check("workspace thumbnails are lazy", "IntersectionObserver" in app)
     check("arrow keys step through the workspace", "stepEntry" in app and "ArrowLeft" in app)
     check("batch export renders photo by photo", "plateJobForFile" in app and "bulkExport" in app)
-    check("batch export respects the 4096px guard", "MAX_EDGE_PX" in app)
+    check("batch export goes through the same 1:1 encoder",
+          "plateJobForFile" in app and "encodePlate(" in app and
+          app.count("encodePlate(") >= 2)
     check("EXIF make/model verbatim rule untouched",
           "EXIF strings are kept verbatim" in read("js/exif-core.js")
           and "toUpperCase" not in read("js/exif-core.js"))
@@ -549,7 +555,7 @@ FIT_SIZES = [("2:3", 1200, 1800), ("2:3s", 1024, 1536), ("3:4", 1500, 2000), ("3
 
 FIT_JS = """(matrix) => {
   const out = {plates: 0, ellipsis: [], overflow: [], collide: [], byStyle: {}, holes: {},
-               filmSlack: 1e9};
+               filmSlack: 1e9, perf: []};
   const c = document.createElement('canvas');
   const seen = {};
   for (const item of matrix) {
@@ -621,11 +627,21 @@ FIT_JS = """(matrix) => {
       const hb = {x0: h.x, x1: h.x + h.w, y0: h.y, y1: h.y + h.h};
       for (const t of texts) if (hit(hb, t)) out.collide.push([label, 'hole', 'sprocket', t.s]);
     }
-    /* Film Sprocket: the lowest line of copy must sit clear above the bottom
-       row of perforations, which is the defect this frame was fixed for */
+    /* Film Sprocket: the two rows of perforations are measured where they were
+       actually painted — same hole height, same distance from each edge, and
+       the lowest line of copy clear above the bottom row. */
     if (item.style === 'film') {
-      const band = L.band;
-      const holeTop = L.H - band * 0.095;
+      const upper = holes.filter(h => h.y + h.h <= L.H / 2);
+      const lower = holes.filter(h => h.y >= L.H / 2);
+      const mean = (list) => list.length ? list.reduce((a, h) => a + h.h, 0) / list.length : 0;
+      out.perf.push({
+        label: label,
+        top: upper.length, bot: lower.length,
+        topH: mean(upper), botH: mean(lower),
+        topEdge: upper.length ? Math.min.apply(null, upper.map(h => h.y)) : -1,
+        botEdge: lower.length ? Math.min.apply(null, lower.map(h => L.H - (h.y + h.h))) : -1
+      });
+      const holeTop = lower.length ? Math.min.apply(null, lower.map(h => h.y)) : L.H;
       const lowest = texts.reduce((m, t) => Math.max(m, t.y1), -1e9);
       out.filmSlack = Math.min(out.filmSlack, holeTop - lowest);
     }
@@ -906,6 +922,43 @@ def browser_tests(port):
             got = (fit["byStyle"].get(fid) or {})
             check(f"fit: {label} never ellipsises on a portrait plate",
                   got.get("ellipsis") == 0, f"{got.get('ellipsis')} line(s)")
+        # ── Film Sprocket: the two perforation rows are mirror images ──────
+        # Real 35mm prints the same hole height and the same distance from the
+        # edge at both margins. This paints the frame on landscape, portrait and
+        # square plates, with the default padding, none at all and a wide one,
+        # and reads the holes back where they were actually drawn.
+        print("\n[browser] film sprocket symmetry")
+        film_matrix = []
+        for cname, fields, emblem in FIT_CASES:
+            for sname, w, h in (("2:3", 1200, 1800), ("3:2", 1536, 1024), ("1:1", 1400, 1400)):
+                for pad in (6, 0, 9):
+                    film_matrix.append({"style": "film", "case": cname, "size": sname,
+                                        "fields": fields, "emblem": emblem,
+                                        "w": w, "h": h, "padPct": pad})
+        film = page.evaluate(FIT_JS, film_matrix)
+        rows = film["perf"]
+        check(f"film: {len(film_matrix)} plates painted both perforation rows",
+              len(rows) == len(film_matrix) and
+              all(r["top"] >= 8 and r["bot"] >= 8 for r in rows),
+              json.dumps([r for r in rows if r["top"] < 8 or r["bot"] < 8])[:300])
+        check("film: the top and bottom rows hold the same number of holes",
+              all(r["top"] == r["bot"] for r in rows),
+              json.dumps([r["label"] for r in rows if r["top"] != r["bot"]])[:300])
+        worst_h = max(abs(r["topH"] - r["botH"]) for r in rows) if rows else -1
+        check("film: top and bottom hole heights are identical (대칭)",
+              rows and worst_h <= 0.5, f"worst Δh={worst_h:.2f}px")
+        worst_e = max(abs(r["topEdge"] - r["botEdge"]) for r in rows) if rows else -1
+        check("film: top and bottom edge distances are identical (대칭)",
+              rows and worst_e <= 0.5, f"worst Δedge={worst_e:.2f}px")
+        check("film: the bottom row clears the lowest date line on every plate",
+              film["filmSlack"] > 1.0, f"slack={film['filmSlack']:.1f}px")
+        check("film: no line of copy sits on a perforation hole",
+              not [c for c in film["collide"] if c[1] == "hole"],
+              json.dumps([c for c in film["collide"] if c[1] == "hole"], ensure_ascii=False)[:300])
+        check("film: no text collides and nothing leaves the plate (landscape/portrait/padPct 0)",
+              not film["collide"] and not film["overflow"],
+              json.dumps((film["collide"] + film["overflow"])[:4], ensure_ascii=False)[:300])
+
         studio_cut = [e for e in fit["ellipsis"] if e[0].startswith("studio/")]
         check("fit: Studio Dark keeps the full exposure row (ISO 400 / 1600)",
               not studio_cut, json.dumps(studio_cut, ensure_ascii=False))
@@ -939,42 +992,148 @@ def browser_tests(port):
         check("emblems: no line falls back to the ellipsis", not emf["ellipsis"],
               json.dumps(emf["ellipsis"], ensure_ascii=False)[:400])
 
-        # ── Leica is a knock-out roundel, not a filled disc ───────────────
-        # The mark is one path with the script cut out by the even-odd rule.
-        # If that rule never reaches the canvas or the tile SVG, the roundel
-        # renders solid and the brand name disappears — so both are measured.
-        print("\n[browser] leica knock-out")
-        cut = page.evaluate("""() => {
-          const c = document.createElement('canvas');
-          c.width = c.height = 200;
-          const ctx = c.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, 200, 200);
-          SPEmblems.draw(ctx, 'leica', 0, 0, 200, 200,
-                         {ink: '#000000', accent: '#000000', base: '#ffffff'});
-          const d = ctx.getImageData(0, 0, 200, 200).data;
-          let paper = 0, ink = 0;
-          for (let y = 0; y < 200; y++) {
-            for (let x = 0; x < 200; x++) {
-              const dx = x - 100, dy = y - 100;
-              if (dx * dx + dy * dy > 70 * 70) continue;
-              const i = (y * 200 + x) * 4;
-              const v = d[i] + d[i + 1] + d[i + 2];
-              if (v > 720) paper++; else if (v < 200) ink++;
+        # ── emblem colour: the makers' own colours, then All Black ──────────
+        # Every mark is painted on a white field and the pixels are counted, so
+        # the check is about what reached the canvas — not what a hex string
+        # said. Leica doubles as the knock-out test: its roundel is one path
+        # with the script cut out by the even-odd rule, so a solid disc would
+        # show zero paper inside it.
+        print("\n[browser] emblem colour & All Black")
+        BRAND_JS = """(args) => {
+          const paint = (id, colors) => {
+            const c = document.createElement('canvas');
+            c.width = c.height = 220;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 220, 220);
+            SPEmblems.draw(ctx, id, 0, 0, 220, 220, colors);
+            const d = ctx.getImageData(0, 0, 220, 220).data;
+            let paper = 0, ink = 0, lit = 0, red = 0, blue = 0;
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i + 1], b = d[i + 2];
+              if (r > 245 && g > 245 && b > 245) { paper++; continue; }
+              lit++;
+              const v = r + g + b;
+              if (v < 200) ink++;
+              if (r > 140 && g < 90 && b < 100) red++;
+              if (b > 110 && b > r + 40) blue++;
             }
+            return {paper, ink, lit, red, blue};
+          };
+          const day = {ink: '#000000', accent: '#ff824f', base: '#ffffff', light: true};
+          const night = {ink: '#f0e9d9', accent: '#e0703c', base: '#16150f', light: false};
+          const mono = (c) => Object.assign({ }, c, {mono: true});
+          const out = {day: {}, night: {}, monoDay: {}, monoNight: {}, svg: {}};
+          for (const id of args) {
+            out.day[id] = paint(id, day);
+            out.night[id] = paint(id, night);
+            out.monoDay[id] = paint(id, mono(day));
+            out.monoNight[id] = paint(id, mono(night));
           }
-          return {paper, ink};
-        }""")
-        check("leica: the script is cut out of the roundel on canvas",
-              cut["paper"] > 250 and cut["ink"] > 2000, str(cut))
-        svg_probe = page.evaluate("""() => {
-          const s = SPEmblems.svg('leica', {ink: '#000', accent: '#000', base: '#fff'});
-          const tile = document.querySelector('#emblemGrid [data-emblem="leica"] svg path');
-          return {emblem: s, tile: tile ? tile.getAttribute('fill-rule') : null};
-        }""")
-        check("leica: the SVG tile carries fill-rule=evenodd",
-              'fill-rule="evenodd"' in svg_probe["emblem"] and
-              (svg_probe["tile"] or "") == "evenodd", str(svg_probe["tile"]))
+          for (const id of args) {
+            out.svg[id] = {
+              day: SPEmblems.svg(id, day),
+              night: SPEmblems.svg(id, night),
+              mono: SPEmblems.svg(id, mono(day))
+            };
+          }
+          return out;
+        }"""
+        ids = ["sony", "canon", "nikon", "fujifilm", "samsung", "leica",
+               "hasselblad", "apple", "lumix", "omsystem", "hd2lab"]
+        brand = page.evaluate(BRAND_JS, ids)
+
+        # each maker's own colour, measured as pixels
+        check("colour: Canon paints Canon Red on canvas",
+              brand["day"]["canon"]["red"] > 2000, str(brand["day"]["canon"]))
+        check("colour: Canon keeps its red on a dark plate",
+              brand["night"]["canon"]["red"] > 2000, str(brand["night"]["canon"]))
+        check("colour: Leica paints the red roundel with the script cut out",
+              brand["day"]["leica"]["red"] > 2000 and brand["day"]["leica"]["paper"] > 250,
+              str(brand["day"]["leica"]))
+        check("colour: Lumix paints Lumix Red", brand["day"]["lumix"]["red"] > 400,
+              str(brand["day"]["lumix"]))
+        check("colour: Samsung paints Samsung Blue on a light plate",
+              brand["day"]["samsung"]["blue"] > 2000, str(brand["day"]["samsung"]))
+        check("colour: Samsung blue is lifted so it reads on a dark plate",
+              brand["night"]["samsung"]["blue"] > 2000 and
+              "#3B6BFF" in brand["svg"]["samsung"]["night"], str(brand["night"]["samsung"]))
+        check("colour: OM System paints its blue, lifted on dark",
+              brand["day"]["omsystem"]["blue"] > 1500 and
+              "#4B83FF" in brand["svg"]["omsystem"]["night"], str(brand["day"]["omsystem"]))
+        check("colour: Fujifilm keeps an ink body with the red notch",
+              brand["day"]["fujifilm"]["ink"] > 2000 and brand["day"]["fujifilm"]["red"] > 20,
+              str(brand["day"]["fujifilm"]))
+        check("colour: single-colour marks stay ink",
+              all(brand["day"][i]["red"] == 0 for i in ("sony", "nikon", "apple", "hasselblad")),
+              json.dumps({k: brand["day"][k]["red"] for k in ("sony", "nikon", "apple", "hasselblad")}))
+        check("colour: HD2Lab keeps its accent orange",
+              "#ff824f" in brand["svg"]["hd2lab"]["day"], brand["svg"]["hd2lab"]["day"][:160])
+
+        # All Black — one ink for the whole mark, brand colours and accent gone
+        mono_brand_left = [i for i in ids
+                           if brand["monoDay"][i]["red"] or brand["monoDay"][i]["blue"]]
+        check("All Black: no brand red or blue survives on any mark",
+              not mono_brand_left, str(mono_brand_left))
+        check("All Black: every mark is drawn in the plate ink (light frame = black)",
+              all(brand["monoDay"][i]["ink"] > 200 for i in ("canon", "leica", "samsung",
+                                                            "lumix", "omsystem", "sony")),
+              json.dumps({i: brand["monoDay"][i]["ink"] for i in ("canon", "leica", "samsung")}))
+        check("All Black: dark frames print the mark in the ink that survives there",
+              all(brand["monoNight"][i]["lit"] > 200 for i in ("canon", "leica", "samsung")),
+              json.dumps({i: brand["monoNight"][i] for i in ("canon", "leica")}))
+        mono_svg = {i: brand["svg"][i]["mono"].lower() for i in ("canon", "leica", "samsung", "hd2lab")}
+        check("All Black: the SVG hands over one ink, no brand hex",
+              all(("#cc0000" not in v and "#e20613" not in v and
+                   "#1428a0" not in v and "#ff824f" not in v) for v in mono_svg.values()),
+              str(mono_svg["canon"])[:160])
+        check("leica: the SVG carries fill-rule=evenodd",
+              'fill-rule="evenodd"' in brand["svg"]["leica"]["day"])
+
+        # the switch on the real panel, and what it repaints
+        page.click('#insTabs [data-tab="emblem"]')
+        page.wait_for_timeout(220)
+        check("emblem pane: the colour switch is on screen",
+              page.is_visible("#emblemMonoSeg"))
+        check("emblem pane: 원본 컬러 is the default",
+              page.get_attribute('#emblemMonoSeg [data-emblem-mono="color"]', "aria-pressed") == "true" and
+              page.evaluate("() => SPApp.state.emblemMono") is False)
+        TILE_COLORS_JS = """() => {
+          const grab = (id) => {
+            const svg = document.querySelector('#emblemGrid [data-emblem="' + id + '"] svg');
+            if (!svg) return [];
+            const set = new Set();
+            svg.querySelectorAll('path, circle, rect, text').forEach(n => {
+              ['fill', 'stroke'].forEach(a => {
+                const v = n.getAttribute(a);
+                if (v && v !== 'none') set.add(v.toLowerCase());
+              });
+            });
+            return Array.from(set).sort();
+          };
+          return {canon: grab('canon'), leica: grab('leica'), samsung: grab('samsung'), hd2lab: grab('hd2lab')};
+        }"""
+        tile_colors = page.evaluate(TILE_COLORS_JS)
+        check("emblem pane: tiles show each maker's own colour by default",
+              "#cc0000" in tile_colors["canon"] and
+              "#3b6bff" in tile_colors["samsung"] and      # night value: the tiles sit on dark ground
+              "#ff824f" in tile_colors["hd2lab"] and
+              "#e20613" in tile_colors["leica"], str(tile_colors))
+        page.click('#emblemMonoSeg [data-emblem-mono="mono"]')
+        page.wait_for_timeout(260)
+        check("emblem pane: All Black flips the state and both buttons",
+              page.evaluate("() => SPApp.state.emblemMono") is True and
+              page.get_attribute('#emblemMonoSeg [data-emblem-mono="mono"]', "aria-pressed") == "true" and
+              page.get_attribute('#emblemMonoSeg [data-emblem-mono="color"]', "aria-pressed") == "false")
+        mono_tiles = page.evaluate(TILE_COLORS_JS)
+        check("emblem pane: All Black repaints every tile in one ink",
+              all(v == ["#d9ded6"] for v in mono_tiles.values()), str(mono_tiles))
+        check("emblem pane: the plate follows the switch",
+              page.evaluate("() => SPApp.layoutFor(null, 1200, 800).opts.emblemMono") is True)
+        page.click('#emblemMonoSeg [data-emblem-mono="color"]')
+        page.wait_for_timeout(200)
+        check("emblem pane: 원본 컬러 comes back",
+              page.evaluate("() => SPApp.state.emblemMono") is False)
 
         # the same matrix with every padding removed: the film sprocket loop
         # used to divide by a zero pitch and freeze the tab, so this runs on a
@@ -1163,6 +1322,121 @@ def browser_tests(port):
                 os.remove(tmp)
         check("export readout names the frame",
               "Classic Gallery" in page.text_content("#exportStyle"))
+
+        # ── original resolution: 1:1 first, the memory ladder only if refused
+        # A 5200×3400 photo is made inside the page (no big fixture in the
+        # repo). Its frame must leave bigger than 4096px — the old fixed edge
+        # used to cut every photo there — and when the device refuses those
+        # pixels the same save must still land, at the next rung down.
+        print("\n[browser] export resolution: 1:1 & memory fallback")
+        loaded = page.evaluate("""async () => {
+          const W = 5200, H = 3400;
+          const c = document.createElement('canvas');
+          c.width = W; c.height = H;
+          const x = c.getContext('2d');
+          const g = x.createLinearGradient(0, 0, W, H);
+          g.addColorStop(0, '#24405e'); g.addColorStop(0.55, '#8d7a58'); g.addColorStop(1, '#d8b179');
+          x.fillStyle = g; x.fillRect(0, 0, W, H);
+          x.fillStyle = 'rgba(255,255,255,0.55)';
+          for (let i = 0; i < 60; i++) {
+            x.beginPath();
+            x.arc((i * 977) % W, (i * 613) % H, 40 + (i % 7) * 18, 0, Math.PI * 2);
+            x.fill();
+          }
+          const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+          const file = new File([blob], 'big-5200x3400.jpg',
+                                {type: 'image/jpeg', lastModified: Date.now()});
+          return await SPApp.loadFile(file, 'big', {silent: true});
+        }""")
+        check("1:1: a 5200×3400 photo loads", loaded is True, str(loaded))
+        page.wait_for_timeout(500)
+        readout = page.text_content("#exportSize") or ""
+        want_w, want_h = [int(x) for x in re.findall(r"\d+", readout)[:2]]
+        check("1:1: the readout promises the original pixels, past 4096",
+              max(want_w, want_h) > 4096, readout)
+        page.click('#insTabs [data-tab="export"]')
+        page.wait_for_timeout(260)
+        tmp = os.path.join(ROOT, "tests", "_export_big.jpg")
+        with page.expect_download(timeout=60000) as dl:
+            page.click("#downloadBtn")
+        download = dl.value
+        download.save_as(tmp)
+        size = os.path.getsize(tmp)
+        last = page.evaluate("() => window.__lastExport")
+        try:
+            from PIL import Image
+            im = Image.open(tmp)
+            check("1:1: a 5200×3400 photo exports at its own resolution, not 4096",
+                  max(im.size) > 4096 and im.size == (want_w, want_h),
+                  f"file={im.size} readout={(want_w, want_h)}")
+        except ImportError:  # pragma: no cover
+            skip("browser: 1:1 export dimensions", "Pillow unavailable")
+        check("1:1: the export is not a 4096px fallback",
+              bool(last) and last.get("reducedEdge", 1) == 0 and max(last["w"], last["h"]) > 4096,
+              str(last))
+        check("1:1: the file carries real bytes", size > 200_000, f"{size} B")
+        os.remove(tmp)
+
+        # the same save on a device that refuses anything past 4096px
+        page.evaluate("() => SPApp.setField('caption', 'fallback 4096')")
+        page.wait_for_timeout(120)
+        page.evaluate("""() => {
+          const orig = HTMLCanvasElement.prototype.toBlob;
+          window.__toBlobOrig = orig;
+          HTMLCanvasElement.prototype.toBlob = function (cb, mime, q) {
+            if (Math.max(this.width, this.height) > 4096) { setTimeout(() => cb(null), 0); return; }
+            return orig.call(this, cb, mime, q);
+          };
+        }""")
+        tmp = os.path.join(ROOT, "tests", "_export_fallback.jpg")
+        with page.expect_download(timeout=60000) as dl:
+            page.click("#downloadBtn")
+        download = dl.value
+        download.save_as(tmp)
+        last = page.evaluate("() => window.__lastExport")
+        toasts = page.inner_text("#toasts") or ""
+        try:
+            from PIL import Image
+            im = Image.open(tmp)
+            check("fallback: the save still lands, at the next rung (4096px)",
+                  max(im.size) == 4096, f"file={im.size}")
+        except ImportError:  # pragma: no cover
+            skip("browser: fallback dimensions", "Pillow unavailable")
+        check("fallback: the ladder reports 4096 as the edge it saved at",
+              bool(last) and last.get("reducedEdge") == 4096, str(last))
+        check("fallback: the visitor is told why the pixels are fewer",
+              "4096px" in toasts and "메모리" in toasts, toasts.replace("\n", " ")[:200])
+        check("fallback: exactly one notice is raised",
+              toasts.count("4096px") == 1, toasts.replace("\n", " ")[:200])
+        os.remove(tmp)
+        page.evaluate("() => { HTMLCanvasElement.prototype.toBlob = window.__toBlobOrig; }")
+
+        # a refused allocation (getContext null) is the other silent failure
+        page.evaluate("() => SPApp.setField('caption', 'fallback allocation')")
+        page.wait_for_timeout(120)
+        page.evaluate("""() => {
+          const orig = HTMLCanvasElement.prototype.getContext;
+          window.__ctxOrig = orig;
+          HTMLCanvasElement.prototype.getContext = function (kind) {
+            if (kind === '2d' && Math.max(this.width, this.height) > 4096) return null;
+            return orig.apply(this, arguments);
+          };
+        }""")
+        tmp = os.path.join(ROOT, "tests", "_export_fallback2.jpg")
+        with page.expect_download(timeout=60000) as dl:
+            page.click("#downloadBtn")
+        download = dl.value
+        download.save_as(tmp)
+        last = page.evaluate("() => window.__lastExport")
+        try:
+            from PIL import Image
+            im = Image.open(tmp)
+            check("fallback: a refused canvas allocation is caught the same way",
+                  max(im.size) == 4096 and last.get("reducedEdge") == 4096, f"file={im.size} {last}")
+        except ImportError:  # pragma: no cover
+            skip("browser: refused-allocation fallback", "Pillow unavailable")
+        os.remove(tmp)
+        page.evaluate("() => { HTMLCanvasElement.prototype.getContext = window.__ctxOrig; }")
         page.keyboard.press("Escape")
         check("no late console errors", not errors, str(errors[:3]))
         ctx.close()
