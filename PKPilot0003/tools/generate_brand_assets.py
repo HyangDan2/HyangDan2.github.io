@@ -2,65 +2,77 @@
 """
 PKPilot0003 · Shutterplate — HD2Lab brand asset generator
 =========================================================
-Produces the official HD2Lab asset set for Shutterplate:
+Produces the official HD2Lab asset set for Shutterplate, out of the same
+dual-skew mark used by the site header and the plate emblems:
 
     favicon.svg, favicon.ico(16/32/48), favicon-32x32.png,
     apple-touch-icon.png(180), icon-192.png, icon-512.png,
     og-image.png / social-preview.png (1200×630)
 
-The glyph is a "plate": orange frame, dark image window, signature rule.
+The glyph is the brand mark itself — two stroked parallelograms in #ff824f on
+the #101110 round square — not a redrawn approximation.
 
     python3 tools/generate_brand_assets.py [--font PATH] [--out DIR]
 """
+
 from __future__ import annotations
 
-import argparse
+import io
 import os
 import sys
 
 from PIL import Image, ImageDraw, ImageFont
 
+try:
+    import cairosvg
+except ImportError:  # pragma: no cover
+    cairosvg = None
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# ── brand tokens (HD2Lab standard) ──────────────────────────────────────────
 INK = "#101110"
 ACCENT = "#ff824f"
+ACCENT_SOFT = "#2a1a12"
 BG = "#0c0d0c"
-GRID = "#151715"
+GRID = "#161816"
 CARD = "#141614"
 CARD_BORDER = "#242824"
-TEXT_HI = "#eef1ec"
-TEXT = "#ccd2ca"
-MUTED = "#8b948a"
-DIM = "#6b746a"
+TILE = "#0f110f"
+TILE_BORDER = "#242824"
+TEXT_HI = "#e8ece7"
+TEXT = "#cfd6cd"
+MUTED = "#8d968c"
+DIM = "#6f7a6f"
 LINE = "#1f241f"
+
+MARK_PATH = "M15 20L35 10V43L15 53ZM29 24L49 14V47L29 57Z"
+
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    '<rect width="64" height="64" rx="12" fill="#101110"/>'
+    f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4" '
+    'stroke-linejoin="round"/></svg>\n'
+)
+
+MARK_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4" '
+    'stroke-linejoin="round"/></svg>'
+)
 
 FONT_CANDIDATES = [
     os.environ.get("PICKLE_BRAND_FONT", ""),
     "/workspace/tmp-fonts/NotoSansKR-VF.ttf",
     os.path.join(ROOT, "..", "..", "tmp-fonts", "NotoSansKR-VF.ttf"),
-    "/usr/share/fonts/opentype/unifont/unifont_jp.otf",
-    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansKR-VF.ttf",
+    "/usr/share/fonts/opentype/noto/NotoSansKR-Regular.otf",
+    "/usr/share/fonts/pickle-hwp/NotoSansCJKkr-Regular.otf",
 ]
 MONO_CANDIDATES = [
-    "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
     "/usr/share/fonts/pickle-hwp/NotoSansMonoCJKkr-Regular.otf",
+    "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
 ]
-
-FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="13" fill="#101110"/>
-  <rect x="12" y="13" width="40" height="30" rx="3" fill="#ff824f"/>
-  <rect x="16" y="17" width="32" height="20" rx="1.6" fill="#101110"/>
-  <path d="M24 49h16" stroke="#ff824f" stroke-width="4.4" stroke-linecap="round"/>
-</svg>
-"""
-
-MARK_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect x="6" y="6" width="52" height="52" rx="12" fill="none" stroke="#ff824f" stroke-width="3"/>
-  <rect x="14" y="14" width="36" height="24" rx="3" fill="#ff824f"/>
-  <rect x="18" y="18" width="28" height="16" rx="1.6" fill="#101110"/>
-  <path d="M24 47h16" stroke="#ff824f" stroke-width="4" stroke-linecap="round"/>
-</svg>
-"""
 
 _font_cache: dict = {}
 FONT_PATH = next((p for p in FONT_CANDIDATES if p and os.path.exists(p)), None)
@@ -72,7 +84,7 @@ def font(size: int, weight: str = "Regular") -> ImageFont.FreeTypeFont:
     if key in _font_cache:
         return _font_cache[key]
     if not FONT_PATH:
-        raise SystemExit("한글 폰트 경로를 --font 로 지정해 주세요.")
+        raise SystemExit("한글 폰트를 찾지 못했습니다. --font 로 지정해 주세요.")
     f = ImageFont.truetype(FONT_PATH, size)
     try:
         f.set_variation_by_name(weight)
@@ -91,7 +103,7 @@ def mono(size: int) -> ImageFont.FreeTypeFont:
     return f
 
 
-def spaced(d: ImageDraw.ImageDraw, xy, text: str, f, fill, spacing: float = 0.0, anchor: str = "l"):
+def spaced(d, xy, text, f, fill, spacing=0.0, anchor="l"):
     total = sum(d.textlength(ch, font=f) for ch in text) + spacing * max(0, len(text) - 1)
     x = xy[0] - (total / 2 if anchor == "m" else total if anchor == "r" else 0)
     for ch in text:
@@ -100,48 +112,27 @@ def spaced(d: ImageDraw.ImageDraw, xy, text: str, f, fill, spacing: float = 0.0,
     return total
 
 
-# ── icons ────────────────────────────────────────────────────────────────────
-def render_glyph(px: int) -> Image.Image:
-    """Draw the plate glyph at px×px (4× supersampled, then downscaled)."""
-    S = 4
-    size = px * S
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    k = size / 64.0
-
-    def r(*v):
-        return tuple(round(x * k) for x in v)
-
-    d.rounded_rectangle(r(0, 0, 64, 64), radius=r(13)[0], fill=INK)
-    d.rounded_rectangle(r(12, 13, 52, 43), radius=r(3)[0], fill=ACCENT)
-    d.rounded_rectangle(r(16, 17, 48, 37), radius=r(1.6)[0], fill=INK)
-    w = max(1, round(4.4 * k))
-    d.line([(24 * k, 49 * k), (40 * k, 49 * k)], fill=ACCENT, width=w)
-    for cx, cy in ((24 * k, 49 * k), (40 * k, 49 * k)):
-        d.ellipse([cx - w / 2, cy - w / 2, cx + w / 2, cy + w / 2], fill=ACCENT)
-    return img.resize((px, px), Image.LANCZOS)
+# ── vector rasterisation ────────────────────────────────────────────────────
+def render_svg(svg: str, px: int) -> Image.Image:
+    if cairosvg is None:
+        raise SystemExit("cairosvg 가 필요합니다: pip install cairosvg")
+    buf = io.BytesIO()
+    cairosvg.svg2png(bytestring=svg.encode("utf-8"), write_to=buf,
+                     output_width=px, output_height=px)
+    buf.seek(0)
+    return Image.open(buf).convert("RGBA")
 
 
 def render_mark(px: int) -> Image.Image:
-    S = 4
-    size = px * S
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    k = size / 64.0
-    d.rounded_rectangle([6 * k, 6 * k, 58 * k, 58 * k], radius=12 * k,
-                        outline=ACCENT, width=max(1, round(3 * k)))
-    d.rounded_rectangle([14 * k, 14 * k, 50 * k, 38 * k], radius=3 * k, fill=ACCENT)
-    d.rounded_rectangle([18 * k, 18 * k, 46 * k, 34 * k], radius=1.6 * k, fill=INK)
-    w = max(1, round(4 * k))
-    d.line([(24 * k, 47 * k), (40 * k, 47 * k)], fill=ACCENT, width=w)
-    return img.resize((px, px), Image.LANCZOS)
+    return render_svg(MARK_SVG, px)
 
 
+# ── icon set ────────────────────────────────────────────────────────────────
 def build_icons(out_dir: str):
     with open(os.path.join(out_dir, "favicon.svg"), "w", encoding="utf-8") as fh:
         fh.write(FAVICON_SVG)
 
-    master = render_glyph(1024)
+    master = render_svg(FAVICON_SVG, 1024)
     made = [("favicon.svg", (64, 64))]
     for name, size in [("favicon-32x32.png", 32), ("apple-touch-icon.png", 180),
                        ("icon-192.png", 192), ("icon-512.png", 512)]:
@@ -156,12 +147,17 @@ def build_icons(out_dir: str):
     return made
 
 
-# ── OG ───────────────────────────────────────────────────────────────────────
-S = 2
+# ── OG card ─────────────────────────────────────────────────────────────────
+S = 2  # supersampling: draw at 2400×1260, ship 1200×630
 
 
 def sc(*v):
     return tuple(int(round(x * S)) for x in v)
+
+
+def rrect(d, box, r, fill=None, outline=None, width=1):
+    d.rounded_rectangle(box, radius=r, fill=fill, outline=outline,
+                        width=max(1, int(round(width))))
 
 
 def _rgb(hexcode):
@@ -182,49 +178,74 @@ def photo_slab(d, box, palette):
     for i in range(h):
         d.line([(x0, y0 + i), (x1, y0 + i)], fill=_mix(sky_top, sky_bot, i / max(1, h - 1)))
 
-    # sun + soft halo
-    sx, sy, sr = x0 + w * 0.68, y0 + h * 0.5, h * 0.13
+    sx, sy, sr = x0 + w * 0.7, y0 + h * 0.44, h * 0.1
     for k in range(5, 0, -1):
-        rr = sr * (1 + k * 0.55)
+        rr = sr * (1 + k * 0.6)
         d.ellipse([sx - rr, sy - rr, sx + rr, sy + rr],
-                  fill=_mix(sky_bot, sun, 0.12 * (6 - k) / 5))
+                  fill=_mix(sky_bot, sun, 0.1 * (6 - k) / 5))
     d.ellipse([sx - sr, sy - sr, sx + sr, sy + sr], fill=sun)
 
-    # ridges
-    d.polygon([(x0, y0 + h * 0.74), (x0 + w * 0.22, y0 + h * 0.44), (x0 + w * 0.42, y0 + h * 0.78)], fill=far)
-    d.polygon([(x0 + w * 0.3, y0 + h * 0.8), (x0 + w * 0.58, y0 + h * 0.5), (x0 + w * 1.02, y0 + h * 0.86)], fill=far)
-    d.polygon([(x0 - w * 0.02, y0 + h * 1.0), (x0 + w * 0.35, y0 + h * 0.72), (x0 + w * 0.75, y0 + h * 1.0)], fill=near)
-    d.rectangle([x0, y0 + h * 0.9, x1, y1], fill=ground)
+    d.polygon([(x0, y0 + h * 0.76), (x0 + w * 0.22, y0 + h * 0.46), (x0 + w * 0.44, y0 + h * 0.8)], fill=far)
+    d.polygon([(x0 + w * 0.3, y0 + h * 0.82), (x0 + w * 0.58, y0 + h * 0.52), (x1 + w * 0.02, y0 + h * 0.88)], fill=far)
+    d.polygon([(x0 - w * 0.02, y0 + h * 1.02), (x0 + w * 0.35, y0 + h * 0.74), (x0 + w * 0.78, y0 + h * 1.02)], fill=near)
+    d.rectangle([x0, y0 + h * 0.92, x1, y1], fill=ground)
 
 
-def plate_thumb(d, box, kind):
+def plate_card(d, box, kind):
+    """Compact but faithful mock of the shipped frames."""
     x0, y0, x1, y1 = box
-    if kind == "classic":
-        d.rounded_rectangle(sc(x0, y0, x1, y1), radius=6 * S, fill="#f8f6f2")
-        photo_slab(d, (x0 + 14, y0 + 14, x1 - 14, y1 - 46),
-                   ("#f0c489", "#e79a63", "#ffe6bd", "#8d7f74", "#4d5344", "#3c4433"))
-        d.text(((x0 + x1) / 2 * S, (y1 - 30) * S), "SONY α7 IV · 35MM · ƒ/1.8",
-               font=mono(7 * S), fill="#6f6a62", anchor="ms")
-        d.line([((x0 + x1) / 2 - 18) * S, (y1 - 18) * S,
-                ((x0 + x1) / 2 + 18) * S, (y1 - 18) * S], fill="#cfc9bf", width=1 * S)
+    w, h = x1 - x0, y1 - y0
+
+    if kind == "horizon":
+        pad = round(w * 0.034)
+        rrect(d, sc(x0, y0, x1, y1), 4 * S, fill="#faf9f6")
+        photo_slab(d, (x0 + pad, y0 + pad, x1 - pad, y0 + h - pad - h * 0.22),
+                   ("#f2c78d", "#e9a273", "#fff4d8", "#8d7f74", "#4d5344", "#3c4433"))
+        cx = (x0 + x1) / 2
+        d.text((cx * S, (y1 - h * 0.17) * S), "SONY  ILCE-7M4",
+               font=font(9.5 * S, "SemiBold"), fill="#17181b", anchor="ms")
+        d.text((cx * S, (y1 - h * 0.085) * S), "35mm · ƒ/1.8 · 1/250s · ISO 100",
+               font=mono(6 * S), fill="#7b756c", anchor="ms")
+
     elif kind == "studio":
-        d.rounded_rectangle(sc(x0, y0, x1, y1), radius=6 * S, fill="#101110",
-                            outline="#242824", width=1 * S)
-        photo_slab(d, (x0 + 12, y0 + 12, x1 - 12, y1 - 40),
+        pad = round(w * 0.055)
+        rrect(d, sc(x0, y0, x1, y1), 7 * S, fill="#101110")
+        photo_slab(d, (x0 + pad, y0 + pad, x1 - pad, y0 + h - pad - h * 0.24),
                    ("#243244", "#4f6376", "#dfeaf2", "#2b3a49", "#141c24", "#0f151b"))
-        d.line([(x0 + 12) * S, (y1 - 34) * S, (x0 + 52) * S, (y1 - 34) * S],
-               fill=ACCENT, width=2 * S)
-        d.text(((x0 + 12) * S, (y1 - 16) * S), "SHUTTERPLATE · 03", font=mono(7 * S), fill="#8b8b85")
-    else:
-        d.rounded_rectangle(sc(x0, y0, x1, y1), radius=4 * S, fill="#16150f")
-        for i in range(7):
-            bx = x0 + 10 + i * 26
-            for by in (y0 + 6, y1 - 12):
-                d.rounded_rectangle(sc(bx, by, bx + 12, by + 6), radius=1.2 * S, fill="#efe7d8")
-        photo_slab(d, (x0 + 12, y0 + 18, x1 - 12, y1 - 40),
+        by = y0 + h - pad - h * 0.24
+        d.line([(x0 + pad) * S, by * S, (x1 - pad) * S, by * S], fill="#33362f", width=1 * S)
+        d.line([(x0 + pad) * S, by * S, (x0 + pad + w * 0.12) * S, by * S], fill=ACCENT, width=int(1.6 * S))
+        # corner brackets
+        for (bx, byy, dx, dy) in ((x0 + 6, y0 + 6, 1, 1), (x1 - 6, y0 + 6, -1, 1),
+                                  (x0 + 6, y1 - 6, 1, -1), (x1 - 6, y1 - 6, -1, -1)):
+            d.line([(bx * S, byy * S), ((bx + dx * 10) * S, byy * S)], fill=ACCENT, width=int(1.2 * S))
+            d.line([(bx * S, byy * S), (bx * S, (byy + dy * 10) * S)], fill=ACCENT, width=int(1.2 * S))
+        d.text(((x0 + pad) * S, (by + h * 0.10) * S), "SONY ILCE-7M4",
+               font=font(8 * S, "SemiBold"), fill="#f4f2ed")
+        d.text(((x0 + pad) * S, (by + h * 0.17) * S), "FE 35mm F1.4 GM",
+               font=mono(5.2 * S), fill="#8d8b85")
+        d.text(((x1 - pad) * S, (by + h * 0.10) * S), "35mm · ƒ/1.8",
+               font=mono(5.6 * S), fill="#f4f2ed", anchor="rs")
+        d.text(((x1 - pad) * S, (by + h * 0.155) * S), "2026.10.24 17:32",
+               font=mono(4.8 * S), fill="#8d8b85", anchor="rs")
+
+    else:  # film
+        pad = round(w * 0.06)
+        rrect(d, sc(x0, y0, x1, y1), 3 * S, fill="#16150f")
+        hole_y = [y0 + 3, y1 - 9]
+        for hy in hole_y:
+            bx = x0 + 5
+            while bx < x1 - 10:
+                rrect(d, sc(bx, hy, bx + 6, hy + 4), 1.2 * S, fill="#eee5d2")
+                bx += 10
+        photo_slab(d, (x0 + pad, y0 + h * 0.11, x1 - pad, y0 + h * 0.62),
                    ("#b98a5c", "#e8b884", "#fff0cc", "#6d4a32", "#3a2718", "#2a1c11"))
-        d.text(((x0 + 12) * S, (y1 - 28) * S), "PORTRA 400", font=mono(7 * S), fill="#e0703c")
-        d.text(((x1 - 12) * S, (y1 - 28) * S), "#12", font=mono(7 * S), fill="#a89c86", anchor="rs")
+        d.text(((x0 + pad) * S, (y0 + h * 0.72) * S), "HD2Lab",
+               font=font(7 * S, "SemiBold"), fill="#e0703c")
+        d.text(((x0 + pad) * S, (y0 + h * 0.83) * S), "SONY ILCE-7M4 · 35mm",
+               font=mono(5 * S), fill="#f0e9d9")
+        d.text(((x1 - pad) * S, (y0 + h * 0.78) * S), "100", font=mono(9 * S), fill="#f0e9d9", anchor="rs")
+        d.text(((x1 - pad) * S, (y0 + h * 0.88) * S), "ISO", font=mono(4 * S), fill="#e0703c", anchor="rs")
 
 
 def build_og(out_dir: str) -> str:
@@ -232,52 +253,58 @@ def build_og(out_dir: str) -> str:
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
 
+    # 1) grid + container card
     for x in range(0, W + 1, 40 * S):
         d.line([(x, 0), (x, H)], fill=GRID)
     for y in range(0, H + 1, 40 * S):
         d.line([(0, y), (W, y)], fill=GRID)
+    rrect(d, sc(56, 30, 1144, 600), 26 * S, fill=CARD, outline=CARD_BORDER, width=1.4 * S)
 
-    d.rounded_rectangle(sc(56, 36, 1144, 594), radius=26 * S, fill=CARD,
-                        outline=CARD_BORDER, width=int(1.4 * S))
-
+    # 2) eyebrow + privacy mark
     r = 5 * S
-    d.ellipse((104 * S - r, 90 * S - r, 104 * S + r, 90 * S + r), fill=ACCENT)
-    spaced(d, (124 * S, 96 * S), "03 / CRAFT · SHUTTERPLATE", font(13 * S, "Medium"),
-           MUTED, spacing=2.4 * S)
-    d.text((1096 * S, 96 * S), "LOCAL ONLY · 0 B UPLOAD", font=mono(11 * S), fill=DIM, anchor="rs")
+    d.ellipse((104 * S - r, 82 * S - r, 104 * S + r, 82 * S + r), fill=ACCENT)
+    spaced(d, (124 * S, 88 * S), "03 / CRAFT · SHUTTERPLATE",
+           font(13.5 * S, "Medium"), MUTED, spacing=2.4 * S)
+    d.text((1096 * S, 88 * S), "LOCAL ONLY · 0 B UPLOAD", font=mono(11 * S), fill=DIM, anchor="rs")
 
-    mark = render_mark(78 * S)
-    img.paste(mark, (92 * S, 126 * S), mark)
+    # 3) dual-skew mark + HD2Lab | SHUTTERPLATE
+    mark = render_mark(80 * S)
+    img.paste(mark, (90 * S, 116 * S), mark)
 
-    base_y = 186
-    f_title = font(54 * S, "SemiBold")
+    base_y = 180
+    f_title = font(48 * S, "SemiBold")
     d.text((186 * S, base_y * S), "HD2Lab", font=f_title, fill=TEXT_HI, anchor="ls")
     px = 186 * S + d.textlength("HD2Lab", font=f_title) + 16 * S
-    d.line([(px, (base_y - 36) * S), (px, base_y * S)], fill="#3a403a", width=int(2.5 * S))
-    d.text((px + 18 * S, base_y * S), "Shutterplate", font=f_title, fill=ACCENT, anchor="ls")
+    d.line([(px, (base_y - 34) * S), (px, base_y * S)], fill="#3a403a", width=int(2.5 * S))
+    d.text((px + 18 * S, base_y * S), "SHUTTERPLATE", font=f_title, fill=ACCENT, anchor="ls")
 
-    f_head = font(44 * S, "Bold")
-    d.text((96 * S, 268 * S), "사진 한 장을,", font=f_head, fill=TEXT_HI, anchor="ls")
-    d.text((96 * S, 322 * S), "한 장의 ", font=f_head, fill=TEXT_HI, anchor="ls")
+    # 4) headline
+    f_head = font(42 * S, "Bold")
+    d.text((96 * S, 254 * S), "사진 한 장을,", font=f_head, fill=TEXT_HI, anchor="ls")
+    d.text((96 * S, 306 * S), "한 장의 ", font=f_head, fill=TEXT_HI, anchor="ls")
     w = d.textlength("한 장의 ", font=f_head)
-    d.text((96 * S + w, 322 * S), "플레이트", font=f_head, fill=ACCENT, anchor="ls")
-    d.text((96 * S + w + d.textlength("플레이트", font=f_head), 322 * S), "로.",
+    d.text((96 * S + w, 306 * S), "플레이트", font=f_head, fill=ACCENT, anchor="ls")
+    d.text((96 * S + w + d.textlength("플레이트", font=f_head), 306 * S), "로.",
            font=f_head, fill=TEXT_HI, anchor="ls")
 
-    d.text((97 * S, 372 * S), "EXIF를 읽어 보더·노출 스펙·서명을 얹고, 원본 1:1 해상도로 내려받습니다.",
-           font=font(16.5 * S), fill=MUTED)
-    d.text((97 * S, 400 * S), "시그니처 플레이트 4종 · 메이커 엠블럼 10종 · 100% 브라우저 로컬 처리",
-           font=font(16.5 * S), fill=MUTED)
+    d.text((97 * S, 350 * S), "EXIF를 읽어 노출 스펙·서명을 얹고, 원본 1:1 해상도로 내려받습니다.",
+           font=font(16 * S), fill=MUTED)
+    d.text((97 * S, 376 * S), "8종 시그니처 프레임 · 메이커 엠블럼 10종 · 100% 브라우저 로컬 처리",
+           font=font(16 * S), fill=MUTED)
 
-    # plate strip
-    xs = [96, 96 + 262 + 16, 96 + 2 * (262 + 16)]
-    for x, kind in zip(xs, ("classic", "studio", "film")):
-        plate_thumb(d, (x, 428, x + 262, 428 + 128), kind)
+    # 5) frame render strip — three shipped signatures
+    tile_w, gap, th = 264, 16, 126
+    xs = [96, 96 + tile_w + gap, 96 + 2 * (tile_w + gap)]
+    for x, kind in zip(xs, ("horizon", "studio", "film")):
+        plate_card(d, (x, 404, x + tile_w, 404 + th), kind)
+        label = {"horizon": "CLEAN HORIZON", "studio": "STUDIO DARK", "film": "FILM SPROCKET"}[kind]
+        d.text((x * S, (404 + th + 15) * S), label, font=mono(8 * S), fill=DIM)
 
-    d.line([(104 * S, 578 * S), (1096 * S, 578 * S)], fill=LINE, width=int(1 * S))
-    spaced(d, (104 * S, 604 * S), "EXIF PLATE STUDIO · BUILT IN THE BROWSER",
+    # 6) footer
+    d.line([(104 * S, 566 * S), (1096 * S, 566 * S)], fill=LINE, width=int(1 * S))
+    spaced(d, (104 * S, 588 * S), "EXIF FRAME STUDIO · BUILT IN THE BROWSER",
            font(11.5 * S, "Medium"), MUTED, spacing=1.5 * S)
-    d.text((1096 * S, 604 * S), "hyangdan2.github.io/PKPilot0003", font=mono(11.5 * S),
+    d.text((1096 * S, 588 * S), "hyangdan2.github.io/PKPilot0003", font=mono(11.5 * S),
            fill="#9aa39a", anchor="rs")
 
     out = img.resize((1200, 630), Image.LANCZOS)
@@ -288,6 +315,7 @@ def build_og(out_dir: str) -> str:
 
 
 def main() -> int:
+    import argparse
     ap = argparse.ArgumentParser(description="PKPilot0003 (Shutterplate) 브랜드 에셋 생성")
     ap.add_argument("--font")
     ap.add_argument("--out", default=ROOT)

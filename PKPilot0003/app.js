@@ -1,6 +1,6 @@
 /* ============================================================================
  * HD2Lab · Shutterplate (PKPilot0003)
- * Studio wiring: upload → EXIF → live canvas → 1:1 export.
+ * Studio wiring: upload → EXIF → live canvas → 8-frame strip → 1:1 export.
  * ==========================================================================*/
 (function () {
   'use strict';
@@ -20,24 +20,33 @@
 
   var MAX_EDGE = 4096;
 
+  var SHEETS = {
+    exif: { title: 'EXIF 편집', kicker: 'EXIF METADATA' },
+    geometry: { title: '프레임 · 여백', kicker: 'GEOMETRY & RATIO' },
+    emblem: { title: '메이커 엠블럼', kicker: 'MAKER EMBLEMS' },
+    export: { title: '내보내기', kicker: 'EXPORT ENGINE' }
+  };
+
   var state = {
     photo: null,
     exifTags: null,
     fields: EX.templateFor(new Date()),
-    style: 'classic',
+    style: PL.ORDER[0],
     emblemChoice: 'auto',
     autoEmblem: 'hd2lab',
-    geo: PL.defaults('classic'),
+    geo: PL.defaults(PL.ORDER[0]),
+    ratio: 0,
     font: 'sans',
     stock: 'KODAK PORTRA 400',
-    frameNo: '03',
+    frameNo: '#03',
     format: 'jpeg',
     quality: 95,
     bg: 'dark',
     zoom: 1,
     panX: 0, panY: 0,
     sampleIdx: 0,
-    fitScale: 1
+    fitScale: 1,
+    sheet: null
   };
 
   /* ── DOM ──────────────────────────────────────────────────────────────── */
@@ -52,18 +61,20 @@
     zoomLabel: $('#zoomLabel'),
     fileInput: $('#fileInput'),
     dropzone: $('#dropzone'),
-    fileMeta: $('#fileMeta'),
+    sessionCard: $('#sessionCard'),
+    sessionThumb: $('#sessionThumb'),
     metaName: $('#metaName'),
     metaSize: $('#metaSize'),
     metaBytes: $('#metaBytes'),
     metaExif: $('#metaExif'),
-    styleGrid: $('#styleGrid'),
-    filmStockRow: $('#filmStockRow'),
-    stockSelect: $('#stockSelect'),
+    strip: $('#frameStrip'),
+    frameCount: $('#frameCount'),
     emblemGrid: $('#emblemGrid'),
     emblemHint: $('#emblemHint'),
     padRange: $('#padRange'), extraRange: $('#extraRange'), radiusRange: $('#radiusRange'),
     padVal: $('#padVal'), extraVal: $('#extraVal'), radiusVal: $('#radiusVal'),
+    ratioSelect: $('#ratioSelect'),
+    stockSelect: $('#stockSelect'),
     fontSelect: $('#fontSelect'),
     formatSeg: $('#formatSeg'),
     qualityRow: $('#qualityRow'),
@@ -71,12 +82,19 @@
     qualityVal: $('#qualityVal'),
     exportSize: $('#exportSize'),
     exportName: $('#exportName'),
+    exportStyle: $('#exportStyle'),
     downloadBtn: $('#downloadBtn'),
     headerDownloadBtn: $('#headerDownloadBtn'),
     toasts: $('#toasts'),
     portalMenu: $('#portalMenu'),
     portalMenuBtn: $('#portalMenuBtn'),
-    portalMenuDropdown: $('#portalMenuDropdown')
+    portalMenuDropdown: $('#portalMenuDropdown'),
+    sheet: $('#sheet'),
+    sheetBackdrop: $('#sheetBackdrop'),
+    sheetTitle: $('#sheetTitle'),
+    sheetKicker: $('#sheetKicker'),
+    sheetClose: $('#sheetClose'),
+    toolbar: $('#toolbar')
   };
 
   var FIELD_INPUTS = {
@@ -89,7 +107,7 @@
   function toast(message, kind) {
     var d = document.createElement('div');
     d.className = 'toast' + (kind ? ' is-' + kind : '');
-    var icon = kind === 'error' ? 'i-info' : kind === 'warn' ? 'i-info' : 'i-check';
+    var icon = kind === 'error' || kind === 'warn' ? 'i-info' : 'i-check';
     d.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#' + icon + '"/></svg><span></span>';
     d.lastChild.textContent = message;
     el.toasts.appendChild(d);
@@ -97,10 +115,10 @@
     setTimeout(function () {
       d.classList.add('is-out');
       setTimeout(function () { d.remove(); }, 240);
-    }, 3400);
+    }, 3200);
   }
 
-  /* ── emblem picker ────────────────────────────────────────────────────── */
+  /* ── emblems ──────────────────────────────────────────────────────────── */
   var INK = '#d9ded6', ACCENT = '#ff824f', BASE = '#121412';
 
   function emblemTile(id, name, inner) {
@@ -130,7 +148,7 @@
       tile.addEventListener('click', function () {
         state.emblemChoice = tile.dataset.emblem;
         syncEmblems();
-        scheduleRender();
+        renderAll();
       });
     });
     syncEmblems();
@@ -164,10 +182,10 @@
       state.autoEmblem = EM.fromMake(state.fields.make, state.fields.model);
       syncEmblems();
     }
-    scheduleRender();
+    renderAll();
   }
 
-  /* ── photo loading ────────────────────────────────────────────────────── */
+  /* ── image plumbing ───────────────────────────────────────────────────── */
   function decodeImage(url) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
@@ -239,6 +257,8 @@
       fields = EX.templateFor(file.lastModified ? new Date(file.lastModified) : new Date());
     }
 
+    if (state.photo && state.photo.objectUrl) URL.revokeObjectURL(state.photo.objectUrl);
+
     state.photo = {
       file: file,
       img: img,
@@ -254,11 +274,12 @@
     state.autoEmblem = EM.fromMake(fields.make, fields.model);
     state.frameNo = frameNumber(fields.datetime);
     state.zoom = 1; state.panX = 0; state.panY = 0;
+    stripSrcCache = null;
 
     paintFields();
     syncEmblems();
     syncPhotoUI(count);
-    scheduleRender();
+    renderAll();
 
     toast((note ? note + ' · ' : '') + (hasCamera ? 'EXIF ' + count + '개 항목을 읽었습니다' : 'EXIF 없음 — 템플릿 값으로 시작합니다'));
     return true;
@@ -274,7 +295,7 @@
     var p = state.photo;
     if (!p) {
       el.empty.hidden = false;
-      el.fileMeta.hidden = true;
+      el.sessionCard.hidden = true;
       el.photoChip.lastElementChild.textContent = '사진 없음';
       el.downloadBtn.disabled = true;
       el.headerDownloadBtn.disabled = true;
@@ -282,7 +303,7 @@
       return;
     }
     el.empty.hidden = true;
-    el.fileMeta.hidden = false;
+    el.sessionCard.hidden = false;
     el.metaName.textContent = p.name;
     el.metaSize.textContent = p.w + ' × ' + p.h;
     el.metaBytes.textContent = bytes(p.bytes);
@@ -291,6 +312,21 @@
     el.downloadBtn.disabled = false;
     el.headerDownloadBtn.disabled = false;
     $('#resetMetaBtn').disabled = false;
+    paintSessionThumb();
+  }
+
+  function paintSessionThumb() {
+    var cv = el.sessionThumb;
+    if (!cv) return;
+    var size = 72, ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+    if (!state.photo) return;
+    var src = state.photo.preview;
+    var w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+    var k = Math.max(size / w, size / h);
+    var dw = w * k, dh = h * k;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, (size - dw) / 2, (size - dh) / 2, dw, dh);
   }
 
   async function loadSample() {
@@ -313,21 +349,102 @@
     state.exifTags = null;
     state.fields = EX.templateFor(new Date());
     state.zoom = 1; state.panX = 0; state.panY = 0;
+    stripSrcCache = null;
     paintFields();
     syncPhotoUI(0);
-    scheduleRender();
+    renderAll();
     toast('캔버스를 비웠습니다');
   }
 
+  /* ── placeholder art (so the strip previews before a photo arrives) ────── */
+  var placeholderCanvas = null;
+  function placeholderSource() {
+    if (placeholderCanvas) return placeholderCanvas;
+    var W = 900, H = 600;
+    var c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var ctx = c.getContext('2d');
+
+    var sky = ctx.createLinearGradient(0, 0, 0, H * 0.72);
+    sky.addColorStop(0, '#f2c78d');
+    sky.addColorStop(0.55, '#e9a273');
+    sky.addColorStop(1, '#b87558');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+
+    var g = ctx.createRadialGradient(W * 0.68, H * 0.46, 0, W * 0.68, H * 0.46, H * 0.2);
+    g.addColorStop(0, 'rgba(255,245,220,0.95)');
+    g.addColorStop(1, 'rgba(255,226,180,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(W * 0.4, H * 0.1, W * 0.56, H * 0.6);
+    ctx.fillStyle = '#fff4d8';
+    ctx.beginPath();
+    ctx.arc(W * 0.68, H * 0.46, H * 0.075, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#7d6a5e';
+    ctx.beginPath();
+    ctx.moveTo(-10, H * 0.78);
+    ctx.lineTo(W * 0.2, H * 0.46);
+    ctx.lineTo(W * 0.44, H * 0.8);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#5d5248';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.28, H * 0.82);
+    ctx.lineTo(W * 0.56, H * 0.52);
+    ctx.lineTo(W * 0.96, H * 0.86);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#3f4034';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(0, H * 0.82);
+    ctx.lineTo(W * 0.32, H * 0.7);
+    ctx.lineTo(W * 0.68, H * 0.9);
+    ctx.lineTo(W, H * 0.78);
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(28,30,24,0.55)';
+    ctx.fillRect(0, H * 0.94, W, H * 0.06);
+
+    placeholderCanvas = c;
+    return c;
+  }
+
+  var stripSrcCache = null;
+  function stripSource() {
+    if (stripSrcCache) return stripSrcCache;
+    var target = state.photo ? state.photo.preview : placeholderSource();
+    var w = target.naturalWidth || target.width;
+    var h = target.naturalHeight || target.height;
+    var maxEdge = 440;
+    var k = Math.min(1, maxEdge / Math.max(w, h));
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k));
+    c.height = Math.max(1, Math.round(h * k));
+    var ctx = c.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(target, 0, 0, c.width, c.height);
+    c.__w = w; c.__h = h;
+    stripSrcCache = c;
+    return c;
+  }
+
   /* ── layout / render ──────────────────────────────────────────────────── */
-  function layoutFor(img, w, h) {
+  function layoutFor(img, w, h, styleId) {
     return PL.layout({ w: w, h: h, img: img }, {
-      style: state.style,
+      style: styleId || state.style,
       fields: state.fields,
       emblem: resolveEmblem(),
       padPct: state.geo.padPct,
       extraPct: state.geo.extraPct,
       radiusPct: state.geo.radiusPct,
+      ratio: state.ratio,
       font: state.font,
       stock: state.stock,
       frameNo: state.frameNo
@@ -355,7 +472,8 @@
     ctx.clearRect(0, 0, cw, ch);
 
     if (L && cw > 0 && ch > 0) {
-      var fit = Math.min((cw - 56) / L.W, (ch - 56) / L.H);
+      var pad = cw < 520 ? 16 : 40;
+      var fit = Math.min((cw - pad) / L.W, (ch - pad) / L.H);
       state.fitScale = fit;
       var s = fit * state.zoom;
       var limitX = Math.max(0, (L.W * s - cw) / 2) + 48;
@@ -368,8 +486,8 @@
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(s, s);
-      ctx.shadowColor = state.bg === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(30,36,28,0.22)';
-      ctx.shadowBlur = L.W * 0.018;
+      ctx.shadowColor = state.bg === 'dark' ? 'rgba(0,0,0,0.62)' : 'rgba(30,36,28,0.22)';
+      ctx.shadowBlur = L.W * 0.02;
       ctx.shadowOffsetY = L.W * 0.005;
       ctx.fillStyle = L.colors.base;
       PL.helpers.roundRect(ctx, 0, 0, L.W, L.H, L.radius);
@@ -382,22 +500,95 @@
       PL.paint(ctx, L);
       ctx.restore();
 
-      el.zoomLabel.textContent = state.zoom === 1 ? '맞춤' : '×' + (state.zoom).toFixed(1);
+      el.zoomLabel.textContent = state.zoom === 1 ? '맞춤' : '×' + state.zoom.toFixed(1);
     }
     updateReadout(L);
   }
 
+  /* ── frame strip thumbnails ───────────────────────────────────────────── */
+  var stripCanvases = [];
+  var stripTimer = 0;
+
+  function buildStrip() {
+    el.frameCount.textContent = String(PL.ORDER.length);
+    PL.ORDER.forEach(function (id) {
+      var S = PL.STYLES[id];
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'frame-card';
+      b.dataset.style = id;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', 'false');
+      b.setAttribute('aria-label', S.label + ' — ' + S.tag);
+      b.innerHTML =
+        '<span class="frame-thumb"><canvas aria-hidden="true"></canvas></span>' +
+        '<span class="frame-foot">' +
+          '<span class="frame-name">' + S.label + '</span>' +
+          '<span class="frame-badge">' + S.tag + '</span>' +
+        '</span>';
+      el.strip.appendChild(b);
+      stripCanvases.push($('canvas', b));
+    });
+  }
+
+  function paintStrip() {
+    var src = stripSource();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    PL.ORDER.forEach(function (id, i) {
+      var cv = stripCanvases[i];
+      if (!cv) return;
+      var rect = cv.getBoundingClientRect();
+      var cw = Math.round(rect.width) || 116;
+      var chh = Math.round(rect.height) || 70;
+      if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(chh * dpr)) {
+        cv.width = Math.round(cw * dpr);
+        cv.height = Math.round(chh * dpr);
+      }
+      var ctx = cv.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cw, chh);
+
+      var L = PL.layout({ w: src.__w, h: src.__h, img: src }, {
+        style: id,
+        fields: state.fields,
+        emblem: resolveEmblem(),
+        font: state.font,
+        stock: state.stock,
+        frameNo: state.frameNo
+      });
+      var s = Math.min(cw / L.W, chh / L.H) * 0.94;
+      ctx.save();
+      ctx.translate((cw - L.W * s) / 2, (chh - L.H * s) / 2);
+      ctx.scale(s, s);
+      ctx.fillStyle = L.colors.base;
+      PL.helpers.roundRect(ctx, 0, 0, L.W, L.H, L.radius);
+      ctx.fill();
+      PL.paint(ctx, L);
+      ctx.restore();
+    });
+  }
+
+  function scheduleStrip() {
+    if (stripTimer) clearTimeout(stripTimer);
+    stripTimer = setTimeout(function () {
+      stripTimer = 0;
+      paintStrip();
+    }, 140);
+  }
+
   var raf = 0;
-  function scheduleRender() {
+  function renderAll() {
     if (raf) return;
     raf = requestAnimationFrame(function () {
       raf = 0;
       render();
     });
+    scheduleStrip();
   }
 
   function updateReadout(L) {
     el.styleChip.textContent = PL.STYLES[state.style].label.toUpperCase();
+    el.exportStyle.textContent = PL.STYLES[state.style].label;
     if (!L) {
       el.renderChip.textContent = '—';
       el.exportSize.textContent = '—';
@@ -434,12 +625,14 @@
     var mime = format === 'png' ? 'image/png' : 'image/jpeg';
     var name = EX.fileName(state.fields, format === 'png' ? 'png' : 'jpg');
     el.downloadBtn.disabled = true;
+    el.headerDownloadBtn.disabled = true;
 
     var blob = await new Promise(function (resolve) {
       if (off.toBlob) off.toBlob(resolve, mime, state.quality / 100);
       else resolve(null);
     });
     el.downloadBtn.disabled = false;
+    el.headerDownloadBtn.disabled = false;
 
     if (!blob) { toast('내보내기에 실패했습니다 — 사진 크기를 줄여 보세요', 'error'); return; }
 
@@ -454,15 +647,14 @@
     setTimeout(function () { URL.revokeObjectURL(href); }, 12000);
 
     toast(ow + ' × ' + oh + ' · ' + bytes(blob.size) + ' 저장');
-    window.__lastExport = { name: name, bytes: blob.size, w: ow, h: oh, format: format };
+    window.__lastExport = { name: name, bytes: blob.size, w: ow, h: oh, format: format, style: state.style };
   }
 
   /* ── UI sync ──────────────────────────────────────────────────────────── */
   function syncStyleUI() {
-    $$('.style-card', el.styleGrid).forEach(function (c) {
+    $$('.frame-card', el.strip).forEach(function (c) {
       c.setAttribute('aria-checked', c.dataset.style === state.style ? 'true' : 'false');
     });
-    el.filmStockRow.hidden = state.style !== 'film';
   }
 
   function syncGeoUI() {
@@ -472,6 +664,7 @@
     el.padVal.textContent = state.geo.padPct + '%';
     el.extraVal.textContent = state.geo.extraPct + '%';
     el.radiusVal.textContent = state.geo.radiusPct + '%';
+    el.ratioSelect.value = String(state.ratio);
   }
 
   function syncExportUI() {
@@ -491,10 +684,51 @@
       syncGeoUI();
     }
     syncStyleUI();
-    scheduleRender();
+    renderAll();
+  }
+
+  /* ── sheet ────────────────────────────────────────────────────────────── */
+  function openSheet(name) {
+    if (!SHEETS[name]) return;
+    state.sheet = name;
+    el.sheetTitle.textContent = SHEETS[name].title;
+    el.sheetKicker.textContent = SHEETS[name].kicker;
+    $$('.pane', el.sheet).forEach(function (p) {
+      p.classList.toggle('is-active', p.dataset.pane === name);
+    });
+    el.sheet.classList.add('is-open');
+    el.sheetBackdrop.classList.add('is-open');
+    el.sheet.setAttribute('aria-hidden', 'false');
+    $$('[data-sheet]', el.toolbar).forEach(function (b) {
+      b.setAttribute('aria-expanded', b.dataset.sheet === name ? 'true' : 'false');
+    });
+    el.sheetClose.focus({ preventScroll: true });
+  }
+
+  function closeSheet(restoreFocus) {
+    if (!state.sheet) return;
+    var last = state.sheet;
+    state.sheet = null;
+    el.sheet.classList.remove('is-open');
+    el.sheetBackdrop.classList.remove('is-open');
+    el.sheet.setAttribute('aria-hidden', 'true');
+    $$('[data-sheet]', el.toolbar).forEach(function (b) {
+      b.setAttribute('aria-expanded', 'false');
+    });
+    if (restoreFocus !== false) {
+      var btn = $('[data-sheet="' + last + '"]', el.toolbar);
+      if (btn) btn.focus({ preventScroll: true });
+    }
+  }
+
+  function toggleSheet(name) {
+    if (state.sheet === name) closeSheet();
+    else openSheet(name);
   }
 
   /* ── events ───────────────────────────────────────────────────────────── */
+  var dragMoved = false;
+
   function bind() {
     // upload
     el.dropzone.addEventListener('click', function () { el.fileInput.click(); });
@@ -513,20 +747,20 @@
     ['dragleave', 'drop'].forEach(function (t) {
       el.dropzone.addEventListener(t, function () { el.dropzone.classList.remove('is-over'); });
     });
-    el.dropzone.addEventListener('drop', function (e) {
+    function dropHandler(e) {
       e.preventDefault();
       var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (f) loadFile(f);
-    });
-    el.stageCanvas.addEventListener('drop', function (e) {
-      e.preventDefault();
-      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-      if (f) loadFile(f);
-    });
+    }
+    el.dropzone.addEventListener('drop', function (e) { dropHandler(e); });
+    el.stageCanvas.addEventListener('drop', dropHandler);
+    window.addEventListener('dragover', function (e) { e.preventDefault(); });
+    window.addEventListener('drop', function (e) { e.preventDefault(); });
 
-    $('#sampleBtn').addEventListener('click', loadSample);
+    $('#headerSampleBtn').addEventListener('click', loadSample);
     $('#emptySampleBtn').addEventListener('click', loadSample);
-    $('#emptyPickBtn').addEventListener('click', function () { el.fileInput.click(); });
+    $('#emptyPickBtn') && $('#emptyPickBtn').addEventListener('click', function () { el.fileInput.click(); });
+    $('#changeBtn').addEventListener('click', function () { el.fileInput.click(); });
     $('#clearBtn').addEventListener('click', clearPhoto);
 
     // fields
@@ -537,40 +771,40 @@
       if (state.photo && state.photo.file) loadFile(state.photo.file, 'EXIF 다시 읽기');
     });
 
-    // style
-    $$('.style-card', el.styleGrid).forEach(function (card) {
-      card.addEventListener('click', function () { setStyle(card.dataset.style); });
-    });
-    el.stockSelect.addEventListener('change', function () {
-      state.stock = el.stockSelect.value;
-      scheduleRender();
-    });
-
     // geometry
     el.padRange.addEventListener('input', function () {
       state.geo.padPct = parseFloat(el.padRange.value);
       el.padVal.textContent = state.geo.padPct + '%';
-      scheduleRender();
+      renderAll();
     });
     el.extraRange.addEventListener('input', function () {
       state.geo.extraPct = parseFloat(el.extraRange.value);
       el.extraVal.textContent = state.geo.extraPct + '%';
-      scheduleRender();
+      renderAll();
     });
     el.radiusRange.addEventListener('input', function () {
       state.geo.radiusPct = parseFloat(el.radiusRange.value);
       el.radiusVal.textContent = state.geo.radiusPct + '%';
-      scheduleRender();
+      renderAll();
+    });
+    el.ratioSelect.addEventListener('change', function () {
+      state.ratio = parseFloat(el.ratioSelect.value) || 0;
+      renderAll();
+    });
+    el.stockSelect.addEventListener('change', function () {
+      state.stock = el.stockSelect.value;
+      renderAll();
     });
     el.fontSelect.addEventListener('change', function () {
       state.font = el.fontSelect.value;
-      scheduleRender();
+      renderAll();
     });
     $('#resetGeoBtn').addEventListener('click', function () {
       state.geo = PL.defaults(state.style);
+      state.ratio = 0;
       syncGeoUI();
-      scheduleRender();
-      toast('스타일 기본 여백으로 되돌렸습니다');
+      renderAll();
+      toast('프레임 기본값으로 되돌렸습니다');
     });
 
     // export
@@ -578,7 +812,7 @@
       b.addEventListener('click', function () {
         state.format = b.dataset.format;
         syncExportUI();
-        scheduleRender();
+        render();
       });
     });
     el.qualityRange.addEventListener('input', function () {
@@ -588,15 +822,12 @@
     el.downloadBtn.addEventListener('click', exportPlate);
     el.headerDownloadBtn.addEventListener('click', exportPlate);
 
-    // accordion
-    $$('.acc-head').forEach(function (head) {
-      head.addEventListener('click', function () {
-        var acc = head.parentElement;
-        var open = acc.getAttribute('aria-open') !== 'false';
-        acc.setAttribute('aria-open', open ? 'false' : 'true');
-        head.setAttribute('aria-expanded', open ? 'false' : 'true');
-      });
+    // toolbar ⇄ sheet
+    $$('[data-sheet]', el.toolbar).forEach(function (b) {
+      b.addEventListener('click', function () { toggleSheet(b.dataset.sheet); });
     });
+    el.sheetClose.addEventListener('click', function () { closeSheet(); });
+    el.sheetBackdrop.addEventListener('click', function () { closeSheet(); });
 
     // preview background
     $$('button', $('#bgSeg')).forEach(function (b) {
@@ -606,7 +837,7 @@
         $$('button', $('#bgSeg')).forEach(function (x) {
           x.setAttribute('aria-pressed', x.dataset.bg === state.bg ? 'true' : 'false');
         });
-        scheduleRender();
+        render();
       });
     });
 
@@ -654,14 +885,14 @@
         if (pinch.dist > 8) {
           state.zoom = Math.max(1, Math.min(8, pinch.zoom * (d / pinch.dist)));
           if (state.zoom === 1) { state.panX = 0; state.panY = 0; }
-          scheduleRender();
+          render();
         }
         return;
       }
       if (!drag) return;
       state.panX = drag.px + (e.clientX - drag.x);
       state.panY = drag.py + (e.clientY - drag.y);
-      scheduleRender();
+      render();
     });
 
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
@@ -673,6 +904,49 @@
           el.stageCanvas.classList.remove('is-panning');
         }
       });
+    });
+
+    // frame strip: wheel, drag-scroll, keyboard
+    el.strip.addEventListener('wheel', function (e) {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      el.strip.scrollLeft += e.deltaY;
+    }, { passive: false });
+
+    var scrollDrag = null;
+    el.strip.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      scrollDrag = { x: e.clientX, left: el.strip.scrollLeft, moved: 0 };
+      dragMoved = false;
+    });
+    el.strip.addEventListener('pointermove', function (e) {
+      if (!scrollDrag) return;
+      var dx = e.clientX - scrollDrag.x;
+      scrollDrag.moved = Math.max(scrollDrag.moved, Math.abs(dx));
+      if (scrollDrag.moved > 6) {
+        dragMoved = true;
+        el.strip.scrollLeft = scrollDrag.left - dx;
+      }
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+      el.strip.addEventListener(t, function () { scrollDrag = null; });
+    });
+    $$('.frame-card', el.strip).forEach(function (card) {
+      card.addEventListener('click', function (e) {
+        if (dragMoved) { e.preventDefault(); dragMoved = false; return; }
+        setStyle(card.dataset.style);
+      });
+    });
+
+    el.strip.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      var i = PL.ORDER.indexOf(state.style);
+      var next = Math.max(0, Math.min(PL.ORDER.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)));
+      setStyle(PL.ORDER[next]);
+      var card = $('.frame-card[data-style="' + PL.ORDER[next] + '"]', el.strip);
+      if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest', inline: 'center' });
+      if (card) card.focus({ preventScroll: true });
     });
 
     // portal menu
@@ -689,20 +963,22 @@
       }
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
+      if (e.key !== 'Escape') return;
+      if (state.sheet) { closeSheet(); return; }
+      if (!el.portalMenuDropdown.hidden) {
         el.portalMenuDropdown.hidden = true;
         el.portalMenuBtn.setAttribute('aria-expanded', 'false');
+        el.portalMenuBtn.focus({ preventScroll: true });
       }
     });
 
     // resize
+    var redraw = function () { render(); scheduleStrip(); };
     if (window.ResizeObserver) {
-      new ResizeObserver(function () { scheduleRender(); }).observe(el.stageCanvas);
-    } else {
-      window.addEventListener('resize', scheduleRender);
+      new ResizeObserver(render).observe(el.stageCanvas);
     }
-    window.addEventListener('resize', scheduleRender);
-    window.addEventListener('orientationchange', function () { setTimeout(scheduleRender, 240); });
+    window.addEventListener('resize', redraw);
+    window.addEventListener('orientationchange', function () { setTimeout(redraw, 240); });
   }
 
   function zoomBy(factor) {
@@ -710,24 +986,21 @@
     var next = Math.max(1, Math.min(8, state.zoom * factor));
     if (next === 1) { state.panX = 0; state.panY = 0; }
     state.zoom = next;
-    scheduleRender();
+    render();
   }
 
   function resetView() {
     state.zoom = 1;
     state.panX = 0;
     state.panY = 0;
-    scheduleRender();
+    render();
   }
 
   /* ── boot ─────────────────────────────────────────────────────────────── */
   function boot() {
     el.stage.dataset.bg = state.bg;
-    $$('.acc').forEach(function (acc) {
-      var head = $('.acc-head', acc);
-      acc.setAttribute('aria-open', head.getAttribute('aria-expanded') === 'false' ? 'false' : 'true');
-    });
     buildEmblems();
+    buildStrip();
     paintFields();
     syncStyleUI();
     syncGeoUI();
@@ -735,7 +1008,10 @@
     syncPhotoUI(0);
     bind();
     render();
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRender);
+    paintStrip();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { render(); paintStrip(); });
+    }
   }
 
   window.SPApp = {
@@ -746,7 +1022,15 @@
     setField: function (key, value) {
       if (FIELD_INPUTS[key]) { FIELD_INPUTS[key].value = value; readField(key); }
     },
+    setRatio: function (ratio) {
+      state.ratio = Number(ratio) || 0;
+      el.ratioSelect.value = String(state.ratio);
+      renderAll();
+    },
+    openSheet: openSheet,
+    closeSheet: closeSheet,
     render: render,
+    paintStrip: paintStrip,
     exportPlate: exportPlate,
     layoutFor: layoutFor,
     currentLayout: currentLayout,
