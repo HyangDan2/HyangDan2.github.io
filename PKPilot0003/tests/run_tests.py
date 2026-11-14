@@ -404,8 +404,17 @@ FIT_CASES = [
         "caption": "Golden hour by the reservoir",
     }, "hd2lab"),
     ("noexif", {}, "none"),
+    # a narrow maker mark leaves the most room for copy — the case where the
+    # right column is measured against the widest spec and can still overflow
+    ("apple", {
+        "make": "Apple", "model": "iPhone 15 Pro",
+        "lens": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+        "focal": "24mm (24mm)", "aperture": "ƒ/1.78", "shutter": "1/1200s",
+        "iso": "ISO 400", "datetime": "2026.11.14 09:12", "caption": "가을 아침 창원의 빛",
+    }, "apple"),
 ]
-FIT_SIZES = [("2:3", 1200, 1800), ("3:4", 1500, 2000), ("3:2", 1536, 1024)]
+# 1024×1536 is the bundled portrait sample, i.e. the frame a visitor loads first
+FIT_SIZES = [("2:3", 1200, 1800), ("2:3s", 1024, 1536), ("3:4", 1500, 2000), ("3:2", 1536, 1024)]
 
 FIT_JS = """(matrix) => {
   const out = {plates: 0, ellipsis: [], overflow: [], collide: [], byStyle: {}, holes: {},
