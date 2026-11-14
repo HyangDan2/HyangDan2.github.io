@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """PKPilot0003 · Shutterplate — PC 2단 스튜디오 · 워크스페이스 실측 캡처
 
-    python3 tools/capture_pc_workspace.py [-v]
+    python3 tools/capture_pc_workspace.py            # 로컬 저장소 그대로
+    python3 tools/capture_pc_workspace.py --live     # 배포본(hyangdan2.github.io) 실측
 
-배포본과 같은 로컬 정적 서버를 띄워 Chromium으로 찍습니다. 결과는 verify/ 아래:
+--live 는 로컬 서버를 띄우지 않고 라이브 페이지를 찍습니다. 결과는 verify/ 아래:
 
     verify/pc-workspace-01-landing.png      1440×900  랜딩 (파일 열기 · 폴더 열기)
     verify/pc-workspace-02-inspector.png    1440×900  사진 + 우측 고정 인스펙터 + 도크
@@ -23,6 +24,7 @@ import socketserver
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VERIFY = os.path.join(ROOT, "verify")
+LIVE = "https://hyangdan2.github.io/PKPilot0003/"
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -49,8 +51,11 @@ def main() -> int:
 
     os.makedirs(VERIFY, exist_ok=True)
     samples = [os.path.join(ROOT, "assets", "samples", f"sample-0{i}.jpg") for i in (1, 2, 3)]
-    httpd, port = serve()
-    base = f"http://127.0.0.1:{port}/"
+    live = "--live" in sys.argv
+    httpd, base = (None, LIVE) if live else (None, None)
+    if not live:
+        httpd, port = serve()
+        base = f"http://127.0.0.1:{port}/"
     shots = []
 
     try:
@@ -117,7 +122,8 @@ def main() -> int:
             tctx.close()
             browser.close()
     finally:
-        httpd.shutdown()
+        if httpd:
+            httpd.shutdown()
 
     for path in shots:
         print(f"{os.path.relpath(path, ROOT)}  {os.path.getsize(path):,} B")
