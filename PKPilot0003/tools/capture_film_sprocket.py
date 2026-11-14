@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PKPilot0003 · Shutterplate — Film Sprocket 대칭 · 엠블럼 컬러 실측 캡처
+"""PKPilot0003 · Shutterplate — Film Sprocket 대칭 · Strap Bar 여백 · 엠블럼 컬러 실측 캡처
 
     python3 tools/capture_film_sprocket.py            # 로컬 저장소 그대로
     python3 tools/capture_film_sprocket.py --live     # 배포본(hyangdan2.github.io) 실측
@@ -9,6 +9,8 @@
     verify/fix-film-sprocket-01-portrait.png   390×844   세로 사진 + Film Sprocket (위/아래 여백)
     verify/fix-film-sprocket-02-landscape.png  플레이트  가로 사진 1:1 (위/아래 스프로켓 대칭)
     verify/fix-film-sprocket-03-pad0.png       플레이트  여백 0% (스프로켓이 살아남는지)
+    verify/fix-strap-bar.png                   플레이트  Strap Bar 가로 1:1 (슬림 밴드)
+    verify/fix-strap-bar-portrait.png          플레이트  Strap Bar 세로 (위/아래 여백)
     verify/fix-emblem-color-desktop.png        1440×900  엠블럼 탭 — 원본 컬러 (PC 인스펙터)
     verify/fix-emblem-allblack-desktop.png     1440×900  엠블럼 탭 — All Black (단색)
     verify/fix-emblem-color-mobile.png         390×844   엠블럼 탭 — 원본 컬러 (모바일 시트)
@@ -50,11 +52,12 @@ PLATE_JS = """async (opts) => {
   const img = new Image();
   await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = opts.src; });
   const st = SPApp.state;
+  const S = SPPlate.STYLES[opts.style || 'film'];
   const L = SPPlate.layout({w: img.naturalWidth, h: img.naturalHeight, img: img}, {
-    style: 'film', fields: st.fields, emblem: 'hd2lab',
+    style: opts.style || 'film', fields: st.fields, emblem: 'hd2lab',
     emblemMono: !!opts.mono,
-    padPct: opts.pad, extraPct: SPPlate.STYLES.film.geo.extra,
-    radiusPct: SPPlate.STYLES.film.geo.radius, ratio: 0,
+    padPct: opts.pad, extraPct: S.geo.extra,
+    radiusPct: S.geo.radius, ratio: 0,
     font: 'sans', stock: 'KODAK PORTRA 400', frameNo: '#03'
   });
   const k = 1600 / Math.max(L.W, L.H);
@@ -73,7 +76,13 @@ PLATE_JS = """async (opts) => {
   return {w: c.width, h: c.height,
           holeTop: null, perf: (() => {
             const p = SPPlate.helpers.filmPerf ? SPPlate.helpers.filmPerf(L) : null;
-            return p ? {holeH: p.holeH, edgeCy: p.edgeCy, topCy: p.topCy, botCy: p.botCy} : null;
+            return p ? {holeH: p.holeH, edgeCy: p.edgeCy, topCy: p.topCy, botCy: p.botCy,
+                        railH: p.railH, topRuleY: p.topRuleY, botRuleY: p.botRuleY, flow: p.flow} : null;
+          })(),
+          strap: (() => {
+            const s = SPPlate.helpers.strapBand ? SPPlate.helpers.strapBand(L) : null;
+            return s ? {top: s.top, band: s.band, row1: s.row1, row2: s.row2, stitchY: s.stitchY,
+                        H: L.H, photoTop: L.photoBox.y} : null;
           })()};
 }"""
 
@@ -115,6 +124,15 @@ def main() -> int:
             mpage.screenshot(path=path)
             shots.append(path)
 
+            # ⑦′ the same phone, Strap Bar — the bar as it now sits under a photo
+            mpage.evaluate("() => SPApp.setStyle('strap')")
+            mpage.wait_for_timeout(700)
+            path = os.path.join(VERIFY, "fix-strap-bar-phone.png")
+            mpage.screenshot(path=path)
+            shots.append(path)
+            mpage.evaluate("() => SPApp.setStyle('film')")
+            mpage.wait_for_timeout(500)
+
             # ⑥ the same phone, emblem sheet, original colours
             mpage.evaluate("() => SPApp.openSheet('emblem')")
             mpage.wait_for_timeout(700)
@@ -152,6 +170,23 @@ def main() -> int:
             page.locator("#capturePlate").screenshot(path=path)
             shots.append(path)
             print(f"  ② padPct 0 plate {info['w']}×{info['h']}  perf={info['perf']}")
+
+            # ⑦⑧ Strap Bar — the bar slimmed: landscape 1:1, then portrait
+            info = page.evaluate(PLATE_JS, {"src": "assets/samples/sample-01.jpg",
+                                            "pad": 0, "mono": False, "style": "strap"})
+            page.wait_for_timeout(300)
+            path = os.path.join(VERIFY, "fix-strap-bar.png")
+            page.locator("#capturePlate").screenshot(path=path)
+            shots.append(path)
+            print(f"  ⑦ strap landscape plate {info['w']}×{info['h']}  strap={info['strap']}")
+
+            info = page.evaluate(PLATE_JS, {"src": "assets/samples/sample-02.jpg",
+                                            "pad": 0, "mono": False, "style": "strap"})
+            page.wait_for_timeout(300)
+            path = os.path.join(VERIFY, "fix-strap-bar-portrait.png")
+            page.locator("#capturePlate").screenshot(path=path)
+            shots.append(path)
+            print(f"  ⑧ strap portrait plate {info['w']}×{info['h']}  strap={info['strap']}")
 
             # ④⑤ the emblem pane on the PC inspector — original colours, then All Black.
             #    Film Sprocket + the HD2Lab mark so the plate itself shows the change.
