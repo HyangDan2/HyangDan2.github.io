@@ -3,6 +3,24 @@
 `https://hyangdan2.github.io/PKPilot0003/` 를 Playwright(Chromium)로 직접 열어 캡처한 실측본입니다.
 모든 캡처 시점의 콘솔 에러는 0건입니다.
 
+## 공식 브랜드 엠블럼 11종 · 사진으로 저장 (2026-11-14 두 번째 배포)
+
+`emblem-` 접두사 파일은 **페이지의 `SPApp.prepareExport()`를 그대로 호출해 받은 1:1 출력물**입니다
+(내보내기와 같은 루틴, 같은 해상도). 화면 축소 캡처가 아닙니다.
+
+| 파일 | 내용 |
+| --- | --- |
+| `emblem-<브랜드>-gallery.jpg` | 11종(Sony·Canon·Nikon·Fujifilm·Samsung·Leica·Hasselblad·Apple·Lumix·OM System·HD2Lab)을 Classic Gallery 중앙에 각각 적용한 1:1 플레이트 |
+| `emblem-frame-<프레임>.jpg` | Samsung 엠블럼으로 8종 프레임 전부 (Clean Horizon·Classic Gallery·Dual Deck·Strap Bar·Film Sprocket·Studio Dark·Minimal Edge·Pro Studio) |
+| `emblem-hasselblad-strap/pro/film/studio.jpg` | 가장 넓은 마크(12.8:1)를 폭 제한이 걸리는 프레임에 넣은 경우 — 높이를 줄여 원본 비율 유지 |
+| `emblem-mobile-hasselblad-strap.jpg` | 390px 모바일 규격(1536 폭 출력) Strap Bar |
+| `ui-emblem-picker-desktop.png` · `ui-emblem-picker-mobile.png` | 13타일(자동·11종·없음) 엠블럼 선택 시트 |
+| `ui-export-sheet-*.png` · `ui-export-card-*.png` · `ui-preview-*.png` | 내보내기 시트 → 결과 카드 → 전체 화면 미리보기(길게 눌러 저장) |
+
+엠블럼 원본 출처·라이선스는 [`../EMBLEM-SOURCES.md`](../EMBLEM-SOURCES.md).
+iOS 공유 시트 자체는 실기기에서만 확인할 수 있어, 이 배포에서는 `navigator.canShare` 분기와
+폴백·취소 처리를 코드와 스텁 주입 테스트로 검증했습니다(자동화 테스트 목록 참고).
+
 ## 8종 프레임 글자 잘림·겹침 수정 검증 (배포 754ee67)
 
 `live-fit-` 접두사 파일은 **배포본 페이지의 `SPPlate.paint()`를 1:1 해상도로 직접 호출**해 받은
