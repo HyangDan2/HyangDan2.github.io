@@ -429,6 +429,58 @@ a { color: inherit; text-decoration: none; }
 }
 .empty-note .ic { width: 13px; height: 13px; color: var(--accent); }
 
+/* ── in-app browser notice (KakaoTalk · Instagram · Facebook · Naver …) ──── */
+/* Only painted when the page runs inside a chat app's WebView; everywhere else
+   the element keeps its hidden attribute and takes no room. */
+.inapp-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 460px);
+  margin: 0 auto;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid rgba(255, 130, 79, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 130, 79, 0.08);
+  text-align: left;
+}
+.inapp-banner[hidden] { display: none; }
+.inapp-banner > .ic { width: 14px; height: 14px; color: var(--accent); }
+.inapp-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text);
+  word-break: keep-all;
+}
+.inapp-msg b { color: var(--accent); font-weight: 650; }
+.inapp-copy {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: rgba(20, 22, 20, 0.85);
+  color: var(--text-hi);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.14s ease, color 0.14s ease;
+}
+.inapp-copy:hover { border-color: var(--accent-dim); color: var(--accent); }
+.inapp-copy .ic { width: 14px; height: 14px; }
+.stage[data-bg="light"] .inapp-banner { background: rgba(255, 130, 79, 0.12); }
+.stage[data-bg="light"] .inapp-msg { color: #2a2c28; }
+
 /* ── selected-photo session card ────────────────────────────────────────── */
 .session {
   flex: none;
@@ -928,6 +980,9 @@ input[type="range"]::-moz-range-thumb {
   .tool .ic { width: 16px; height: 16px; }
   .field-pair { grid-template-columns: 1fr; }
   .stage-bar .zoom-group .icon-btn--wide span { display: none; }
+  .inapp-banner { gap: 6px; padding: 5px 6px 5px 8px; }
+  .inapp-msg { font-size: 10.5px; }
+  .inapp-copy { padding: 0 8px; font-size: 10.5px; }
 }
 
 @media (max-width: 359px) {
@@ -954,6 +1009,8 @@ input[type="range"]::-moz-range-thumb {
   .empty-state { gap: 8px; padding: 12px; }
   .dropzone { min-height: 96px; padding: 12px 16px; }
   .empty-note { display: none; }
+  .inapp-msg { font-size: 10px; line-height: 1.4; }
+  .inapp-banner { gap: 6px; padding: 4px 6px 4px 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -987,8 +1044,11 @@ input[type="range"]::-moz-range-thumb {
   border: 1px solid var(--line); border-radius: var(--r-lg);
   background: var(--ink-2);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
-  overflow: hidden;
+  overflow: hidden auto;
 }
+/* the in-app notice costs a row, so the preview gives some of its ceiling back */
+.export-card.is-inapp .export-shot,
+.export-card.is-inapp .export-shot img { max-height: min(38dvh, 300px); }
 .export-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .export-heading h2 { margin: 2px 0 0; font-size: 15px; letter-spacing: -0.01em; color: var(--text-hi); }
 .export-shot {

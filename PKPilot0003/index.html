@@ -41,7 +41,7 @@
   <meta name="twitter:description" content="사진 한 장을, 8종 시그니처 프레임의 플레이트로." />
   <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0003/og-image.png?v=20261114-2" />
 
-  <link rel="stylesheet" href="style.css?v=20261114-2" />
+  <link rel="stylesheet" href="style.css?v=20261114-3" />
 </head>
 <body>
   <!-- ── 자체 제작 SVG 아이콘 스프라이트 ─────────────────────────────── -->
@@ -80,6 +80,7 @@
     <symbol id="i-ratio" viewBox="0 0 24 24"><rect x="3.4" y="6.4" width="17.2" height="11.2" rx="2.2"/><path d="M6.6 6.4v11.2M17.4 6.4v11.2"/></symbol>
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="7.2" height="7.2" rx="1.6"/><rect x="13.2" y="3.6" width="7.2" height="7.2" rx="1.6"/><rect x="3.6" y="13.2" width="7.2" height="7.2" rx="1.6"/><rect x="13.2" y="13.2" width="7.2" height="7.2" rx="1.6"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.4"/><circle cx="12" cy="7.9" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11.4" height="11.4" rx="2.6"/><path d="M15.4 5.8V5.2a2.2 2.2 0 0 0-2.2-2.2H5.6A2.2 2.2 0 0 0 3.4 5.2v7.6a2.2 2.2 0 0 0 2.2 2.2h.6"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.6 12h14M13.2 6.6L18.6 12l-5.4 5.4"/></symbol>
     <!-- 포털 -->
     <symbol id="i-portal-home" viewBox="0 0 24 24"><path d="M4 10.4L12 4l8 6.4V20a1 1 0 0 1-1 1h-4.6v-6.2H9.6V21H5a1 1 0 0 1-1-1z"/></symbol>
@@ -166,6 +167,13 @@
           </div>
           <div class="empty-row">
             <button class="btn btn-accent" id="emptySampleBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg><span>샘플 사진 불러오기</span></button>
+          </div>
+          <div class="inapp-banner" id="inappBanner" data-inapp-banner role="status" hidden>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>
+            <p class="inapp-msg"><b data-inapp-name>카카오톡</b> 안에서는 사진 저장이 막힙니다 — 우측 상단 ⋯ → ‘다른 브라우저로 열기’로 열어 주세요</p>
+            <button class="inapp-copy" type="button" data-copy-url aria-label="페이지 주소 복사">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg><span>주소 복사</span>
+            </button>
           </div>
           <p class="empty-note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>업로드 0 B · 사진은 이 기기에서만 처리됩니다</p>
         </div>
@@ -361,6 +369,13 @@
         <span class="export-shot-tag">눌러서 크게 보기</span>
       </button>
       <p class="export-meta" id="exportMeta">—</p>
+      <div class="inapp-banner" id="exportInappBanner" data-inapp-banner role="status" hidden>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>
+        <p class="inapp-msg"><b data-inapp-name>카카오톡</b> 안에서는 파일 저장이 막힙니다 — 우측 상단 ⋯ → ‘다른 브라우저로 열기’로 크롬에서 열어 주세요</p>
+        <button class="inapp-copy" type="button" data-copy-url aria-label="페이지 주소 복사">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg><span>주소 복사</span>
+        </button>
+      </div>
       <button class="btn btn-accent btn-block" id="exportShare" type="button" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg><span>사진 앨범에 저장 / 공유</span></button>
       <button class="btn btn-quiet btn-block" id="exportSave" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>파일로 다운로드</span></button>
       <p class="hint" id="exportHintText">—</p>
@@ -374,7 +389,7 @@
       <button class="icon-btn" id="previewClose" type="button" aria-label="미리보기 닫기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
     </header>
     <div class="preview-body"><img id="previewImg" alt="플레이트 전체 화면 미리보기" /></div>
-    <p class="preview-tip">사진을 길게 눌러 ‘사진 앱에 저장’을 고르면 앨범에 들어갑니다</p>
+    <p class="preview-tip" id="previewTip">사진을 길게 눌러 ‘사진 앱에 저장’을 고르면 앨범에 들어갑니다</p>
   </div>
 
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
@@ -383,6 +398,6 @@
   <script src="js/emblems.js?v=20261114-2" defer></script>
   <script src="js/exif-core.js?v=20261114-2" defer></script>
   <script src="js/plate.js?v=20261114-2" defer></script>
-  <script src="app.js?v=20261114-2" defer></script>
+  <script src="app.js?v=20261114-3" defer></script>
 </body>
 </html>
