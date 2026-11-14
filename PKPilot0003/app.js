@@ -20,6 +20,38 @@
 
   var MAX_EDGE = 4096;
 
+  /* ── in-app browsers ──────────────────────────────────────────────────────
+     KakaoTalk's Android WebView — and Instagram's, Facebook's, Naver's — will
+     not take a blob: download and can refuse to decode a blob: image either.
+     That is the "지원하지 않는 파일 형식" a visitor in the chat app runs into.
+     Naming the host lets the studio say what to do instead of failing mute. */
+  var IN_APP_SIGNATURES = [
+    { name: '카카오톡', re: /KAKAOTALK/i },
+    { name: '카카오스토리', re: /KAKAOSTORY/i },
+    { name: '인스타그램', re: /Instagram/i },
+    { name: '페이스북', re: /FBAN|FBAV|FB_IAB|FB4A|FBIOS/i },
+    { name: '네이버', re: /NAVER\(inapp/i },
+    { name: '다음', re: /DaumApps|Daum ?App/i },
+    { name: '라인', re: /\bLine\/\d/i },
+    { name: '에브리타임', re: /everytime/i },
+    { name: '밴드', re: /\bBAND\//i },
+    { name: '인앱 브라우저', re: /;\s*wv\)/i }
+  ];
+
+  function inAppName(ua) {
+    var s = String(ua || (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '');
+    for (var i = 0; i < IN_APP_SIGNATURES.length; i++) {
+      if (IN_APP_SIGNATURES[i].re.test(s)) return IN_APP_SIGNATURES[i].name;
+    }
+    return '';
+  }
+
+  /* The host's name inside an in-app browser (truthy), false outside it — so
+     both `if (isInAppBrowser())` and `isInAppBrowser() === '카카오톡'` read. */
+  function isInAppBrowser(ua) {
+    return inAppName(ua) || false;
+  }
+
   var SHEETS = {
     exif: { title: 'EXIF 편집', kicker: 'EXIF METADATA' },
     geometry: { title: '프레임 · 여백', kicker: 'GEOMETRY & RATIO' },
@@ -46,7 +78,8 @@
     panX: 0, panY: 0,
     sampleIdx: 0,
     fitScale: 1,
-    sheet: null
+    sheet: null,
+    inApp: ''            // host name when the page runs inside a chat app's WebView
   };
 
   /* ── DOM ──────────────────────────────────────────────────────────────── */
@@ -95,6 +128,8 @@
     exportClose: $('#exportClose'),
     exportShot: $('#exportShot'),
     exportHintText: $('#exportHintText'),
+    exportHint: $('#exportHint'),
+    previewTip: $('#previewTip'),
     previewOverlay: $('#previewOverlay'),
     previewImg: $('#previewImg'),
     previewName: $('#previewName'),
@@ -130,6 +165,64 @@
       d.classList.add('is-out');
       setTimeout(function () { d.remove(); }, 240);
     }, 3200);
+  }
+
+  /* ── in-app notice & address copy ─────────────────────────────────────── */
+  /* A WebView that blocks the download cannot be talked into it, so the one
+     thing worth offering there is the page's own address: copy it, paste it
+     into a real browser, and the plate saves the normal way. */
+  function copyLegacy(text) {
+    var t = document.createElement('textarea');
+    t.value = text;
+    t.setAttribute('readonly', '');
+    t.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:0;';
+    document.body.appendChild(t);
+    var ok = false;
+    try {
+      t.focus();
+      t.select();
+      t.setSelectionRange(0, t.value.length);
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    t.remove();
+    return ok;
+  }
+
+  function copyUrl() {
+    var url = location.href.split('#')[0];
+    var report = function (ok) {
+      if (ok) toast('주소를 복사했어요 — 브라우저에 붙여넣어 열어 주세요');
+      else toast('주소를 복사하지 못했어요 — ' + url, 'warn');
+    };
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(url).then(
+        function () { report(true); },
+        function () { report(copyLegacy(url)); }
+      );
+      return;
+    }
+    report(copyLegacy(url));
+  }
+
+  function paintInAppNotice() {
+    var name = state.inApp;
+    $$('[data-inapp-banner]').forEach(function (b) {
+      b.hidden = !name;
+      if (!name) return;
+      $$('[data-inapp-name]', b).forEach(function (n) { n.textContent = name; });
+    });
+    $$('[data-copy-url]').forEach(function (b) {
+      b.addEventListener('click', copyUrl);
+    });
+    if (!name) return;
+    var card = $('.export-card');
+    if (card) card.classList.add('is-inapp');
+    if (el.previewTip) el.previewTip.textContent = '길게 눌러 ‘이미지 저장’을 고르면 사진 앨범에 들어갑니다';
+    if (el.exportHint) {
+      el.exportHint.textContent = name + '에서는 파일 저장이 막힙니다 · 미리보기를 길게 눌러 저장하거나 ⋯ → ‘다른 브라우저로 열기’로 크롬에서 저장해 주세요';
+    }
   }
 
   /* ── emblems ──────────────────────────────────────────────────────────── */
@@ -210,6 +303,16 @@
     });
   }
 
+  function readAsDataURL(blob) {
+    return new Promise(function (resolve, reject) {
+      if (typeof FileReader !== 'function') { reject(new Error('no FileReader')); return; }
+      var fr = new FileReader();
+      fr.onload = function () { resolve(String(fr.result || '')); };
+      fr.onerror = function () { reject(fr.error || new Error('read failed')); };
+      fr.readAsDataURL(blob);
+    });
+  }
+
   function previewBitmap(img) {
     var maxEdge = 2200;
     var w = img.naturalWidth, h = img.naturalHeight;
@@ -239,13 +342,26 @@
     }
 
     var url = URL.createObjectURL(file);
-    var img;
+    var img = null;
     try {
       img = await decodeImage(url);
     } catch (e) {
       URL.revokeObjectURL(url);
-      toast('이 브라우저에서 열 수 없는 형식입니다', 'error');
-      return false;
+      img = null;
+    }
+    if (!img) {
+      /* A WebView that will not decode blob: still takes the same bytes inline,
+         so the photo gets one more chance before we call it unreadable. */
+      try {
+        var inline = await readAsDataURL(file);
+        img = await decodeImage(inline);
+        url = inline;
+      } catch (e2) {
+        toast(state.inApp
+          ? state.inApp + ' 안에서는 이 사진을 열 수 없어요 — 다른 브라우저로 열어 주세요'
+          : '이 브라우저에서 열 수 없는 형식입니다', 'error');
+        return false;
+      }
     }
 
     var tags = null, count = 0;
@@ -281,7 +397,8 @@
       h: img.naturalHeight,
       name: file.name || 'photo',
       bytes: file.size || 0,
-      objectUrl: url
+      inline: url.indexOf('blob:') !== 0,          // decoded from inline bytes, not a blob URL
+      objectUrl: url.indexOf('blob:') === 0 ? url : ''   // an inline data: URL needs no revoke
     };
     state.exifTags = tags;
     state.fields = fields;
@@ -702,7 +819,7 @@
     if (el.previewBtn) el.previewBtn.disabled = true;
 
     return new Promise(function (resolve) {
-      var finish = function (blob) {
+      var finish = function (blob, dataUrl) {
         el.downloadBtn.disabled = !state.photo;
         el.headerDownloadBtn.disabled = !state.photo;
         if (el.shareBtn) el.shareBtn.disabled = !state.photo;
@@ -723,6 +840,7 @@
         if (prepared && prepared.url) URL.revokeObjectURL(prepared.url);
         prepared = {
           blob: blob, file: file, url: URL.createObjectURL(blob),
+          dataUrl: dataUrl || '',      // the same bytes inline: what a WebView can take
           name: job.name, bytes: blob.size, w: job.w, h: job.h,
           format: job.format, style: state.style, signature: sig
         };
@@ -732,21 +850,44 @@
         };
         resolve(prepared);
       };
-      if (job.canvas.toBlob) job.canvas.toBlob(finish, job.mime, state.quality / 100);
-      else finish(null);
+      /* The data URL is prepared alongside the blob: in-app browsers refuse a
+         blob: download, and the result card's long-press save needs an <img>
+         source the WebView will actually render. */
+      var settle = function (blob) {
+        if (!blob) { finish(null); return; }
+        readAsDataURL(blob).then(
+          function (dataUrl) { finish(blob, dataUrl); },
+          function () { finish(blob, ''); }
+        );
+      };
+      if (job.canvas.toBlob) job.canvas.toBlob(settle, job.mime, state.quality / 100);
+      else settle(null);
     });
   }
 
+  /* Normal browsers keep the blob: download; a chat-app WebView is handed the
+     data URL, which is the only form some of them will consider at all. */
   function saveFile(p) {
+    if (!p) return false;
+    var inline = !!(state.inApp && p.dataUrl);
+    var made = false;
+    var href = inline ? p.dataUrl : (p.url || ((made = true), URL.createObjectURL(p.blob)));
     var a = document.createElement('a');
-    var href = URL.createObjectURL(p.blob);
     a.href = href;
     a.download = p.name;
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(function () { URL.revokeObjectURL(href); }, 12000);
+    if (made) setTimeout(function () { URL.revokeObjectURL(href); }, 12000);
+    return true;
+  }
+
+  /* What the result card and the full-screen look should show: inline bytes in
+     an in-app browser (long-press must find a real image), blob elsewhere. */
+  function exportSrc(p) {
+    if (!p) return '';
+    return (state.inApp && p.dataUrl) ? p.dataUrl : p.url;
   }
 
   /* Must stay synchronous up to navigator.share() so the tap still counts. */
@@ -785,7 +926,13 @@
     return prepareExport().then(function (p) {
       if (!p) return null;
       saveFile(p);
-      toast(p.w + ' × ' + p.h + ' · ' + bytes(p.bytes) + ' 파일 저장');
+      if (state.inApp) {
+        /* The WebView may swallow that tap without a word, so the card with the
+           inline preview opens right behind it — long-press is the way out. */
+        openExportCard(p);
+      } else {
+        toast(p.w + ' × ' + p.h + ' · ' + bytes(p.bytes) + ' 파일 저장');
+      }
       return p;
     });
   }
@@ -823,14 +970,20 @@
 
   /* ── result card + full-screen preview ────────────────────────────────── */
   function openExportCard(p) {
-    el.exportImg.src = p.url;
-    el.exportMeta.textContent = p.name + ' · ' + p.w + ' × ' + p.h + ' px · ' +
-      bytes(p.bytes) + ' · ' + (p.format === 'png' ? 'PNG' : 'JPEG');
-    var shareable = canShareThis(p);
+    if (p) {
+      el.exportImg.src = exportSrc(p);
+      el.exportMeta.textContent = p.name + ' · ' + p.w + ' × ' + p.h + ' px · ' +
+        bytes(p.bytes) + ' · ' + (p.format === 'png' ? 'PNG' : 'JPEG');
+    }
+    var shareable = canShareThis(p) && !state.inApp;
     el.exportShare.hidden = !shareable;
-    el.exportHintText.textContent = shareable
-      ? '‘사진 앨범에 저장 / 공유’를 누르고 공유 시트에서 ‘이미지 저장’을 고르면 앨범에 들어갑니다. 미리보기를 길게 눌러 저장할 수도 있습니다.'
-      : '이 브라우저는 공유 시트를 지원하지 않아 파일로 저장합니다. 미리보기를 길게 눌러 사진 앱에 저장할 수도 있습니다.';
+    if (state.inApp) {
+      el.exportHintText.textContent = '파일이 저장되지 않으면 미리보기를 길게 눌러 ‘이미지 저장’을 고르세요.';
+    } else {
+      el.exportHintText.textContent = shareable
+        ? '‘사진 앨범에 저장 / 공유’를 누르고 공유 시트에서 ‘이미지 저장’을 고르면 앨범에 들어갑니다. 미리보기를 길게 눌러 저장할 수도 있습니다.'
+        : '이 브라우저는 공유 시트를 지원하지 않아 파일로 저장합니다. 미리보기를 길게 눌러 사진 앱에 저장할 수도 있습니다.';
+    }
     el.exportModal.classList.add('is-open');
     el.exportModal.setAttribute('aria-hidden', 'false');
     el.exportClose.focus({ preventScroll: true });
@@ -843,7 +996,7 @@
 
   function openPreviewOverlay() {
     if (!prepared) return;
-    el.previewImg.src = prepared.url;
+    el.previewImg.src = exportSrc(prepared);
     el.previewName.textContent = prepared.name + ' · ' + prepared.w + ' × ' + prepared.h;
     el.previewOverlay.classList.add('is-open');
     el.previewOverlay.setAttribute('aria-hidden', 'false');
@@ -1240,6 +1393,8 @@
 
   /* ── boot ─────────────────────────────────────────────────────────────── */
   function boot() {
+    state.inApp = inAppName();
+    paintInAppNotice();
     el.stage.dataset.bg = state.bg;
     buildEmblems();
     buildStrip();
@@ -1281,6 +1436,11 @@
     openPreview: openPreview,
     canShareFiles: canShareFiles,
     canShareThis: canShareThis,
+    isInAppBrowser: isInAppBrowser,
+    inAppName: inAppName,
+    saveFile: saveFile,
+    copyUrl: copyUrl,
+    exportSrc: exportSrc,
     shareCancelled: shareCancelled,
     prepared: function () { return prepared; },
     openExportCard: function (p) { openExportCard(p || prepared); },

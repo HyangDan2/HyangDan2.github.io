@@ -229,6 +229,15 @@ def static_tests():
     check("ratio control present", 'id="ratioSelect"' in html)
     check("privacy claim shown", "0 B" in html)
 
+    # in-app browser notice (KakaoTalk & friends block blob: saves)
+    check("in-app notice in the landing and the result card",
+          html.count("data-inapp-banner") == 2, str(html.count("data-inapp-banner")))
+    check("in-app notice starts hidden",
+          len(re.findall(r'class="inapp-banner"[^>]*hidden', html)) == 2)
+    check("address-copy button in the notice", html.count("data-copy-url") == 2,
+          str(html.count("data-copy-url")))
+    check("copy icon in the sprite", "i-copy" in ids)
+
     # ── frame engine source ──────────────────────────────────────────────────
     print("\n[static] eight frame signatures")
     plate = read("js/plate.js")
@@ -385,6 +394,14 @@ SAMPLE_EXPECT = {
     "focal": "35mm", "aperture": "ƒ/1.8", "shutter": "1/250s",
     "iso": "ISO 100", "datetime": "2026.10.24 17:32", "caption": "HD2Lab",
 }
+
+# A real KakaoTalk Android WebView UA — the host whose WebView refused the
+# blob: download that produced "지원하지 않는 파일 형식".
+KAKAO_UA = ("Mozilla/5.0 (Linux; Android 13; SM-S918N Build/TP1A.220624.014; wv) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/119.0.6045.193 "
+            "Mobile Safari/537.36 KAKAOTALK 10.3.0 (inapp)")
+CHROME_UA = ("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) "
+             "Chrome/124.0.0.0 Mobile Safari/537.36")
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -583,7 +600,8 @@ TEXT_JS = """() => {
 
 
 def browser_tests(port):
-    names = [f"browser: {x}" for x in ("desktop", "frames", "sheets", "export", "mobile", "small")]
+    names = [f"browser: {x}" for x in ("desktop", "frames", "sheets", "export", "mobile", "small",
+                                       "share", "inapp")]
     try:
         from playwright.sync_api import sync_playwright
     except Exception as e:  # pragma: no cover
@@ -1159,6 +1177,225 @@ def browser_tests(port):
         shpage.wait_for_timeout(200)
         check("share: no console errors on any branch", not share_errors, str(share_errors[:3]))
         shctx.close()
+
+        # ── in-app browsers: KakaoTalk's WebView ────────────────────────────
+        # The visitor's report: inside KakaoTalk the save step answered
+        # "지원하지 않는 파일 형식". That WebView will not take a blob: download
+        # and can refuse a blob: image, so the page has to name the host, hand
+        # it inline bytes, and offer the escape hatch (copy the address).
+        print("\n[browser] in-app browser (KakaoTalk WebView)")
+        kctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=3,
+                                   is_mobile=True, has_touch=True,
+                                   user_agent=KAKAO_UA, accept_downloads=True)
+        kpage = kctx.new_page()
+        kpage.set_default_timeout(25000)
+        kerrors = []
+        kpage.on("pageerror", lambda e: kerrors.append(str(e)))
+        kpage.on("console", lambda m: kerrors.append(m.text) if m.type == "error" else None)
+        kpage.goto(base, wait_until="networkidle")
+        kpage.wait_for_timeout(400)
+
+        # ① detection
+        kakao = kpage.evaluate("() => SPApp.isInAppBrowser()")
+        check("in-app: KakaoTalk UA is detected (truthy)", bool(kakao) is True, str(kakao))
+        check("in-app: and names the host", kakao == "카카오톡", str(kakao))
+        hosts = kpage.evaluate("""(uas) => ({
+          instagram: SPApp.isInAppBrowser(uas.instagram),
+          facebook: SPApp.isInAppBrowser(uas.facebook),
+          naver: SPApp.isInAppBrowser(uas.naver),
+          chrome: SPApp.isInAppBrowser(uas.chrome),
+          safari: SPApp.isInAppBrowser(uas.safari)
+        })""", {
+            "instagram": ("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 "
+                          "Chrome/119.0 Mobile Safari/537.36 Instagram 312.0.0.0"),
+            "facebook": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 [FBAN/FB4A;FBAV/430.0]",
+            "naver": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 NAVER(inapp; search; 630)",
+            "chrome": CHROME_UA,
+            "safari": ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) "
+                       "AppleWebKit/605.1.15 Version/17.5 Mobile/15E148 Safari/604.1"),
+        })
+        check("in-app: Instagram UA is named", hosts["instagram"] == "인스타그램", str(hosts))
+        check("in-app: Facebook UA is named", hosts["facebook"] == "페이스북", str(hosts))
+        check("in-app: Naver in-app UA is named", hosts["naver"] == "네이버", str(hosts))
+        check("in-app: Chrome UA is not", hosts["chrome"] is False, str(hosts["chrome"]))
+        check("in-app: iPhone Safari UA is not", hosts["safari"] is False, str(hosts["safari"]))
+
+        # ② the notice: shown in-app, absent in a normal browser
+        check("in-app: landing notice is visible", kpage.is_visible("#inappBanner"))
+        check("in-app: landing notice names the host",
+              "카카오톡" in kpage.inner_text("#inappBanner"), kpage.inner_text("#inappBanner"))
+        check("in-app: landing notice offers the address copy",
+              kpage.is_visible("#inappBanner [data-copy-url]"))
+        check("in-app: notice keeps the page free of scroll",
+              kpage.evaluate("() => document.documentElement.scrollHeight <= window.innerHeight + 1"))
+        kpage.click("#inappBanner [data-copy-url]")
+        kpage.wait_for_timeout(350)
+        check("in-app: copying the address answers in the user's words",
+              "주소를 복사했어요" in kpage.inner_text("#toasts"), kpage.inner_text("#toasts"))
+
+        cctx = browser.new_context(viewport={"width": 390, "height": 844}, user_agent=CHROME_UA)
+        cpage = cctx.new_page()
+        cpage.goto(base, wait_until="networkidle")
+        cpage.wait_for_timeout(300)
+        check("normal: Chrome UA is not detected as in-app",
+              cpage.evaluate("() => SPApp.isInAppBrowser()") is False)
+        check("normal: the notice stays hidden", not cpage.is_visible("#inappBanner"))
+        check("normal: the notice takes no room",
+              cpage.evaluate("() => document.querySelector('#inappBanner').getBoundingClientRect().height") == 0)
+        check("normal: SVG-arg detection matches the same UA table",
+              cpage.evaluate("() => [SPApp.isInAppBrowser('KAKAOTALK 10.3.0'), "
+                            "SPApp.isInAppBrowser('Chrome/124.0 Mobile Safari/537.36')]") == ["카카오톡", False],
+              str(cpage.evaluate("() => [SPApp.isInAppBrowser('KAKAOTALK 10.3.0'), "
+                                 "SPApp.isInAppBrowser('Chrome/124.0 Mobile Safari/537.36')]")))
+        cctx.close()
+
+        # ③ the export carries a data URL beside the blob
+        kpage.tap("#emptySampleBtn")
+        kpage.wait_for_function("() => window.SPApp.state.photo", timeout=20000)
+        kpage.wait_for_timeout(700)
+        prep = kpage.evaluate("""async () => {
+          const p = await SPApp.prepareExport();
+          return p ? {mime: (p.dataUrl || '').slice(0, 23), len: (p.dataUrl || '').length,
+                      url: (p.url || '').slice(0, 5), name: p.name, bytes: p.bytes} : null;
+        }""")
+        check("in-app: prepareExport resolves a plate", bool(prep), str(prep))
+        check("in-app: the export holds a JPEG data URL",
+              bool(prep) and prep["mime"] == "data:image/jpeg;base64,", (prep or {}).get("mime"))
+        check("in-app: that data URL carries the whole plate",
+              bool(prep) and prep["len"] > 10000, str((prep or {}).get("len")))
+        check("in-app: the blob URL is still prepared too",
+              bool(prep) and prep["url"] == "blob:", str((prep or {}).get("url")))
+        check("in-app: the file name contract is unchanged",
+              bool(prep) and re.fullmatch(r"Shutterplate_[^\\/]+_\d{12}\.jpg", prep["name"]) is not None,
+              str((prep or {}).get("name")))
+        png = kpage.evaluate("""async () => {
+          SPApp.state.format = 'png';
+          const p = await SPApp.prepareExport();
+          SPApp.state.format = 'jpeg';
+          return p ? (p.dataUrl || '').slice(0, 22) : null;
+        }""")
+        check("in-app: a PNG export yields a PNG data URL", png == "data:image/png;base64,", str(png))
+
+        # ④ saveFile hands the WebView the inline bytes, never the blob URL
+        saved = kpage.evaluate("""async () => {
+          const p = await SPApp.prepareExport();
+          const log = [];
+          const orig = document.createElement.bind(document);
+          document.createElement = function (tag) {
+            const n = orig(tag);
+            if (String(tag).toLowerCase() === 'a') {
+              n.click = function () {
+                log.push({href: String(n.href || ''), download: n.download});
+              };
+            }
+            return n;
+          };
+          try { SPApp.saveFile(p); } finally { document.createElement = orig; }
+          return {log: log, name: p.name, dataLen: (p.dataUrl || '').length};
+        }""")
+        href = (saved["log"][0]["href"] if saved["log"] else "")
+        check("in-app: saveFile clicks one anchor", len(saved["log"]) == 1, str(saved["log"][:1]))
+        check("in-app: saveFile passes the data URL",
+              href.startswith("data:image/jpeg;base64,") and len(href) == saved["dataLen"],
+              href[:40])
+        check("in-app: saveFile never passes a blob URL", "blob:" not in href, href[:40])
+        check("in-app: saveFile keeps the agreed file name",
+              bool(saved["log"]) and saved["log"][0]["download"] == saved["name"], str(saved["log"][:1]))
+
+        # the same probe outside the chat app must stay on the blob path
+        cctx = browser.new_context(viewport={"width": 1280, "height": 800}, user_agent=CHROME_UA)
+        cpage = cctx.new_page()
+        cpage.set_default_timeout(25000)
+        cpage.goto(base, wait_until="networkidle")
+        cpage.click("#emptySampleBtn")
+        cpage.wait_for_function("() => window.SPApp.state.photo", timeout=20000)
+        cpage.wait_for_timeout(500)
+        normal = cpage.evaluate("""async () => {
+          const p = await SPApp.prepareExport();
+          const log = [];
+          const orig = document.createElement.bind(document);
+          document.createElement = function (tag) {
+            const n = orig(tag);
+            if (String(tag).toLowerCase() === 'a') n.click = function () { log.push(String(n.href || '')); };
+            return n;
+          };
+          try { SPApp.saveFile(p); } finally { document.createElement = orig; }
+          return {log: log, dataLen: (p.dataUrl || '').length};
+        }""")
+        check("normal: saveFile still clicks the blob URL",
+              bool(normal["log"]) and normal["log"][0].startswith("blob:"), str(normal["log"])[:60])
+        check("normal: the blob path still prepares a data URL for the card",
+              normal["dataLen"] > 10000, str(normal["dataLen"]))
+        cpage.evaluate("() => SPApp.openSheet('export')")
+        cpage.wait_for_timeout(350)
+        cpage.click("#previewBtn")
+        cpage.wait_for_timeout(600)
+        check("normal: the result card keeps its blob preview",
+              cpage.evaluate("() => (document.querySelector('#exportImg').src || '').startsWith('blob:')"))
+        cctx.close()
+
+        # ⑤ the result card in-app: inline preview, long-press instructions
+        kpage.evaluate("() => SPApp.openExportCard()")
+        kpage.wait_for_timeout(400)
+        card = kpage.evaluate("""() => ({
+          open: document.querySelector('#exportModal').classList.contains('is-open'),
+          src: (document.querySelector('#exportImg').src || '').slice(0, 23),
+          hint: document.querySelector('#exportHintText').textContent,
+          notice: !document.querySelector('#exportInappBanner').hidden,
+          noticeVisible: document.querySelector('#exportInappBanner')
+                         .getBoundingClientRect().height > 20,
+          share: document.querySelector('#exportShare').hidden
+        })""")
+        check("in-app: the result card opens", card["open"])
+        check("in-app: the card previews the data URL (long-press can save it)",
+              card["src"] == "data:image/jpeg;base64,", card["src"])
+        check("in-app: the card carries the notice", card["notice"] and card["noticeVisible"], json.dumps(card))
+        check("in-app: the card tells the user to long-press", "길게" in card["hint"], card["hint"])
+        check("in-app: the share-sheet door is hidden", card["share"] is True)
+        check("in-app: the card fits the viewport without page scroll",
+              kpage.evaluate("() => document.documentElement.scrollHeight <= window.innerHeight + 1"))
+        kpage.evaluate("() => document.querySelector('#exportClose').click()")
+        kpage.wait_for_timeout(300)
+        check("in-app: no console errors along the way", not kerrors, str(kerrors[:3]))
+
+        # ⑥ a WebView that refuses blob: images gets the FileReader retry
+        rctx = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True,
+                                   has_touch=True, user_agent=KAKAO_UA)
+        rctx.add_init_script("""
+          const make = URL.createObjectURL.bind(URL);
+          URL.createObjectURL = function (b) {
+            if (b && /^image\//.test(b.type || '')) return 'blob:http://127.0.0.1:1/blocked';
+            return make(b);
+          };
+        """)
+        rpage = rctx.new_page()
+        rpage.set_default_timeout(25000)
+        rerr = []
+        rpage.on("pageerror", lambda e: rerr.append(str(e)))
+        rpage.goto(base, wait_until="networkidle")
+        rpage.wait_for_timeout(300)
+        rpage.tap("#emptySampleBtn")
+        rpage.wait_for_function("() => window.SPApp.state.photo", timeout=20000)
+        rpage.wait_for_timeout(500)
+        retry = rpage.evaluate("""() => ({
+          loaded: !!SPApp.state.photo,
+          inline: !!(SPApp.state.photo && SPApp.state.photo.inline),
+          src: (SPApp.state.photo && SPApp.state.photo.objectUrl || '').slice(0, 16),
+          errors: document.querySelectorAll('.toast.is-error').length,
+          name: document.querySelector('#metaName').textContent,
+          thumb: (() => { const c = document.querySelector('#sessionThumb');
+            const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+            let s = 0; for (let i = 0; i < d.length; i += 4 * 53) s += d[i] + d[i+1] + d[i+2];
+            return s; })()
+        })""")
+        check("blocked blob: the photo still loads through the data URL",
+              retry["loaded"] and retry["inline"] is True and retry["name"].endswith(".jpg"),
+              json.dumps(retry))
+        check("blocked blob: no error toast is raised", retry["errors"] == 0, str(retry["errors"]))
+        check("blocked blob: the session card paints the photo", retry["thumb"] > 0, str(retry["thumb"]))
+        check("blocked blob: no page errors", not rerr, str(rerr[:3]))
+        rctx.close()
+        kctx.close()
 
         # ── mobile 390 ──────────────────────────────────────────────────────
         print("\n[browser] mobile 390 ergonomics")
