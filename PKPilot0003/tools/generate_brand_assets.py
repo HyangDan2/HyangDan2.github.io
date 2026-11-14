@@ -2,15 +2,17 @@
 """
 PKPilot0003 · Shutterplate — HD2Lab brand asset generator
 =========================================================
-Produces the official HD2Lab asset set for Shutterplate, out of the same
-dual-skew mark used by the site header and the plate emblems:
+Produces the official HD2Lab asset set for Shutterplate:
 
     favicon.svg, favicon.ico(16/32/48), favicon-32x32.png,
     apple-touch-icon.png(180), icon-192.png, icon-512.png,
     og-image.png / social-preview.png (1200×630)
 
-The glyph is the brand mark itself — two stroked parallelograms in #ff824f on
-the #101110 round square — not a redrawn approximation.
+The favicon set keeps the dual-skew glyph — two stroked parallelograms in
+#ff824f on the #101110 round square — because that is what a favicon is for.
+Every other logo slot (the OG/social card header, the site header, the plate
+emblem) carries the brand's official logo: the round emblem of LOGO.png,
+lifted into assets/logo-mark.png.
 
     python3 tools/generate_brand_assets.py [--font PATH] [--out DIR]
 """
@@ -54,10 +56,14 @@ FAVICON_SVG = (
     f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4"/></svg>\n'
 )
 
-MARK_SVG = (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-    f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4"/></svg>'
-)
+# 정식 HD2Lab 로고 — 파비콘 세트(듀얼 스큐)는 그대로 두고, 그 밖의 모든 로고
+# 자리(사이트 헤더·OG/소셜 카드)에는 LOGO.png의 원형 엠블럼을 쓴다.
+LOGO_PATH = os.path.join(ROOT, "..", "assets", "logo-mark.png")
+
+
+def logo_badge(px: int) -> Image.Image:
+    badge = Image.open(LOGO_PATH).convert("RGBA")
+    return badge.resize((px, px), Image.LANCZOS)
 
 FONT_CANDIDATES = [
     os.environ.get("PICKLE_BRAND_FONT", ""),
@@ -120,9 +126,6 @@ def render_svg(svg: str, px: int) -> Image.Image:
     buf.seek(0)
     return Image.open(buf).convert("RGBA")
 
-
-def render_mark(px: int) -> Image.Image:
-    return render_svg(MARK_SVG, px)
 
 
 # ── icon set ────────────────────────────────────────────────────────────────
@@ -239,7 +242,7 @@ def plate_card(img, box, kind):
                 bx += 10
         photo_slab(d, (x0 + pad, y0 + h * 0.11, x1 - pad, y0 + h * 0.62),
                    ("#b98a5c", "#e8b884", "#fff0cc", "#6d4a32", "#3a2718", "#2a1c11"))
-        mk = render_mark(10 * S)
+        mk = logo_badge(10 * S)
         img.paste(mk, (int((x0 + pad) * S), int((y0 + h * 0.72 - 5.2) * S)), mk)
         d.text(((x0 + pad + 11) * S, (y0 + h * 0.72) * S), "HD2Lab",
                font=font(7 * S, "SemiBold"), fill="#e0703c")
@@ -269,8 +272,8 @@ def build_og(out_dir: str) -> str:
     d.text((1096 * S, 96 * S), "LOCAL ONLY · 0 B UPLOAD", font=mono(13 * S), fill=DIM, anchor="rs")
 
     # 3) dual-skew mark + HD2Lab | Shutterplate (PKPilot0001/0002 규격: 100px 각진 마크)
-    mark = render_mark(100 * S)
-    img.paste(mark, (84 * S, 120 * S), mark)
+    badge = logo_badge(104 * S)
+    img.paste(badge, (82 * S, 118 * S), badge)
 
     base_y = 194
     f_title = font(62 * S, "SemiBold")

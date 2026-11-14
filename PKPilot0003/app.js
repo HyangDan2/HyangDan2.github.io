@@ -2490,6 +2490,14 @@
     setView(start);
     if (start === 'editor') { render(); paintStrip(); }
     else requestAnimationFrame(paintHomeFrames);
+    /* The official HD2Lab emblem is raster artwork: when it has decoded, the
+       tiles and every painted plate pick it up. */
+    EM.afterLogo(function () {
+      syncEmblems();
+      render();
+      paintStrip();
+      paintHomeFrames();
+    });
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(function () {
         render();

@@ -1,14 +1,18 @@
 /* ============================================================================
  * HD2Lab · Shutterplate (PKPilot0003)
- * Maker emblems — official brand marks as inline vector paths.
+ * Maker emblems — official brand marks, drawn as vector paths.
  *
- * Every brand glyph below is the manufacturer's own published logo artwork,
+ * Every manufacturer glyph below is the maker's own published logo artwork,
  * not a font impression: the path data was lifted from the official logo file
  * named in EMBLEM-SOURCES.md, re-normalised to height 100 units with the
  * curves kept — and, with the emblem colour switch, painted in each maker's
  * own colour unless the visitor picks one ink for the whole plate.
- * Trademarks belong to their owners; they are used here to credit the camera
- * that shot the photo, the way a printed frame does.
+ *
+ * HD2Lab's own emblem is the official logo (assets/logo-mark.png, the round
+ * emblem of the brand's LOGO.png), so it is drawn as an image rather than
+ * redrawn as paths: the site header, the favicon and the plate then carry the
+ * same artwork. Trademarks belong to their owners; they are used here to
+ * credit the camera that shot the photo, the way a printed frame does.
  * ==========================================================================*/
 (function (global) {
   'use strict';
@@ -17,9 +21,8 @@
   var MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
   var SERIF = 'Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif';
 
-  /* Official HD2Lab dual-skew mark — the identical geometry is used by the
-     site header, the favicon set and the plate emblems. */
-  var MARK_PATH = 'M15 20L35 10V43L15 53ZM29 24L49 14V47L29 57Z';
+  /* The official HD2Lab emblem — the round badge of assets/LOGO.png. */
+  var LOGO_SRC = '../assets/logo-mark.png';
 
   function t(s, x, y, size, family, weight, ls, align) {
     return { t: 't', s: s, x: x, y: y, size: size, family: family || SANS,
@@ -33,6 +36,9 @@
   }
   function r(x, y, w, h, rx, fill, stroke, sw) {
     return { t: 'r', x: x, y: y, w: w, h: h, rx: rx || 0, fill: fill || null, stroke: stroke || null, sw: sw || 0 };
+  }
+  function i(x, y, w, h) {
+    return { t: 'i', x: x, y: y, w: w, h: h, src: LOGO_SRC };
   }
 
   /* Each spec: vb = [width, height] in abstract units (the mark is 100 units
@@ -167,20 +173,80 @@
       ]
     },
     {
-      /* The official HD2Lab dual-skew mark, verbatim from the brand sheet
-         (viewBox 0 0 64 64, two stroked parallelograms) followed by the
-         wordmark, so the plate carries the same logo as the site header. */
-      id: 'hd2lab', name: 'HD2Lab', vb: [172, 64],
+      /* The official HD2Lab logo — the round emblem of LOGO.png, drawn as an
+         image op so the plate carries the brand's own artwork (colour, or the
+         one-ink print when All Black is on). */
+      id: 'hd2lab', name: 'HD2Lab', vb: [100, 100],
       ops: [
-        p('M15 20L35 10V43L15 53Z', null, 'accent', 4.4),
-        p('M29 24L49 14V47L29 57Z', null, 'accent', 4.4),
-        t('HD2LAB', 62, 42, 22, SANS, 700, 2.2, 'left')
+        i(0, 0, 100, 100)
       ]
     }
   ];
 
   var BY_ID = {};
   LIST.forEach(function (e) { BY_ID[e.id] = e; });
+
+  /* ---- official logo image ------------------------------------------------
+     The badge is raster artwork, so it is decoded once and reused: the plate
+     canvas draws the Image itself, and All Black prints a grayscale copy made
+     on an offscreen canvas (one ink, no brand colour left). */
+  var logoImage = null;          /* HTMLImageElement once decoded */
+  var logoMono = null;           /* grayscale canvas, built on demand */
+  var logoListeners = [];
+  var logoDone = false;
+
+  function afterLogo(fn) {
+    if (logoDone) { fn(); return; }
+    logoListeners.push(fn);
+  }
+
+  function settleLogo() {
+    logoDone = true;
+    var pending = logoListeners;
+    logoListeners = [];
+    pending.forEach(function (fn) { try { fn(); } catch (e) {} });
+    try {
+      global.dispatchEvent(new CustomEvent('sp-emblem-logo'));
+    } catch (e) {}
+  }
+
+  function monoOf(src) {
+    if (logoMono) return logoMono;
+    var w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+    if (!w || !h) return null;
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var cx = c.getContext('2d');
+    cx.drawImage(src, 0, 0, w, h);
+    try {
+      var data = cx.getImageData(0, 0, w, h);
+      var px = data.data;
+      for (var k = 0; k < px.length; k += 4) {
+        /* Rec. 601 luma: one ink, the artwork's own light and shade kept */
+        var v = Math.round(px[k] * 0.299 + px[k + 1] * 0.587 + px[k + 2] * 0.114);
+        px[k] = px[k + 1] = px[k + 2] = v;
+      }
+      cx.putImageData(data, 0, 0);
+    } catch (e) {}
+    logoMono = c;
+    return logoMono;
+  }
+
+  function logoFor(mono) {
+    if (!logoImage || !logoImage.complete || !logoImage.naturalWidth) return null;
+    return mono ? monoOf(logoImage) : logoImage;
+  }
+
+  if (typeof global.Image === 'function') {
+    logoImage = new global.Image();
+    logoImage.decoding = 'async';
+    logoImage.onload = settleLogo;
+    logoImage.onerror = settleLogo;
+    logoImage.src = LOGO_SRC;
+    if (logoImage.complete && logoImage.naturalWidth) settleLogo();
+  } else {
+    settleLogo();
+  }
 
   var MAKE_MAP = [
     [/samsung|\bnx\b|nx[0-9]/i, 'samsung'],
@@ -245,6 +311,10 @@
       } else if (op.t === 'r') {
         out.push('<rect x="' + op.x + '" y="' + op.y + '" width="' + op.w + '" height="' + op.h + '" rx="' + op.rx + '" fill="' + color(op.fill, colors, e) + '"' +
           (op.stroke ? ' stroke="' + color(op.stroke, colors, e) + '" stroke-width="' + op.sw + '"' : '') + '/>');
+      } else if (op.t === 'i') {
+        out.push('<image x="' + op.x + '" y="' + op.y + '" width="' + op.w + '" height="' + op.h +
+          '" href="' + esc(op.src) + '"' +
+          (colors && colors.mono ? ' style="filter:grayscale(1)"' : '') + '/>');
       } else if (op.t === 't') {
         var fam = op.family === 'mono' ? MONO : op.family === 'serif' ? SERIF : SANS;
         out.push('<text x="' + op.x + '" y="' + op.y + '" font-family="' + esc(fam) + '" font-size="' + op.size +
@@ -319,6 +389,9 @@
         else ctx.rect(op.x, op.y, op.w, op.h);
         if (op.fill) { ctx.fillStyle = color(op.fill, colors, e); ctx.fill(); }
         if (op.stroke) { ctx.strokeStyle = color(op.stroke, colors, e); ctx.lineWidth = op.sw; ctx.stroke(); }
+      } else if (op.t === 'i') {
+        var art = logoFor(!!(colors && colors.mono));
+        if (art) ctx.drawImage(art, op.x, op.y, op.w, op.h);
       } else if (op.t === 't') {
         setFont(ctx, op, 1);
         ctx.fillStyle = color(op.fill || 'ink', colors, e);
@@ -336,8 +409,9 @@
   }
 
   global.SPEmblems = {
-    MARK_PATH: MARK_PATH,
     list: LIST,
+    LOGO_SRC: LOGO_SRC,
+    afterLogo: afterLogo,
     get: function (id) { return BY_ID[id] || BY_ID.hd2lab; },
     has: function (id) { return !!BY_ID[id]; },
     fromMake: fromMake,
