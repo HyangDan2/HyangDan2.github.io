@@ -384,6 +384,151 @@ def canvas_sig(page):
     return page.evaluate(SIG_JS)
 
 
+# ── fit matrix: what each frame actually paints ──────────────────────────────
+# Real Chromium metrics, recorded while the plate is painted: every glyph run's
+# box, every emblem's box and every sprocket hole. That lets the suite prove
+# the things a screenshot only hints at — no line falls back to «…», nothing is
+# painted off the plate, and no two things are drawn on top of each other.
+FIT_CASES = [
+    ("iphone", {
+        "make": "Apple", "model": "iPhone 15 Pro",
+        "lens": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+        "focal": "24mm (24mm)", "aperture": "ƒ/1.78", "shutter": "1/1200s",
+        "iso": "ISO 400", "datetime": "2026.11.14 09:12", "caption": "가을 아침 창원의 빛",
+    }, "hasselblad"),
+    ("wide", {
+        "make": "Hasselblad", "model": "X2D 100C",
+        "lens": "XCD 4/21mm · 24mm (24mm) equivalent ultra wide",
+        "focal": "45mm (35mm)", "aperture": "ƒ/4", "shutter": "1/1250s",
+        "iso": "ISO 1600", "datetime": "2026.11.09 18:41",
+        "caption": "Golden hour by the reservoir",
+    }, "hd2lab"),
+    ("noexif", {}, "none"),
+]
+FIT_SIZES = [("2:3", 1200, 1800), ("3:4", 1500, 2000), ("3:2", 1536, 1024)]
+
+FIT_JS = """(matrix) => {
+  const out = {plates: 0, ellipsis: [], overflow: [], collide: [], byStyle: {}, holes: {},
+               filmSlack: 1e9};
+  const c = document.createElement('canvas');
+  const seen = {};
+  for (const item of matrix) {
+    const L = SPPlate.layout({w: item.w, h: item.h, img: null}, {
+      style: item.style, fields: item.fields, emblem: item.emblem, font: 'sans',
+      stock: 'KODAK PORTRA 400', frameNo: '#03', padPct: item.padPct
+    });
+    c.width = Math.max(1, Math.round(L.W));
+    c.height = Math.max(1, Math.round(L.H));
+    const ctx = c.getContext('2d');
+    const texts = [], rects = [], emblems = [];
+    let inEmblem = false;
+    const origFT = ctx.fillText.bind(ctx), origRR = ctx.roundRect.bind(ctx);
+    ctx.fillText = function (s, x, y) {
+      if (!inEmblem) {
+        const m = this.measureText(String(s));
+        const px = parseFloat((/(\\d+(?:\\.\\d+)?)px/.exec(this.font) || [0, 0])[1]) || 1;
+        const asc = m.actualBoundingBoxAscent || px * 0.8;
+        const desc = m.actualBoundingBoxDescent || 0;
+        const wd = m.width, al = this.textAlign;
+        const x0 = al === 'center' ? x - wd / 2 : al === 'right' ? x - wd : x;
+        texts.push({s: String(s), x0: x0, x1: x0 + wd, y0: y - asc, y1: y + desc});
+      }
+      return origFT(s, x, y);
+    };
+    ctx.roundRect = function (x, y, wd, hh, r) {
+      rects.push({x: x, y: y, w: wd, h: hh});
+      return origRR(x, y, wd, hh, r);
+    };
+    const em = SPEmblems.draw;
+    SPEmblems.draw = function (c2, id, x, y, wd, hh) {
+      const prev = inEmblem;
+      if (c2 === ctx) { inEmblem = true; emblems.push({id: id, x: x, y: y, w: wd, h: hh}); }
+      try { return em.apply(this, arguments); } finally { inEmblem = prev; }
+    };
+    try { SPPlate.paint(ctx, L); } finally { SPEmblems.draw = em; }
+
+    out.plates++;
+    const label = item.style + '/' + item.case + '/' + item.size + '/pad' + item.padPct;
+    const style = out.byStyle[item.style] || (out.byStyle[item.style] = {plates: 0, ellipsis: 0});
+    style.plates++;
+
+    for (const t of texts) {
+      if (t.s.indexOf('…') >= 0) {
+        style.ellipsis++;
+        out.ellipsis.push([label, t.s]);
+      }
+      if (t.x0 < -0.5 || t.x1 > L.W + 0.5 || t.y0 < -0.5 || t.y1 > L.H + 0.5) {
+        out.overflow.push([label, t.s, Math.round(t.x0), Math.round(t.x1)]);
+      }
+    }
+    const hit = (a, b) => {
+      const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+      const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      return ox > 0.5 && oy > 0.5;
+    };
+    for (let i = 0; i < texts.length; i++) {
+      for (let j = i + 1; j < texts.length; j++) {
+        if (hit(texts[i], texts[j])) out.collide.push([label, 'text', texts[i].s, texts[j].s]);
+      }
+    }
+    for (const e of emblems) {
+      const eb = {x0: e.x, x1: e.x + e.w, y0: e.y, y1: e.y + e.h};
+      for (const t of texts) if (hit(eb, t)) out.collide.push([label, 'emblem', e.id, t.s]);
+    }
+    const holes = rects.filter(r => r.h < L.H * 0.06 && r.w < L.W * 0.06);
+    out.holes[item.style] = Math.max(out.holes[item.style] || 0, holes.length);
+    for (const h of holes) {
+      const hb = {x0: h.x, x1: h.x + h.w, y0: h.y, y1: h.y + h.h};
+      for (const t of texts) if (hit(hb, t)) out.collide.push([label, 'hole', 'sprocket', t.s]);
+    }
+    /* Film Sprocket: the lowest line of copy must sit clear above the bottom
+       row of perforations, which is the defect this frame was fixed for */
+    if (item.style === 'film') {
+      const band = L.band;
+      const holeTop = L.H - band * 0.095;
+      const lowest = texts.reduce((m, t) => Math.max(m, t.y1), -1e9);
+      out.filmSlack = Math.min(out.filmSlack, holeTop - lowest);
+    }
+  }
+  out.ellipsis = out.ellipsis.slice(0, 6);
+  out.overflow = out.overflow.slice(0, 6);
+  out.collide = out.collide.slice(0, 6);
+  return out;
+}"""
+
+
+TEXT_JS = """() => {
+  const c = document.createElement('canvas');
+  c.width = 900; c.height = 140;
+  const ctx = c.getContext('2d');
+  const H = SPPlate.helpers;
+  const s = '1/1250s · ISO 1600';
+  const opt = {size: 40, family: 'mono', color: '#000', ls: 2};
+  const nominal = H.measure(ctx, s, opt);
+  const paint = (fn) => {
+    let acc = '';
+    const orig = ctx.fillText.bind(ctx);
+    ctx.fillText = function (t, x, y) { acc += String(t); return orig(t, x, y); };
+    let w;
+    try { w = fn(); } finally { ctx.fillText = orig; }
+    return {text: acc, w: w};
+  };
+  return {
+    nominal: nominal,
+    half: paint(() => H.text(ctx, s, 20, 90, Object.assign({}, opt, {maxW: nominal * 0.5}))),
+    tight: paint(() => H.text(ctx, s, 20, 90, Object.assign({}, opt, {maxW: nominal * 0.4}))),
+    compound: paint(() => H.compound(ctx, [
+      {s: 'Hasselblad', size: 34, weight: 700, family: 'sans', color: '#000', ls: 1},
+      {s: '  X2D 100C', size: 34, weight: 300, family: 'sans', color: '#000', ls: 1}
+    ], 20, 90, 'left', H.measure(ctx, 'Hasselblad  X2D 100C', {size: 34, family: 'sans'}) * 0.5)),
+    compoundTight: paint(() => H.compound(ctx, [
+      {s: 'Hasselblad', size: 34, weight: 700, family: 'sans', color: '#000', ls: 1},
+      {s: '  X2D 100C', size: 34, weight: 300, family: 'sans', color: '#000', ls: 1}
+    ], 20, 90, 'left', H.measure(ctx, 'Hasselblad  X2D 100C', {size: 34, family: 'sans'}) * 0.3)),
+  };
+}"""
+
+
 def browser_tests(port):
     names = [f"browser: {x}" for x in ("desktop", "frames", "sheets", "export", "mobile", "small")]
     try:
@@ -564,6 +709,94 @@ def browser_tests(port):
                      return max - min > 40; }""", fid))
         dup = len(set(hashes.values())) != len(hashes)
         check("all eight frames render differently", not dup, json.dumps(hashes))
+
+        # ── fit matrix: portrait plates, long iPhone EXIF, wide emblems ────
+        print("\n[browser] frame text fitting (portrait plates, long EXIF, wide emblems)")
+        matrix = []
+        for cname, fields, emblem in FIT_CASES:
+            for sname, w, h in FIT_SIZES:
+                for fid, _label in FRAMES:
+                    matrix.append({"style": fid, "case": cname, "size": sname,
+                                   "fields": fields, "emblem": emblem,
+                                   "w": w, "h": h, "padPct": None})
+        fit = page.evaluate(FIT_JS, matrix)
+        check(f"fit: {len(matrix)} stressed plates painted", fit["plates"] == len(matrix),
+              f"painted {fit['plates']}")
+        check("fit: not one line falls back to the ellipsis", not fit["ellipsis"],
+              json.dumps(fit["ellipsis"], ensure_ascii=False))
+        check("fit: nothing painted off the plate", not fit["overflow"],
+              json.dumps(fit["overflow"], ensure_ascii=False))
+        check("fit: no text over text, emblem or sprocket hole", not fit["collide"],
+              json.dumps(fit["collide"], ensure_ascii=False))
+        check("fit: Film Sprocket keeps its lowest line above the perforations",
+              fit["filmSlack"] > 0, f"slack={fit['filmSlack']:.1f}px")
+        for fid, label in FRAMES:
+            got = (fit["byStyle"].get(fid) or {})
+            check(f"fit: {label} never ellipsises on a portrait plate",
+                  got.get("ellipsis") == 0, f"{got.get('ellipsis')} line(s)")
+        studio_cut = [e for e in fit["ellipsis"] if e[0].startswith("studio/")]
+        check("fit: Studio Dark keeps the full exposure row (ISO 400 / 1600)",
+              not studio_cut, json.dumps(studio_cut, ensure_ascii=False))
+        check("fit: Strap Bar keeps its exposure row whole",
+              not [e for e in fit["ellipsis"] if e[0].startswith("strap/")],
+              json.dumps([e for e in fit["ellipsis"] if e[0].startswith("strap/")],
+                         ensure_ascii=False))
+
+        # the same matrix with every padding removed: the film sprocket loop
+        # used to divide by a zero pitch and freeze the tab, so this runs on a
+        # page of its own that can be thrown away if a regression hangs it.
+        zero_matrix = []
+        for cname, fields, emblem in FIT_CASES:
+            for sname, w, h in FIT_SIZES:
+                for fid, _label in FRAMES:
+                    zero_matrix.append({"style": fid, "case": cname, "size": sname,
+                                        "fields": fields, "emblem": emblem,
+                                        "w": w, "h": h, "padPct": 0})
+        zctx = browser.new_context(viewport={"width": 1280, "height": 800})
+        zpage = zctx.new_page()
+        zpage.set_default_timeout(20000)
+        zpage.goto(base, wait_until="networkidle")
+        zpage.wait_for_timeout(200)
+        try:
+            zero = zpage.evaluate(FIT_JS, zero_matrix)
+        except Exception as e:  # a frozen renderer lands here
+            zero = None
+            check("padPct 0: Film Sprocket paints instead of hanging", False,
+                  f"painter did not return ({str(e).splitlines()[0]})")
+        if zero:
+            check("padPct 0: Film Sprocket paints instead of hanging",
+                  zero["plates"] == len(zero_matrix) and zero["holes"].get("film", 0) > 0,
+                  f"plates={zero['plates']} holes={zero['holes']}")
+            check("padPct 0: the sprocket row survives a padding-less plate",
+                  zero["holes"].get("film", 0) >= 20, str(zero["holes"]))
+            check("padPct 0: no ellipsis on any frame", not zero["ellipsis"],
+                  json.dumps(zero["ellipsis"], ensure_ascii=False))
+            check("padPct 0: no collision on any frame", not zero["collide"],
+                  json.dumps(zero["collide"], ensure_ascii=False))
+            check("padPct 0: nothing painted off the plate", not zero["overflow"],
+                  json.dumps(zero["overflow"], ensure_ascii=False))
+        zctx.close()
+
+        # ── text fitting units: shrink floor and last-resort ellipsis ───────
+        print("\n[browser] text fitting units")
+        tu = page.evaluate(TEXT_JS)
+        check("text: 50% squeeze keeps every character",
+              tu["half"]["text"] == "1/1250s · ISO 1600" and "…" not in tu["half"]["text"],
+              json.dumps(tu["half"], ensure_ascii=False))
+        check("text: 50% squeeze actually shrinks the line",
+              tu["half"]["w"] < tu["nominal"] * 0.75,
+              f"{tu['half']['w']:.1f} vs {tu['nominal']:.1f}")
+        check("text: a squeeze below the floor ellipsises", "…" in tu["tight"]["text"],
+              json.dumps(tu["tight"], ensure_ascii=False))
+        check("text: ellipsis still respects the limit",
+              tu["tight"]["w"] <= tu["nominal"] * 0.4 + 1,
+              f"{tu['tight']['w']:.1f} > {tu['nominal'] * 0.4:.1f}")
+        check("compound: a 50% squeeze fits without cutting",
+              tu["compound"]["text"] == "Hasselblad  X2D 100C",
+              json.dumps(tu["compound"], ensure_ascii=False))
+        check("compound: never shrinks past the same 45% floor",
+              tu["compoundTight"]["w"] >= tu["compound"]["w"] * 0.82,
+              f"tight={tu['compoundTight']['w']:.1f} half={tu['compound']['w']:.1f}")
 
         print("\n[browser] frame strip: wheel & keyboard")
         page.evaluate("() => document.querySelector('#frameStrip').scrollLeft = 0")
