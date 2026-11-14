@@ -82,6 +82,7 @@
     sampleIdx: 0,
     fitScale: 1,
     sheet: null,
+    view: '',          // 'home' — the landing, 'editor' — the studio
     pane: 'exif',        // which inspector pane is on screen (always on PC, in the sheet on mobile)
     /* PC workspace: the photos opened together, or the folder a visitor picked.
        Everything stays local — handles and Files never leave this device. */
@@ -149,6 +150,25 @@
     portalMenu: $('#portalMenu'),
     portalMenuBtn: $('#portalMenuBtn'),
     portalMenuDropdown: $('#portalMenuDropdown'),
+    brandBtn: $('#brandBtn'),
+    homeView: $('#homeView'),
+    editorView: $('#editorView'),
+    homeDrop: $('#homeDrop'),
+    homeSession: $('#homeSession'),
+    homeThumb: $('#homeThumb'),
+    homeSessionName: $('#homeSessionName'),
+    homeSessionSize: $('#homeSessionSize'),
+    homeSessionFrame: $('#homeSessionFrame'),
+    homeContinueBtn: $('#homeContinueBtn'),
+    homeFrameGrid: $('#homeFrameGrid'),
+    menuHomeBtn: $('#menuHomeBtn'),
+    menuResetExifBtn: $('#menuResetExifBtn'),
+    menuResetHint: $('#menuResetHint'),
+    menuEmblemBtn: $('#menuEmblemBtn'),
+    menuEmblemHint: $('#menuEmblemHint'),
+    menuEmblemState: $('#menuEmblemState'),
+    menuSample01: $('#menuSample01'),
+    menuSample02: $('#menuSample02'),
     sheet: $('#sheet'),
     sheetBackdrop: $('#sheetBackdrop'),
     sheetTitle: $('#sheetTitle'),
@@ -326,6 +346,7 @@
   function setEmblemMono(on) {
     state.emblemMono = !!on;
     syncEmblems();
+    syncMenuState();
     renderAll();
   }
 
@@ -475,7 +496,16 @@
     if (!(opts && opts.silent)) {
       toast((note ? note + ' · ' : '') + (hasCamera ? 'EXIF ' + count + '개 항목을 읽었습니다' : 'EXIF 없음 — 템플릿 값으로 시작합니다'));
     }
+    /* A photo always wants the studio; opening one from the landing is how a
+       visitor gets there. */
+    if (!(opts && opts.stay) && state.view !== 'editor') setView('editor');
     return true;
+  }
+
+  function resetExifFromPhoto() {
+    if (!state.photo || !state.photo.file) return;
+    /* stay — the ⋮ menu can ask for this from the landing too */
+    loadFile(state.photo.file, 'EXIF 다시 읽기', { keepWorkspace: true, stay: true });
   }
 
   function frameNumber(datetime) {
@@ -495,6 +525,8 @@
       if (el.shareBtn) el.shareBtn.disabled = true;
       if (el.previewBtn) el.previewBtn.disabled = true;
       $('#resetMetaBtn').disabled = true;
+      syncMenuState();
+      syncHomeSession();
       return;
     }
     el.empty.hidden = true;
@@ -510,6 +542,8 @@
     if (el.previewBtn) el.previewBtn.disabled = false;
     $('#resetMetaBtn').disabled = false;
     paintSessionThumb();
+    syncMenuState();
+    syncHomeSession();
   }
 
   function paintSessionThumb() {
@@ -526,18 +560,178 @@
     ctx.drawImage(src, (size - dw) / 2, (size - dh) / 2, dw, dh);
   }
 
-  async function loadSample() {
-    var s = SAMPLES[state.sampleIdx % SAMPLES.length];
-    state.sampleIdx++;
+  /* ── landing (home view) ──────────────────────────────────────────────────
+     The first screen: the mark, the two ways in, the session left open, and
+     the eight signatures. It only paints — every action ends in the studio,
+     and the studio's own state (photo, frame, borders) is never torn down to
+     come back here. */
+  var homeFrameCanvases = [];
+
+  function paintHomeThumb() {
+    var cv = el.homeThumb;
+    if (!cv) return;
+    var size = 56, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (cv.width !== Math.round(size * dpr)) {
+      cv.width = Math.round(size * dpr);
+      cv.height = Math.round(size * dpr);
+    }
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+    if (!state.photo) return;
+    var src = state.photo.preview;
+    var w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+    var k = Math.max(size / w, size / h);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, (size - w * k) / 2, (size - h * k) / 2, w * k, h * k);
+  }
+
+  function syncHomeSession() {
+    if (!el.homeSession) return;
+    var p = state.photo;
+    el.homeSession.hidden = !p;
+    if (!p) return;
+    el.homeSessionName.textContent = p.name;
+    el.homeSessionSize.textContent = p.w + ' × ' + p.h + ' px';
+    el.homeSessionFrame.textContent = PL.STYLES[state.style].label + ' 프레임';
+    paintHomeThumb();
+  }
+
+  function buildHomeFrames() {
+    if (!el.homeFrameGrid) return;
+    PL.ORDER.forEach(function (id) {
+      var S = PL.STYLES[id];
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'hf-card';
+      b.dataset.style = id;
+      b.setAttribute('aria-label', S.label + ' — ' + S.tag + ' 프레임으로 열기');
+      b.innerHTML =
+        '<span class="hf-thumb"><canvas aria-hidden="true"></canvas></span>' +
+        '<span class="hf-foot">' +
+          '<span class="hf-name">' + S.label + '</span>' +
+          '<span class="frame-badge">' + S.tag + '</span>' +
+        '</span>';
+      b.addEventListener('click', function () { pickFrame(id); });
+      el.homeFrameGrid.appendChild(b);
+      homeFrameCanvases.push($('canvas', b));
+    });
+  }
+
+  function paintHomeFrames() {
+    if (state.view === 'home') paintCards(homeFrameCanvases);
+  }
+
+  /* A frame card opens the studio with that signature selected — a photo the
+     visitor already has, or sample-01 when the plate is still empty. */
+  async function pickFrame(style) {
+    if (!PL.STYLES[style]) return;
+    if (!state.photo) await loadSampleAt(0, { stay: true });
+    setStyle(style);
+    setView('editor');
+    toast(PL.STYLES[style].label + ' 프레임으로 열었습니다');
+  }
+
+  function setView(name) {
+    var next = name === 'editor' ? 'editor' : 'home';
+    state.view = next;
+    document.body.dataset.view = next;
+    if (el.homeView) el.homeView.hidden = next !== 'home';
+    if (el.editorView) el.editorView.hidden = next !== 'editor';
+    if (el.brandBtn) {
+      if (next === 'home') el.brandBtn.setAttribute('aria-current', 'page');
+      else el.brandBtn.removeAttribute('aria-current');
+    }
+    closeMenu(false);
+    if (next === 'editor') {
+      /* the canvas had no box while the landing was up — size it now */
+      requestAnimationFrame(function () { render(); paintStrip(); });
+      scheduleStrip();
+    } else {
+      closeSheet(false);
+      syncHomeSession();
+      if (el.homeView) el.homeView.scrollTop = 0;
+      requestAnimationFrame(paintHomeFrames);
+    }
+    /* #editor bookmarks the studio; the landing is the plain address */
+    try {
+      var url = location.pathname + location.search + (next === 'editor' ? '#editor' : '');
+      if (window.history && history.replaceState) history.replaceState(null, '', url);
+    } catch (e) { /* a file:// page or a sandboxed frame may refuse the rewrite */ }
+    return next;
+  }
+
+  /* ── the ⋮ menu (workspace · samples · navigation) ────────────────────── */
+  function menuItems() {
+    if (!el.portalMenuDropdown) return [];
+    return $$('[role="menuitem"], [role="menuitemcheckbox"]', el.portalMenuDropdown)
+      .filter(function (b) { return !b.disabled; });
+  }
+
+  function syncMenuState() {
+    if (el.menuResetExifBtn) {
+      var has = !!state.photo;
+      el.menuResetExifBtn.disabled = !has;
+      if (el.menuResetHint) {
+        el.menuResetHint.textContent = has ? '사진을 열 때 읽은 EXIF로' : '사진을 열면 쓸 수 있습니다';
+      }
+    }
+    if (el.menuEmblemBtn) {
+      el.menuEmblemBtn.setAttribute('aria-checked', state.emblemMono ? 'true' : 'false');
+      if (el.menuEmblemState) el.menuEmblemState.textContent = state.emblemMono ? 'ALL BLACK' : 'COLOR';
+      if (el.menuEmblemHint) {
+        el.menuEmblemHint.textContent = state.emblemMono
+          ? '현재 All Black — 눌러서 원본 컬러'
+          : '현재 원본 컬러 — 눌러서 All Black';
+      }
+    }
+  }
+
+  function openMenu() {
+    if (!el.portalMenuDropdown) return;
+    el.portalMenuDropdown.hidden = false;
+    document.body.classList.add('is-menu-open');
+    el.portalMenuBtn.setAttribute('aria-expanded', 'true');
+    syncMenuState();
+    var first = menuItems()[0];
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function closeMenu(restoreFocus) {
+    if (!el.portalMenuDropdown) return;
+    if (!el.portalMenuDropdown.hidden) {
+      el.portalMenuDropdown.hidden = true;
+      el.portalMenuBtn.setAttribute('aria-expanded', 'false');
+    }
+    document.body.classList.remove('is-menu-open');
+    if (restoreFocus) el.portalMenuBtn.focus({ preventScroll: true });
+  }
+
+  function toggleMenu() {
+    if (el.portalMenuDropdown.hidden) openMenu();
+    else closeMenu(true);
+  }
+
+  async function loadSampleAt(index, opts) {
+    var s = SAMPLES[((index % SAMPLES.length) + SAMPLES.length) % SAMPLES.length];
     try {
       var res = await fetch(s.file, { cache: 'force-cache' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var blob = await res.blob();
       var file = new File([blob], s.file.split('/').pop(), { type: blob.type || 'image/jpeg' });
-      await loadFile(file, s.label + ' 샘플');
+      return await loadFile(file, s.label + ' 샘플', opts);
     } catch (e) {
       toast('샘플을 불러오지 못했습니다 — 사진을 직접 선택해 주세요', 'error');
+      return false;
     }
+  }
+
+  /* The header button and the editor's empty state walk the samples one by
+     one; the landing's two cards and the ⋮ menu name theirs. */
+  async function loadSample() {
+    var i = state.sampleIdx % SAMPLES.length;
+    state.sampleIdx++;
+    return loadSampleAt(i);
   }
 
   function clearPhoto() {
@@ -1303,15 +1497,18 @@
     });
   }
 
-  function paintStrip() {
+  /* Both card rows — the horizontal strip in the studio and the landing's
+     grid — paint the same plates, only into boxes of a different size. */
+  function paintCards(canvases) {
     var src = stripSource();
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     PL.ORDER.forEach(function (id, i) {
-      var cv = stripCanvases[i];
+      var cv = canvases[i];
       if (!cv) return;
       var rect = cv.getBoundingClientRect();
-      var cw = Math.round(rect.width) || 116;
-      var chh = Math.round(rect.height) || 70;
+      var cw = Math.round(rect.width);
+      var chh = Math.round(rect.height);
+      if (!cw || !chh || cw < 8 || chh < 8) return;   // a hidden row has no box to paint into
       if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(chh * dpr)) {
         cv.width = Math.round(cw * dpr);
         cv.height = Math.round(chh * dpr);
@@ -1340,12 +1537,24 @@
     });
   }
 
+  function paintStrip() { paintCards(stripCanvases); }
+
   function scheduleStrip() {
     if (stripTimer) clearTimeout(stripTimer);
     stripTimer = setTimeout(function () {
       stripTimer = 0;
       paintStrip();
     }, 140);
+  }
+
+  var homeTimer = 0;
+  function scheduleHomeFrames() {
+    if (state.view !== 'home') return;
+    if (homeTimer) clearTimeout(homeTimer);
+    homeTimer = setTimeout(function () {
+      homeTimer = 0;
+      paintHomeFrames();
+    }, 160);
   }
 
   var raf = 0;
@@ -1356,6 +1565,7 @@
       render();
     });
     scheduleStrip();
+    scheduleHomeFrames();
   }
 
   function updateReadout(L) {
@@ -1746,6 +1956,53 @@
   var dragMoved = false;
 
   function bind() {
+    // the title goes home — the studio keeps everything it was holding
+    if (el.brandBtn) el.brandBtn.addEventListener('click', function () { setView('home'); });
+
+    // landing: continue the open session, open a photo or a folder
+    if (el.homeContinueBtn) el.homeContinueBtn.addEventListener('click', function () { setView('editor'); });
+    var homeOpen = $('#homeOpenFilesBtn');
+    if (homeOpen) {
+      homeOpen.addEventListener('click', function () {
+        /* a wide screen opens the workspace (several at once), a phone the
+           plain chooser */
+        if (isPC() && el.wsFileInput) el.wsFileInput.click();
+        else el.fileInput.click();
+      });
+    }
+    var homeFolder = $('#homeOpenFolderBtn');
+    if (homeFolder) homeFolder.addEventListener('click', openFolder);
+    ['homeSample01', 'homeSample02'].forEach(function (id, i) {
+      var b = $('#' + id);
+      if (b) b.addEventListener('click', function () { loadSampleAt(i); });
+    });
+
+    /* the landing's first card is a dropzone of its own; so is the page */
+    function homeDrop(e) {
+      e.preventDefault();
+      if (el.homeDrop) el.homeDrop.classList.remove('is-over');
+      var list = e.dataTransfer && e.dataTransfer.files;
+      if (!list || !list.length) return;
+      if (list.length > 1) openFiles(list);
+      else loadFile(list[0]);
+    }
+    if (el.homeDrop) {
+      ['dragenter', 'dragover'].forEach(function (t) {
+        el.homeDrop.addEventListener(t, function (e) {
+          e.preventDefault();
+          el.homeDrop.classList.add('is-over');
+        });
+      });
+      ['dragleave', 'drop'].forEach(function (t) {
+        el.homeDrop.addEventListener(t, function () { el.homeDrop.classList.remove('is-over'); });
+      });
+      el.homeDrop.addEventListener('drop', homeDrop);
+    }
+    if (el.homeView) {
+      el.homeView.addEventListener('dragover', function (e) { e.preventDefault(); });
+      el.homeView.addEventListener('drop', homeDrop);
+    }
+
     // upload
     el.dropzone.addEventListener('click', function () { el.fileInput.click(); });
     el.dropzone.addEventListener('keydown', function (e) {
@@ -1784,9 +2041,7 @@
     Object.keys(FIELD_INPUTS).forEach(function (k) {
       FIELD_INPUTS[k].addEventListener('input', function () { readField(k); });
     });
-    $('#resetMetaBtn').addEventListener('click', function () {
-      if (state.photo && state.photo.file) loadFile(state.photo.file, 'EXIF 다시 읽기', { keepWorkspace: true });
-    });
+    $('#resetMetaBtn').addEventListener('click', function () { resetExifFromPhoto(); });
 
     // workspace: open several photos / a folder
     ['#openFilesBtn', '#emptyOpenFilesBtn', '#sessionOpenFilesBtn'].forEach(function (sel) {
@@ -2100,31 +2355,70 @@
       if (card) card.focus({ preventScroll: true });
     });
 
-    // portal menu
+    // portal menu — workspace · samples · navigation, the way Film Studio has it
     el.portalMenuBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      var open = el.portalMenuDropdown.hidden;
-      el.portalMenuDropdown.hidden = !open;
-      el.portalMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggleMenu();
     });
     document.addEventListener('click', function (e) {
-      if (!el.portalMenu.contains(e.target)) {
-        el.portalMenuDropdown.hidden = true;
-        el.portalMenuBtn.setAttribute('aria-expanded', 'false');
+      if (!el.portalMenu.contains(e.target)) closeMenu(false);
+    });
+    el.portalMenuDropdown.addEventListener('keydown', function (e) {
+      var items = menuItems();
+      if (!items.length) return;
+      var i = items.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        var n = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+        items[n].focus({ preventScroll: true });
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        items[0].focus({ preventScroll: true });
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        items[items.length - 1].focus({ preventScroll: true });
       }
     });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if (state.sheet) { closeSheet(); return; }
-      if (!el.portalMenuDropdown.hidden) {
-        el.portalMenuDropdown.hidden = true;
-        el.portalMenuBtn.setAttribute('aria-expanded', 'false');
-        el.portalMenuBtn.focus({ preventScroll: true });
-      }
+      if (!el.portalMenuDropdown.hidden) closeMenu(true);
     });
 
+    if (el.menuHomeBtn) {
+      el.menuHomeBtn.addEventListener('click', function () {
+        closeMenu(true);
+        setView('home');
+      });
+    }
+    if (el.menuResetExifBtn) {
+      el.menuResetExifBtn.addEventListener('click', function () {
+        if (!state.photo || !state.photo.file) return;
+        closeMenu(true);
+        resetExifFromPhoto();
+      });
+    }
+    if (el.menuEmblemBtn) {
+      el.menuEmblemBtn.addEventListener('click', function () {
+        setEmblemMono(!state.emblemMono);
+        el.menuEmblemBtn.focus({ preventScroll: true });   // the switch stays under the hand
+      });
+    }
+    if (el.menuSample01) {
+      el.menuSample01.addEventListener('click', function () {
+        closeMenu(true);
+        loadSampleAt(0);
+      });
+    }
+    if (el.menuSample02) {
+      el.menuSample02.addEventListener('click', function () {
+        closeMenu(true);
+        loadSampleAt(1);
+      });
+    }
+
     // resize
-    var redraw = function () { render(); scheduleStrip(); };
+    var redraw = function () { render(); scheduleStrip(); paintHomeFrames(); };
     if (window.ResizeObserver) {
       new ResizeObserver(render).observe(el.stageCanvas);
     }
@@ -2177,6 +2471,7 @@
     el.stage.dataset.bg = state.bg;
     buildEmblems();
     buildStrip();
+    buildHomeFrames();
     setPane('exif');
     /* On a wide screen the panel is not a modal dialog — it is simply there. */
     if (isPC()) {
@@ -2190,10 +2485,17 @@
     syncPhotoUI(0);
     syncWsUI();
     bind();
-    render();
-    paintStrip();
+    /* The landing is the front door; #editor is the shortcut a bookmark keeps. */
+    var start = /(^|#)editor$/.test(String(location.hash || '')) ? 'editor' : 'home';
+    setView(start);
+    if (start === 'editor') { render(); paintStrip(); }
+    else requestAnimationFrame(paintHomeFrames);
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function () { render(); paintStrip(); });
+      document.fonts.ready.then(function () {
+        render();
+        paintStrip();
+        paintHomeFrames();
+      });
     }
   }
 
@@ -2201,8 +2503,15 @@
     state: state,
     loadFile: loadFile,
     loadSample: loadSample,
+    loadSampleAt: loadSampleAt,
     setStyle: setStyle,
     setEmblemMono: setEmblemMono,
+    setView: setView,
+    pickFrame: pickFrame,
+    openMenu: openMenu,
+    closeMenu: closeMenu,
+    toggleMenu: toggleMenu,
+    resetExifFromPhoto: resetExifFromPhoto,
     openFiles: openFiles,
     openFolder: openFolder,
     scanAndOpen: scanAndOpen,
