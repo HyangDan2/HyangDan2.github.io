@@ -204,6 +204,54 @@ def static_tests():
     check("GameHub removed from portal", "GameHub" not in html)
     check("TechnicalHub removed from portal", "TechnicalHub" not in html)
 
+    # ── landing → title → the ⋮ menu (the Film Studio shape) ──────────────
+    print("\n[static] landing page, title-to-home, the three-section ⋮ menu")
+    check("landing view present", 'id="homeView"' in html)
+    check("editor view present", 'id="editorView"' in html)
+    check("the editor starts behind the landing",
+          re.search(r'id="editorView"[^>]*hidden', html) is not None)
+    check("the landing is what a visitor meets first",
+          re.search(r'id="homeView"[^>]*hidden', html) is None)
+    check("the title is a button that goes home",
+          re.search(r'<button class="brand" id="brandBtn" type="button" '
+                    r'aria-label="Shutterplate 홈으로 이동"', html) is not None)
+    check("the title is no longer a link off the site", '<a class="brand"' not in html)
+    hero = re.search(r'<header class="home-hero">.*?</header>', html, re.S)
+    hero_html = hero.group(0) if hero else ""
+    check("hero carries the official dual-skew mark in the accent",
+          MARK_PATH in hero_html and "#ff824f" in hero_html)
+    check("hero mark is drawn with mitred joins", 'stroke-linejoin="miter"' in hero_html)
+    check("hero names the product, with the HD2Lab badge beside it",
+          "<h1>Shutterplate</h1>" in hero_html and 'class="brand-badge hero-badge"' in hero_html)
+    check("hero says this is a local EXIF studio", "EXIF" in hero_html and "0 B" in hero_html)
+    for i in ("homeSession", "homeThumb", "homeSessionName", "homeSessionSize",
+              "homeSessionFrame", "homeContinueBtn", "homeSample01", "homeSample02",
+              "homeOpenFilesBtn", "homeOpenFolderBtn", "homeFrameGrid", "homeDrop",
+              "homeInappBanner"):
+        check(f"landing element {i}", f'id="{i}"' in html)
+    check("active session card starts hidden",
+          re.search(r'id="homeSession"[^>]*hidden', html) is not None)
+    check("continue-editing button names the action", "계속 편집하기" in html)
+    check("landing offers both samples by name",
+          all(x in html for x in ("가로 풍경", "sample-01.jpg", "세로 카페", "sample-02.jpg")))
+    check("landing offers photo + folder open", "사진 선택" in html and "폴더 열기" in html)
+    check("landing accepts a drop", "끌어다 놓" in html)
+    check("landing shows the eight-frame showcase", 'id="homeFrameGrid"' in html)
+
+    check("menu button announces a menu", 'aria-haspopup="menu"' in html)
+    check("menu is a role=menu list", 'role="menu"' in portal)
+    for group in ("WORKSPACE", "SAMPLES", "NAVIGATION"):
+        check(f"menu keeps a {group} section", f">{group}</p>" in portal)
+    for item in ("menuHomeBtn", "menuResetExifBtn", "menuEmblemBtn",
+                 "menuSample01", "menuSample02"):
+        check(f"menu item {item}", f'id="{item}"' in portal)
+    check("menu EXIF item starts disabled (no photo yet)",
+          re.search(r'id="menuResetExifBtn"[^>]*disabled', portal) is not None)
+    check("menu emblem item reports its state",
+          'id="menuEmblemState"' in portal and "원본 컬러" in portal)
+    check("menu items are announced as menu items",
+          portal.count('role="menuitem"') >= 6 and 'role="menuitemcheckbox"' in portal)
+
     # upload zone & session card
     check("dropzone present in the empty state", 'id="dropzone"' in html)
     check("sample button present in the empty state", 'id="emptySampleBtn"' in html)
@@ -269,11 +317,11 @@ def static_tests():
     check("privacy claim shown", "0 B" in html)
 
     # in-app browser notice (KakaoTalk & friends block blob: saves)
-    check("in-app notice in the landing and the result card",
-          html.count("data-inapp-banner") == 2, str(html.count("data-inapp-banner")))
+    check("in-app notice on the landing, the editor and the result card",
+          html.count("data-inapp-banner") == 3, str(html.count("data-inapp-banner")))
     check("in-app notice starts hidden",
-          len(re.findall(r'class="inapp-banner"[^>]*hidden', html)) == 2)
-    check("address-copy button in the notice", html.count("data-copy-url") == 2,
+          len(re.findall(r'class="inapp-banner[^"]*"[^>]*hidden', html)) == 3)
+    check("address-copy button in the notice", html.count("data-copy-url") == 3,
           str(html.count("data-copy-url")))
     check("copy icon in the sprite", "i-copy" in ids)
 
@@ -351,6 +399,19 @@ def static_tests():
           and re.search(r"body\s*\{[^}]*overflow:\s*hidden", css, re.S) is not None)
     check("studio fills 100dvh",
           re.search(r"\.studio\s*\{[^}]*flex:\s*1 1 auto", css, re.S) is not None)
+    check("landing scrolls inside its own box (page stays locked)",
+          re.search(r"\.home\s*\{[^}]*overflow-y:\s*auto", css, re.S) is not None)
+    check("landing is a centred max-width column",
+          re.search(r"\.home-inner\s*\{[^}]*max-width:\s*\d+px[^}]*margin:\s*0 auto", css, re.S)
+          is not None)
+    check("landing frame showcase is a responsive grid",
+          re.search(r"\.hf-grid\s*\{[^}]*grid-template-columns:\s*repeat", css, re.S) is not None)
+    check("the title button answers hover and focus",
+          re.search(r"\.brand:hover\s*\{", css) is not None and
+          re.search(r"\.brand:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--accent\)",
+                    css, re.S) is not None)
+    check("the ⋮ menu rows carry a switch state",
+          '.portal-item[aria-checked="true"]' in css)
     check("inputs are 16px (iOS zoom guard)",
           re.search(r"\.inp,[^{]*\{[^}]*font-size:\s*16px", css, re.S) is not None,
           "expected .inp { font-size: 16px }")
@@ -816,16 +877,231 @@ def browser_tests(port):
         return
 
     base = f"http://127.0.0.1:{port}/"
+    # The landing is the front door now; every studio suite below opens the
+    # editor through its #editor shortcut, and the landing gets its own block.
+    studio = base + "#editor"
     errors = []
 
     try:
+        # ── the landing: the front door, the title, the ⋮ menu ─────────────
+        # Everything below this block works in the studio (opened through the
+        # #editor shortcut); this is the screen a first visitor actually meets.
+        print("\n[browser] landing page, title → home, the ⋮ menu")
+        lerrors = []
+        lctx = browser.new_context(viewport={"width": 1440, "height": 900})
+        lpage = lctx.new_page()
+        lpage.on("pageerror", lambda e: lerrors.append(str(e)))
+        lpage.on("console", lambda m: lerrors.append(m.text) if m.type == "error" else None)
+        lpage.goto(base, wait_until="networkidle")
+        lpage.wait_for_timeout(650)
+
+        check("landing: it is the first screen",
+              lpage.is_visible("#homeView") and lpage.is_hidden("#editorView"))
+        check("landing: the title reads Shutterplate",
+              lpage.inner_text("#homeView h1").strip() == "Shutterplate",
+              lpage.inner_text("#homeView h1"))
+        check("landing: the HD2Lab badge rides beside it",
+              "HD2Lab" in lpage.inner_text(".home-hero"))
+        check("landing: the hero states the local-EXIF promise",
+              "EXIF" in lpage.inner_text(".home-hero"))
+        check("landing: eight signature cards", lpage.locator(".hf-card").count() == 8,
+              str(lpage.locator(".hf-card").count()))
+        spread = lpage.evaluate("""() => [...document.querySelectorAll('.hf-card canvas')].map(cv => {
+          const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+          let min = 255, max = 0;
+          for (let i = 0; i < d.length; i += 4 * 41) { const v = d[i]+d[i+1]+d[i+2];
+            min = Math.min(min, v); max = Math.max(max, v); }
+          return max - min;
+        })""")
+        check("landing: every card paints its own plate preview",
+              len(spread) == 8 and all(v > 40 for v in spread), str(spread))
+        check("landing: the session card waits for a photo", not lpage.is_visible("#homeSession"))
+        check("landing: the page itself does not scroll (the view does)",
+              lpage.evaluate("() => document.documentElement.scrollHeight <= window.innerHeight + 1"))
+        check("landing: the view scrolls its own content",
+              lpage.evaluate("() => { const h = document.querySelector('#homeView');"
+                             " return getComputedStyle(h).overflowY === 'auto'; }"))
+
+        # the ⋮ menu — workspace · samples · navigation
+        lpage.click("#portalMenuBtn")
+        lpage.wait_for_timeout(160)
+        check("menu: opens with aria-expanded=true",
+              lpage.get_attribute("#portalMenuBtn", "aria-expanded") == "true")
+        check("menu: it announces the popup it owns",
+              lpage.get_attribute("#portalMenuBtn", "aria-haspopup") == "menu")
+        mtxt = lpage.inner_text("#portalMenuDropdown")
+        check("menu: three sections, in order",
+              [s for s in ("WORKSPACE", "SAMPLES", "NAVIGATION") if s in mtxt] ==
+              ["WORKSPACE", "SAMPLES", "NAVIGATION"], mtxt.replace("\n", " | ")[:200])
+        check("menu: workspace holds home / EXIF / emblem colour",
+              all(t in mtxt for t in ("홈 / 랜딩 화면", "EXIF 값으로 되돌리기", "엠블럼 색상")))
+        check("menu: samples name both photographs",
+              "가로 풍경" in mtxt and "세로 카페" in mtxt and "sample-01" in mtxt)
+        check("menu: navigation keeps Web-HQ and ApplicationHub",
+              "Web-HQ" in mtxt and "ApplicationHub" in mtxt)
+        check("menu: EXIF reset is disabled without a photo",
+              lpage.is_disabled("#menuResetExifBtn"))
+        check("menu: the emblem row shows the current colour",
+              lpage.get_attribute("#menuEmblemBtn", "aria-checked") == "false" and
+              lpage.inner_text("#menuEmblemState").strip() == "COLOR")
+        lpage.keyboard.press("Escape")
+        lpage.wait_for_timeout(160)
+        check("menu: Escape closes it", lpage.is_hidden("#portalMenuDropdown"))
+        check("menu: Escape hands focus back to the ⋮ button",
+              lpage.evaluate("() => document.activeElement && document.activeElement.id") == "portalMenuBtn",
+              lpage.evaluate("() => document.activeElement && document.activeElement.id"))
+        lpage.click("#portalMenuBtn")
+        lpage.wait_for_timeout(120)
+        lpage.mouse.click(24, 400)          # a click on the page, away from the menu
+        lpage.wait_for_timeout(160)
+        check("menu: a click outside closes it", lpage.is_hidden("#portalMenuDropdown"))
+
+        # a sample card from the landing opens the studio with that photo
+        lpage.click("#homeSample02")
+        lpage.wait_for_function("() => window.SPApp.state.photo && window.SPApp.state.photo.w > 0",
+                                timeout=15000)
+        lpage.wait_for_timeout(500)
+        check("landing sample: the studio opens",
+              lpage.is_visible("#editorView") and lpage.is_hidden("#homeView"))
+        check("landing sample: the portrait cafe is loaded",
+              lpage.evaluate("() => SPApp.state.photo.h > SPApp.state.photo.w"), "not portrait")
+
+        # the title goes home and the session comes with it
+        lpage.click("#brandBtn")
+        lpage.wait_for_timeout(320)
+        check("title: clicking it returns to the landing",
+              lpage.is_visible("#homeView") and lpage.is_hidden("#editorView"))
+        check("title: the open session is offered on the landing",
+              lpage.is_visible("#homeSession"))
+        check("title: the session names the file",
+              "sample-02.jpg" in lpage.inner_text("#homeSessionName"),
+              lpage.inner_text("#homeSessionName"))
+        check("title: the session states the resolution",
+              "1024 × 1536" in lpage.inner_text("#homeSessionSize"),
+              lpage.inner_text("#homeSessionSize"))
+        check("title: the session names the frame in use",
+              "Clean Horizon" in lpage.inner_text("#homeSessionFrame"),
+              lpage.inner_text("#homeSessionFrame"))
+
+        # a frame card opens the studio on that signature, keeping the photo
+        lpage.click('.hf-card[data-style="pro"]')
+        lpage.wait_for_timeout(420)
+        check("frame card: the studio opens on the chosen frame",
+              lpage.evaluate("() => SPApp.state.style") == "pro",
+              str(lpage.evaluate("() => SPApp.state.style")))
+        check("frame card: the photo it was editing is kept",
+              lpage.evaluate("() => SPApp.state.photo && SPApp.state.photo.name") == "sample-02.jpg")
+        check("frame card: the frame strip agrees",
+              lpage.evaluate("""() => [...document.querySelectorAll('.frame-card')]
+                 .filter(c => c.getAttribute('aria-checked') === 'true')
+                 .map(c => c.dataset.style)""") == ["pro"])
+
+        # continue editing — same photo, same frame
+        lpage.click("#brandBtn")
+        lpage.wait_for_timeout(260)
+        check("title: the session follows the frame just chosen",
+              "Pro Studio" in lpage.inner_text("#homeSessionFrame"),
+              lpage.inner_text("#homeSessionFrame"))
+        lpage.click("#homeContinueBtn")
+        lpage.wait_for_timeout(420)
+        check("continue: it lands in the studio",
+              lpage.is_visible("#editorView") and lpage.is_hidden("#homeView"))
+        check("continue: the photo is still loaded",
+              lpage.evaluate("() => SPApp.state.photo && SPApp.state.photo.name") == "sample-02.jpg")
+        check("continue: the frame is still Pro Studio",
+              lpage.evaluate("() => SPApp.state.style") == "pro")
+        check("continue: the canvas paints the plate", canvas_sig(lpage)["n"] > 1000)
+
+        # the ⋮ menu acts on the workspace in place
+        lpage.click("#portalMenuBtn")
+        lpage.wait_for_timeout(160)
+        check("menu: EXIF reset wakes up with a photo",
+              lpage.is_enabled("#menuResetExifBtn"))
+        lpage.click("#menuEmblemBtn")
+        lpage.wait_for_timeout(300)
+        check("menu: the emblem switch flips to All Black",
+              lpage.evaluate("() => SPApp.state.emblemMono") is True)
+        check("menu: the row shows ALL BLACK",
+              lpage.inner_text("#menuEmblemState").strip() == "ALL BLACK",
+              lpage.inner_text("#menuEmblemState"))
+        check("menu: the switch stays where the hand is",
+              lpage.is_visible("#portalMenuDropdown"))
+        lpage.click("#menuEmblemBtn")
+        lpage.wait_for_timeout(300)
+        check("menu: and back to 원본 컬러",
+              lpage.evaluate("() => SPApp.state.emblemMono") is False and
+              lpage.inner_text("#menuEmblemState").strip() == "COLOR")
+        lpage.click("#menuHomeBtn")
+        lpage.wait_for_timeout(320)
+        check("menu: 홈 / 랜딩 화면 leads to the landing",
+              lpage.is_visible("#homeView") and lpage.is_hidden("#editorView"))
+        check("landing: no console errors on the way",
+              not lerrors, str(lerrors[:3]))
+        lctx.close()
+
+        # an empty plate: a frame card loads sample-01 and opens on that frame
+        lctx2 = browser.new_context(viewport={"width": 1440, "height": 900})
+        lpage2 = lctx2.new_page()
+        lpage2.goto(base, wait_until="networkidle")
+        lpage2.wait_for_timeout(500)
+        lpage2.click('.hf-card[data-style="film"]')
+        lpage2.wait_for_function("() => window.SPApp.state.photo && window.SPApp.state.photo.w > 0",
+                                 timeout=15000)
+        lpage2.wait_for_timeout(500)
+        check("frame card (empty plate): it opens the studio",
+              lpage2.is_visible("#editorView") and lpage2.is_hidden("#homeView"))
+        check("frame card (empty plate): it lands on Film Sprocket",
+              lpage2.evaluate("() => SPApp.state.style") == "film")
+        check("frame card (empty plate): sample-01 is loaded",
+              lpage2.evaluate("() => SPApp.state.photo.name") == "sample-01.jpg")
+        lctx2.close()
+
+        # the landing on a phone: one column, no sideways scroll, samples work
+        lmctx = browser.new_context(viewport={"width": 390, "height": 844},
+                                    device_scale_factor=3, is_mobile=True, has_touch=True)
+        lmpage = lmctx.new_page()
+        lmctx_errors = []
+        lmpage.on("pageerror", lambda e: lmctx_errors.append(str(e)))
+        lmpage.goto(base, wait_until="networkidle")
+        lmpage.wait_for_timeout(650)
+        check("landing mobile: the landing is what shows",
+              lmpage.is_visible("#homeView") and lmpage.is_hidden("#editorView"))
+        ov = lmpage.evaluate("() => ({sw: document.documentElement.scrollWidth,"
+                             " iw: window.innerWidth, sh: document.documentElement.scrollHeight,"
+                             " ih: window.innerHeight})")
+        check("landing mobile: no horizontal overflow", ov["sw"] <= ov["iw"] + 1, json.dumps(ov))
+        check("landing mobile: the page still does not scroll", ov["sh"] <= ov["ih"] + 1, json.dumps(ov))
+        wide = lmpage.evaluate("""() => [...document.querySelectorAll('.hf-card')]
+             .map(c => c.getBoundingClientRect().right)""")
+        check("landing mobile: the frame cards stay inside the screen",
+              all(x <= 391 for x in wide), str([round(x) for x in wide]))
+        check("landing mobile: the eight cards are there",
+              lmpage.locator(".hf-card").count() == 8)
+        lmpage.click("#homeSample01")
+        lmpage.wait_for_function("() => window.SPApp.state.photo && window.SPApp.state.photo.w > 0",
+                                 timeout=15000)
+        lmpage.wait_for_timeout(500)
+        check("landing mobile: a sample opens the studio",
+              lmpage.is_visible("#editorView"))
+        check("landing mobile: no page errors", not lmctx_errors, str(lmctx_errors[:3]))
+        lmctx.close()
+
         # ── desktop: empty state → upload → frames ──────────────────────────
         print("\n[browser] boot, upload state transition & eight frames")
         ctx = browser.new_context(viewport={"width": 1280, "height": 800}, accept_downloads=True)
         page = ctx.new_page()
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-        page.goto(base, wait_until="networkidle")
+        page.goto(studio, wait_until="networkidle")
+        page.wait_for_timeout(300)
+
+        # ── desktop: empty state → upload → frames ──────────────────────────
+        print("\n[browser] boot, upload state transition & eight frames")
+        ctx = browser.new_context(viewport={"width": 1280, "height": 800}, accept_downloads=True)
+        page = ctx.new_page()
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+        page.goto(studio, wait_until="networkidle")
         page.wait_for_timeout(300)
 
         check("browser: no console/page errors", not errors, str(errors[:3]))
@@ -1133,23 +1409,25 @@ def browser_tests(port):
               json.dumps((strap["collide"] + strap["overflow"] + strap["ellipsis"])[:4],
                          ensure_ascii=False)[:300])
 
-        # ── five frames: the foot each one now keeps ──────────────
-        # The brief trims five mats and re-lays three of them: Classic Gallery
-        # and Dual Deck by closing their rows, Studio Dark by pulling the block
-        # up to its rail, Film Sprocket into a mark + meta block beside it with
-        # one horizontal spec row, and Pro Studio into a four-column bar. The
-        # first block pins the brief's numbers and then measures the band the
-        # plate really paints, on a portrait and a landscape photo, so "slimmer"
-        # means the margin on the plate and not just the constant in the source.
-        print("\n[browser] five frames: slim band, film row, pro bar")
+        # ── the frame band: three trimmed, two kept ────────────────────────
+        # Classic Gallery and Dual Deck close their rows and Studio Dark pulls
+        # its block up to the rail, so those three carry a slimmer band now.
+        # Film Sprocket and Pro Studio keep the contract they were delivered
+        # with (6 / 16 and 8 / 25), so this block pins all five numbers and
+        # then measures the band the plate really paints, on a portrait and a
+        # landscape photo — "slimmer" has to mean the margin on the plate and
+        # not just the constant in the source.
+        print("\n[browser] five frames: three slim bands, two kept")
         GEO = {
             "gallery": (4.5, 13, 0.6),
             "dual": (3.8, 13.5, 0.25),
-            "film": (6, 12.5, 0.3),
             "studio": (3.8, 11.5, 1.2),
-            "pro": (4.5, 14.5, 0),
         }
-        WAS_EXTRA = {"gallery": 17, "dual": 21, "film": 16, "studio": 15.5, "pro": 25}
+        KEPT = {
+            "film": (6, 16, 0.3),
+            "pro": (8, 25, 0),
+        }
+        WAS_EXTRA = {"gallery": 17, "dual": 21, "studio": 15.5}
         geo_new = page.evaluate("() => { const o = {}; for (const k of SPPlate.ORDER) "
                                "o[k] = Object.assign({}, SPPlate.STYLES[k].geo); return o; }")
         for fid, (pad, extra, radius) in GEO.items():
@@ -1160,6 +1438,16 @@ def browser_tests(port):
                   abs(got.get("radius", -1) - radius) < 1e-9, json.dumps(got))
             dflt = page.evaluate("(s) => SPPlate.defaults(s)", fid)
             check(f"geo {fid}: the frame opens on those numbers",
+                  abs(dflt["padPct"] - pad) < 1e-9 and abs(dflt["extraPct"] - extra) < 1e-9,
+                  json.dumps(dflt))
+        for fid, (pad, extra, radius) in KEPT.items():
+            got = geo_new.get(fid) or {}
+            check(f"geo {fid}: kept at padding {pad}% · band {extra}% · radius {radius}%",
+                  abs(got.get("pad", -1) - pad) < 1e-9 and
+                  abs(got.get("extra", -1) - extra) < 1e-9 and
+                  abs(got.get("radius", -1) - radius) < 1e-9, json.dumps(got))
+            dflt = page.evaluate("(s) => SPPlate.defaults(s)", fid)
+            check(f"geo {fid}: the frame still opens on those numbers",
                   abs(dflt["padPct"] - pad) < 1e-9 and abs(dflt["extraPct"] - extra) < 1e-9,
                   json.dumps(dflt))
 
@@ -1183,17 +1471,24 @@ def browser_tests(port):
                       f"(was {WAS_EXTRA[fid]}%)",
                       abs(depth - extra / 100) < 0.004 and depth <= WAS_EXTRA[fid] / 100 - 0.02,
                       f"depth={depth:.4f} {json.dumps(g)}")
+        for fid, (_pad, extra, _radius) in KEPT.items():
+            for size in ("2:3", "3:2"):
+                g = bands[fid][size]
+                depth = (g["band"] - g["pad"]) / g["PH"]
+                check(f"{fid} {size}: the band still holds {extra}% of the photo",
+                      abs(depth - extra / 100) < 0.004,
+                      f"depth={depth:.4f} {json.dumps(g)}")
 
         FIELDS = {cname: fields for cname, fields, _e in FIT_CASES}
         SIZES = (("2:3", 1200, 1800), ("2:3s", 1024, 1536), ("3:2", 1536, 1024))
 
-        # ── Film Sprocket: mark at the left, meta beside it, one spec row ──
-        # The mark used to sit above a vertical block on the left and the spec
-        # used to stack three rows on the right, halfway up the foot. Both are
-        # gone: the block now runs beside the mark on one left edge, and the
-        # three pairs share a single baseline at the foot's far corner, right-
-        # aligned to the inner edge. Measured from the painted glyphs.
-        print("\n[browser] film sprocket foot: parallel block & one-row spec")
+        # ── Film Sprocket: the mark over its block, the spec at the corner ──
+        # As delivered: the mark sits at the left edge above a four-line block
+        # that ends with the date, and ISO / SEC / F print as a three-row stack
+        # at the far corner, the way the negative edge prints it. Measured from
+        # the painted glyphs, so a one-row spec or a block beside the mark
+        # would fail here.
+        print("\n[browser] film sprocket foot: mark over block, three-row stack")
         foot_matrix = []
         for cname, fields, emblem in FIT_CASES:
             if not fields:
@@ -1210,51 +1505,68 @@ def browser_tests(port):
             pairs = film_pairs(FIELDS[cname])
             tag = f"film foot {cname}/{size}"
             lines = item["lines"]
-            rows = [l for l in lines if all(k + v in l["s"] for k, v in pairs)]
-            if not check(f"{tag}: ISO · SEC · F print as one horizontal row",
-                         len(rows) == 1 and rows[0]["parts"] >= 6,
-                         json.dumps([l["s"] for l in lines])[:300]):
-                continue
-            row = rows[0]
-            check(f"{tag}: the three pairs share one baseline, side by side",
-                  len(set(row["ys"]) - {row["y"]}) == 0 and len(row["xs"]) >= 6,
-                  json.dumps(row["ys"]))
-            check(f"{tag}: the row is right-aligned to the inner edge",
-                  abs(item["W"] - row["x1"] - item["inset"]) < 1.5,
-                  f"gap={item['W'] - row['x1'] - item['inset']:.1f}px")
-            check(f"{tag}: the row keeps clear of the bottom perforation rule",
-                  row["y1"] <= item["botRuleY"] - 1,
-                  f"y1={row['y1']} rule={item['botRuleY']}")
             em = item["emblems"][0] if item["emblems"] else None
             if not check(f"{tag}: the mark is painted at the left edge",
                          bool(em) and abs(em["x"] - item["pad"]) < 0.6,
                          json.dumps(item["emblems"])):
                 continue
-            block = [l for l in lines
-                     if l is not row and l["y0"] >= item["photoBottom"] - 0.5
-                     and l["x0"] >= em["x1"]]
-            if not check(f"{tag}: the meta block runs beside the mark, not under it",
-                         len(block) >= 3,
-                         json.dumps([(l["s"], l["x0"], l["y"]) for l in lines])[:300]):
+            # only what the foot prints — the stock badge rides in the top
+            # margin and must not be mistaken for a spec value
+            foot_lines = [l for l in lines if l["y0"] >= item["photoBottom"] - 0.5]
+            inner_right = item["W"] - item["pad"]
+            # copy that starts on the frame's inset — the block under the mark
+            left = [(l, x) for l in foot_lines for x in l["xs"] if abs(x - item["pad"]) < 0.6]
+            if not check(f"{tag}: four lines of copy print on the frame's inset",
+                         len(left) >= 4,
+                         json.dumps([(l["s"], l["xs"]) for l in foot_lines])[:300]):
                 continue
-            lefts = [l["x0"] for l in block]
-            check(f"{tag}: every line of the block shares one left edge",
-                  max(lefts) - min(lefts) < 0.6, str(lefts))
-            check(f"{tag}: the mark sits level with the block it labels",
-                  min(l["y0"] for l in block) <= (em["y"] + em["y1"]) / 2 <= max(l["y1"] for l in block),
-                  json.dumps(em))
-            check(f"{tag}: the block never reaches the spec row",
-                  max(l["x1"] for l in block) < row["x0"] - 1,
-                  f"{max(l['x1'] for l in block):.1f} vs {row['x0']:.1f}")
-            check(f"{tag}: the block stays above the bottom rule",
-                  max(l["y1"] for l in block) <= item["botRuleY"] - 1,
-                  f"{max(l['y1'] for l in block)} vs {item['botRuleY']}")
-            check(f"{tag}: the spec row is the foot's lowest line",
-                  row["y"] > max(l["y"] for l in block),
-                  f"row={row['y']} block={max(l['y'] for l in block)}")
+            check(f"{tag}: that block stays above the bottom perforation rule",
+                  all(l["y1"] <= item["botRuleY"] - 1 for l, _x in left),
+                  f"{max(l['y1'] for l, _x in left)} vs {item['botRuleY']}")
+            check(f"{tag}: the block sits under the mark it labels",
+                  em["y1"] <= min(l["y0"] for l, _x in left) + item["pad"] * 0.5 + 6,
+                  json.dumps(em) + f" blockTop={min(l['y0'] for l, _x in left)}")
 
-        # ── Pro Studio: the 2×2 grid is now one four-column bar ──
-        print("\n[browser] pro studio: four-column spec bar")
+            # the three pairs, each value printed hard against the inner edge
+            vparts = []
+            for k, v in pairs:
+                hit = None
+                for l in foot_lines:
+                    if not v or v not in l["s"]:
+                        continue
+                    for x, xe in zip(l["xs"], l["xe"]):
+                        if abs(xe - inner_right) < 1.5:
+                            hit = (l, x, xe)
+                            break
+                    if hit:
+                        break
+                vparts.append(hit)
+            if not check(f"{tag}: ISO · SEC · F each print a value at the inner edge",
+                         all(vparts),
+                         json.dumps([(k, v) for k, v in pairs])):
+                continue
+            ys = [l["y"] for l, _x, _xe in vparts]
+            check(f"{tag}: the three pairs stack as three rows, not one row",
+                  len(set(round(y, 1) for y in ys)) == 3 and ys == sorted(ys),
+                  json.dumps(ys))
+            check(f"{tag}: the stack runs down from the top of the foot",
+                  ys[0] < ys[1] < ys[2] and ys[2] <= item["botRuleY"] - 1,
+                  json.dumps([round(y, 1) for y in ys]) + f" rule={item['botRuleY']}")
+            check(f"{tag}: the stack's values all end on the inner edge",
+                  all(abs(xe - inner_right) < 1.5 for _l, _x, xe in vparts),
+                  json.dumps([round(xe, 1) for _l, _x, xe in vparts]))
+            # the block and the stack never meet: the fit matrix's collision
+            # pass below proves it plate by plate (a shared baseline can make
+            # one collected line hold both, so geometry here would only guess)
+            check(f"{tag}: the stack starts inside the inner width",
+                  min(x for _l, x, _xe in vparts) > item["pad"],
+                  f"{min(x for _l, x, _xe in vparts):.1f} vs pad {item['pad']}")
+
+        # ── Pro Studio: the specification as a 2 × 2 grid ───────────────────
+        # As delivered: ISO and SHUTTER on the first row, APERTURE and FOCAL on
+        # the second, each cell in its own half of the inner width, with the
+        # value printed under its label.
+        print("\n[browser] pro studio: 2 × 2 specification grid")
         pro_matrix = []
         for cname, fields, emblem in FIT_CASES:
             if not fields:
@@ -1264,49 +1576,76 @@ def browser_tests(port):
                                    "fields": fields, "emblem": emblem,
                                    "w": w, "h": h, "padPct": None})
         pro = page.evaluate(LINES_JS, pro_matrix)
-        check(f"pro bar: {len(pro_matrix)} plates measured", len(pro) == len(pro_matrix),
+        check(f"pro grid: {len(pro_matrix)} plates measured", len(pro) == len(pro_matrix),
               f"measured {len(pro)}")
-        LABELS = ["ISO", "SHUTTER", "APERTURE", "FOCAL"]
         for item in pro:
             _style, cname, size = item["label"].split("/")
             fields = FIELDS[cname]
-            tag = f"pro bar {cname}/{size}"
-            lab = [l for l in item["lines"] if all(k in l["s"] for k in LABELS)]
-            if not check(f"{tag}: the four labels share one row (no second row)",
-                         len(lab) == 1,
-                         json.dumps([l["s"] for l in item["lines"]])[:300]):
+            tag = f"pro grid {cname}/{size}"
+            col_w = (item["W"] - item["pad"] * 2) / 2
+            second_col = item["pad"] + col_w
+            foot_lines = [l for l in item["lines"] if l["y0"] >= item["photoBottom"] - 0.5]
+
+            # labels: tracked glyph by glyph, so a row arrives as one line of
+            # parts — the left cell starts on the inset, the right cell on the
+            # half-way column
+            def cell_row(word_a, word_b, lines=foot_lines):
+                for l in lines:
+                    txt = l["s"].replace(" ", "")
+                    if word_a in txt and word_b in txt:
+                        return l
+                return None
+
+            row1 = cell_row("ISO", "SHUTTER")
+            row2 = cell_row("APERTURE", "FOCAL")
+            if not check(f"{tag}: the labels print in two rows",
+                         row1 is not None and row2 is not None and
+                         abs(row1["y"] - row2["y"]) > 1,
+                         json.dumps([(l["s"], l["y"]) for l in foot_lines])[:300]):
                 continue
-            line = lab[0]
-            col_w = (item["W"] - item["pad"] * 2) / 4
-            # a tracked label is painted glyph by glyph, so the four cells are
-            # read back as the four leftmost pens sitting in four equal columns
-            starts = []
-            for i in range(4):
-                lo = item["pad"] + i * col_w
-                starts.append(min((x for x in line["xs"] if lo - 0.6 <= x < lo + col_w),
-                                  default=-1))
-            check(f"{tag}: four cells, one per column, on one baseline",
-                  len(set(line["ys"])) == 1 and all(s >= 0 for s in starts) and
-                  all(abs(starts[i] - (item["pad"] + i * col_w)) < 1.0 for i in range(4)),
-                  json.dumps([round(s, 1) for s in starts]) + f" colW={col_w:.1f}")
+            check(f"{tag}: ISO / SHUTTER share the upper row",
+                  abs(row1["x0"] - item["pad"]) < 1.0 and
+                  any(abs(x - second_col) < 1.0 for x in row1["xs"]),
+                  f"x0={row1['x0']} col={second_col:.1f}")
+            check(f"{tag}: APERTURE / FOCAL share the lower row",
+                  abs(row2["x0"] - item["pad"]) < 1.0 and
+                  any(abs(x - second_col) < 1.0 for x in row2["xs"]),
+                  f"x0={row2['x0']} col={second_col:.1f}")
 
             vals = [fields.get("iso") or "", fields.get("shutter") or "",
                     fields.get("aperture") or "", fields.get("focal") or ""]
-            vline = [l for l in item["lines"] if all(v in l["s"] for v in vals)]
-            if not check(f"{tag}: the four values print as one row under it",
-                         len(vline) == 1 and vline[0]["parts"] >= 4,
-                         json.dumps([l["s"] for l in item["lines"]])[:300]):
+            # each value sits under its own cell: the two on a row share a
+            # baseline, one starting on the inset and one on the half-way column
+            def value_row(v_a, v_b):
+                for l in foot_lines:
+                    if v_a and v_b and v_a in l["s"] and v_b in l["s"]:
+                        if abs(l["y"] - row1["y"]) < 1 or abs(l["y"] - row2["y"]) < 1:
+                            continue
+                        return l
+                return None
+
+            vrow1 = value_row(vals[0], vals[1])
+            vrow2 = value_row(vals[2], vals[3])
+            if not check(f"{tag}: every value prints under its own label row",
+                         vrow1 is not None and vrow2 is not None,
+                         json.dumps([l["s"] for l in foot_lines])[:300]):
                 continue
-            vrow = vline[0]
-            check(f"{tag}: the value row sits below the label row",
-                  vrow["y"] > line["y"], f"{vrow['y']} vs {line['y']}")
-            check(f"{tag}: no value crosses into the next column",
-                  all(int((x0 - item["pad"]) // col_w) == int((x1 - item["pad"] - 0.6) // col_w)
-                      for x0, x1 in zip(vrow["xs"], vrow["xe"])),
-                  json.dumps([(x0, x1) for x0, x1 in zip(vrow["xs"], vrow["xe"])])[:300])
-            rule = item["H"] - item["band"] * 0.2
-            check(f"{tag}: the bar clears the footer rule",
-                  vrow["y1"] < rule - 1, f"y1={vrow['y1']} rule={rule:.1f}")
+            check(f"{tag}: the first two values sit below the upper label row",
+                  vrow1["y"] > row1["y"] and vrow1["y"] < row2["y"],
+                  f"{vrow1['y']} between {row1['y']} and {row2['y']}")
+            check(f"{tag}: the last two sit below the lower label row",
+                  vrow2["y"] > row2["y"], f"{vrow2['y']} vs {row2['y']}")
+            check(f"{tag}: the left column's values keep the left column",
+                  abs(vrow1["x0"] - item["pad"]) < 1.0 and abs(vrow2["x0"] - item["pad"]) < 1.0,
+                  f"{vrow1['x0']} / {vrow2['x0']} vs {item['pad']}")
+            check(f"{tag}: the right column's values keep the right column",
+                  any(abs(x - second_col) < 1.0 for x in vrow1["xs"]) and
+                  any(abs(x - second_col) < 1.0 for x in vrow2["xs"]),
+                  json.dumps([round(x, 1) for x in vrow2["xs"]])[:200] + f" col={second_col:.1f}")
+            rule = item["H"] - item["band"] * 0.17
+            check(f"{tag}: the grid clears the footer rule",
+                  max(vrow1["y1"], vrow2["y1"]) < rule - 1,
+                  f"y1={max(vrow1['y1'], vrow2['y1'])} rule={rule:.1f}")
             cap = fields.get("caption") or ""
             foot_line = [l for l in item["lines"] if cap and cap.upper() in l["s"].upper()]
             check(f"{tag}: the footer caption sits under the rule",
@@ -1502,7 +1841,7 @@ def browser_tests(port):
         zctx = browser.new_context(viewport={"width": 1280, "height": 800})
         zpage = zctx.new_page()
         zpage.set_default_timeout(20000)
-        zpage.goto(base, wait_until="networkidle")
+        zpage.goto(studio, wait_until="networkidle")
         zpage.wait_for_timeout(200)
         try:
             zero = zpage.evaluate(FIT_JS, zero_matrix)
@@ -1806,7 +2145,7 @@ def browser_tests(port):
         perr = []
         ppage.on("pageerror", lambda e: perr.append(str(e)))
         ppage.on("console", lambda m: perr.append(m.text) if m.type == "error" else None)
-        ppage.goto(base, wait_until="networkidle")
+        ppage.goto(studio, wait_until="networkidle")
         ppage.wait_for_timeout(400)
 
         layout = ppage.evaluate("""() => {
@@ -2017,7 +2356,7 @@ def browser_tests(port):
         fpage.set_default_timeout(30000)
         ferr = []
         fpage.on("pageerror", lambda e: ferr.append(str(e)))
-        fpage.goto(base, wait_until="networkidle")
+        fpage.goto(studio, wait_until="networkidle")
         fpage.wait_for_timeout(300)
         fpage.click("#openFolderBtn")
         fpage.wait_for_function(
@@ -2052,7 +2391,7 @@ def browser_tests(port):
         npage.set_default_timeout(30000)
         nerr = []
         npage.on("pageerror", lambda e: nerr.append(str(e)))
-        npage.goto(base, wait_until="networkidle")
+        npage.goto(studio, wait_until="networkidle")
         npage.wait_for_timeout(300)
         with npage.expect_file_chooser() as fc:
             npage.click("#openFolderBtn")
@@ -2072,7 +2411,7 @@ def browser_tests(port):
         print("\n[browser] tablet 900: toolbar + sheet kept below 1024")
         tctx = browser.new_context(viewport={"width": 900, "height": 800})
         tpage = tctx.new_page()
-        tpage.goto(base, wait_until="networkidle")
+        tpage.goto(studio, wait_until="networkidle")
         tpage.wait_for_timeout(300)
         check("tablet: the bottom toolbar is still there",
               tpage.evaluate("() => getComputedStyle(document.querySelector('#toolbar')).display") != "none")
@@ -2133,7 +2472,7 @@ def browser_tests(port):
         """)
         share_errors = []
         shpage.on("pageerror", lambda e: share_errors.append(str(e)))
-        shpage.goto(base, wait_until="networkidle")
+        shpage.goto(studio, wait_until="networkidle")
         shpage.wait_for_timeout(300)
         check("share: canShare probe reads true when the platform has a sheet",
               shpage.evaluate("() => SPApp.canShareFiles()") is True)
@@ -2212,7 +2551,7 @@ def browser_tests(port):
         kerrors = []
         kpage.on("pageerror", lambda e: kerrors.append(str(e)))
         kpage.on("console", lambda m: kerrors.append(m.text) if m.type == "error" else None)
-        kpage.goto(base, wait_until="networkidle")
+        kpage.goto(studio, wait_until="networkidle")
         kpage.wait_for_timeout(400)
 
         # ① detection
@@ -2255,7 +2594,7 @@ def browser_tests(port):
 
         cctx = browser.new_context(viewport={"width": 390, "height": 844}, user_agent=CHROME_UA)
         cpage = cctx.new_page()
-        cpage.goto(base, wait_until="networkidle")
+        cpage.goto(studio, wait_until="networkidle")
         cpage.wait_for_timeout(300)
         check("normal: Chrome UA is not detected as in-app",
               cpage.evaluate("() => SPApp.isInAppBrowser()") is False)
@@ -2326,7 +2665,7 @@ def browser_tests(port):
         cctx = browser.new_context(viewport={"width": 1280, "height": 800}, user_agent=CHROME_UA)
         cpage = cctx.new_page()
         cpage.set_default_timeout(25000)
-        cpage.goto(base, wait_until="networkidle")
+        cpage.goto(studio, wait_until="networkidle")
         cpage.click("#emptySampleBtn")
         cpage.wait_for_function("() => window.SPApp.state.photo", timeout=20000)
         cpage.wait_for_timeout(500)
@@ -2392,7 +2731,7 @@ def browser_tests(port):
         rpage.set_default_timeout(25000)
         rerr = []
         rpage.on("pageerror", lambda e: rerr.append(str(e)))
-        rpage.goto(base, wait_until="networkidle")
+        rpage.goto(studio, wait_until="networkidle")
         rpage.wait_for_timeout(300)
         rpage.tap("#emptySampleBtn")
         rpage.wait_for_function("() => window.SPApp.state.photo", timeout=20000)
@@ -2425,7 +2764,7 @@ def browser_tests(port):
         mpage = mctx.new_page()
         merr = []
         mpage.on("pageerror", lambda e: merr.append(str(e)))
-        mpage.goto(base, wait_until="networkidle")
+        mpage.goto(studio, wait_until="networkidle")
         mpage.tap("#emptySampleBtn")
         mpage.wait_for_function("() => window.SPApp.state.photo", timeout=15000)
         mpage.wait_for_timeout(700)
@@ -2526,7 +2865,7 @@ def browser_tests(port):
         spage = sctx.new_page()
         serr = []
         spage.on("pageerror", lambda e: serr.append(str(e)))
-        spage.goto(base, wait_until="networkidle")
+        spage.goto(studio, wait_until="networkidle")
         spage.wait_for_timeout(300)
 
         narrow = spage.evaluate("""() => {

@@ -3,6 +3,25 @@
 `https://hyangdan2.github.io/PKPilot0003/` 를 Playwright(Chromium)로 직접 열어 캡처한 실측본입니다.
 모든 캡처 시점의 콘솔 에러는 0건입니다.
 
+## 랜딩 · 타이틀 홈 · ⋮ 메뉴 · 프레임 원복 (2026-11-14 네 번째 배포)
+
+Film Studio식 랜딩과 타이틀→홈, 우상단 `⋮` 3섹션 메뉴를 얹은 빌드입니다. 같은 배포에서
+**Film Sprocket(6 / 16%) · Pro Studio(8 / 25%)를 직전 계약으로 되돌리고**, Classic Gallery ·
+Dual Deck · Studio Dark 세 프레임만 얇은 밴드를 유지합니다. 로컬 빌드 실측이며 콘솔 에러는 0건입니다.
+
+| 파일 | 뷰포트 | 내용 |
+| --- | --- | --- |
+| `ui-landing-desktop.png` | 1440×900 | 랜딩 첫 화면 — 히어로 · 사진 열기/샘플 2단 카드 · 프레임 쇼케이스 |
+| `ui-landing-editor-desktop.png` | 1440×900 | 샘플 카드로 편집기에 들어간 상태(세로 카페 · Clean Horizon) |
+| `ui-landing-session-desktop.png` | 1440×900 | 타이틀 클릭으로 돌아온 랜딩 — Active Session(파일명·해상도·프레임) + `계속 편집하기` |
+| `ui-landing-menu-desktop.png` | 1440×900 | `⋮` 메뉴 열림 — WORKSPACE · SAMPLES · NAVIGATION (EXIF 항목은 사진 없을 때 비활성) |
+| `ui-landing-frames-desktop.png` | 1440×900 | 랜딩 하단 — 8장 프레임 카드 + 로컬/1:1/PWA 뱃지 |
+| `ui-landing-mobile.png` · `ui-landing-mobile-frames.png` · `ui-landing-menu-mobile.png` | 390×844 | 폰 랜딩 첫 화면 · 8장 카드(2열) · `⋮` 메뉴 |
+| `ui-frame-film-desktop.png` · `ui-frame-film-landscape.png` | 1440×900 | Film Sprocket 원복본 — 엠블럼 아래 메타 4줄 + 우하단 ISO/SEC/F 세로 스택 |
+| `ui-frame-pro-desktop.png` · `ui-frame-pro-landscape.png` | 1440×900 | Pro Studio 원복본 — 넉넉한 밴드 + 스펙 2×2 격자 |
+| `ui-frame-gallery-desktop.png` · `ui-frame-dual-desktop.png` · `ui-frame-studio-desktop.png` | 1440×900 | 밴드 다이어트를 유지한 세 프레임 |
+
+
 ## 카카오톡 인앱 저장 대응 (2026-11-14 세 번째 배포)
 
 안드로이드 카카오톡 인앱 브라우저에서 저장 단계가 **"지원하지 않는 파일 형식"** 으로 막힌 보고에 대한 수정본입니다.

@@ -118,8 +118,24 @@ a { color: inherit; text-decoration: none; }
   gap: 8px;
   min-width: 0;
   min-height: 44px;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  /* a title that goes home — it reads as a title, and answers like a button */
+  margin: 0 auto 0 -7px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.16s ease, border-color 0.16s ease;
 }
+.brand:hover { background: var(--ink-3); border-color: var(--line); }
+.brand:hover .brand-mark { border-color: rgba(255, 130, 79, 0.5); }
+.brand:active { background: #1e211e; }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.brand[aria-current="page"] { background: rgba(255, 130, 79, 0.08); border-color: rgba(255, 130, 79, 0.26); }
 .brand-mark {
   width: 26px; height: 26px;
   display: grid; place-items: center;
@@ -127,6 +143,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--ink-2);
   border: 1px solid var(--line);
   flex: none;
+  transition: border-color 0.16s ease;
 }
 .brand-mark svg { width: 18px; height: 18px; display: block; }
 .brand-name {
@@ -179,6 +196,9 @@ a { color: inherit; text-decoration: none; }
 .hbtn .ic { width: 16px; height: 16px; }
 
 /* 포털 드롭다운 */
+/* an open menu has to paint over the fixed inspector */
+body.is-menu-open .app-header { z-index: 65; }
+
 .portal-menu { position: relative; }
 .portal-menu-btn {
   width: 44px; height: 44px;
@@ -197,7 +217,9 @@ a { color: inherit; text-decoration: none; }
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: min(292px, calc(100vw - 24px));
+  width: min(320px, calc(100vw - 20px));
+  max-height: calc(100dvh - var(--header-h) - 18px);
+  overflow-y: auto;
   padding: 8px;
   background: #131513;
   border: 1px solid var(--line);
@@ -223,6 +245,22 @@ a { color: inherit; text-decoration: none; }
   transition: background 0.14s ease;
 }
 .portal-item:hover { background: rgba(255, 130, 79, 0.09); }
+.portal-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+button.portal-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button.portal-item:disabled { opacity: 0.42; cursor: not-allowed; }
+button.portal-item:disabled:hover { background: transparent; }
+.portal-item[aria-checked="true"] .portal-badge { color: #14100c; background: var(--accent); border-color: var(--accent); }
+.portal-badge--live { color: var(--accent); border-color: rgba(255, 130, 79, 0.35); }
+.portal-sep { display: block; height: 1px; margin: 7px 8px; background: var(--line-soft); }
 .portal-ic {
   width: 32px; height: 32px; display: grid; place-items: center;
   border-radius: 8px;
@@ -230,11 +268,207 @@ a { color: inherit; text-decoration: none; }
   color: var(--accent);
 }
 .portal-text b { display: block; font-size: 13.5px; color: var(--text-hi); font-weight: 600; }
-.portal-text small { display: block; font-size: 11.5px; color: var(--dim); }
+.portal-text small {
+  display: block; font-size: 11.5px; color: var(--dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .portal-badge {
   font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
   color: var(--dim); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px;
+  white-space: nowrap; flex: none;
 }
+
+/* ── app body (landing / studio) ─────────────────────────────────────────── */
+.app-main {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── landing (home view) ─────────────────────────────────────────────────
+   The first screen a visitor meets: the mark, what the studio does, the two
+   ways in (their own photo, a sample), the session left open, and the eight
+   signatures as cards. It scrolls inside its own box, so the document keeps
+   its 100dvh lock. */
+.home {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(940px 520px at 50% -14%, rgba(255, 130, 79, 0.11), transparent 62%),
+    linear-gradient(180deg, #0b0c0b 0%, #101110 42%, #0b0c0b 100%);
+}
+.home-inner {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 30px 22px 58px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.home-inapp { margin-bottom: 2px; }
+
+/* hero */
+.home-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 9px; padding: 6px 0 2px; }
+.hero-mark {
+  width: 62px; height: 62px;
+  display: grid; place-items: center;
+  border-radius: 18px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+}
+.hero-mark svg { width: 36px; height: 36px; display: block; }
+.hero-title-row { display: flex; align-items: center; gap: 9px; }
+.hero-title-row h1 { font-size: 31px; font-weight: 800; letter-spacing: -0.025em; color: var(--text-hi); line-height: 1.12; }
+.hero-badge { font-size: 10px; padding: 3px 7px; }
+.hero-sub { font-size: 14.5px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.hero-note { max-width: 560px; font-size: 12px; line-height: 1.65; color: var(--dim); word-break: keep-all; }
+
+/* active session */
+.home-session {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255, 130, 79, 0.4);
+  background: linear-gradient(100deg, rgba(255, 130, 79, 0.14), rgba(255, 130, 79, 0.03) 52%, rgba(255, 130, 79, 0.1));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+}
+.hs-thumb {
+  width: 56px; height: 56px; flex: none;
+  border-radius: 11px; overflow: hidden;
+  border: 1px solid var(--line);
+  background: #0d0f0d;
+  display: grid; place-items: center;
+}
+.hs-thumb canvas { width: 56px; height: 56px; display: block; }
+.hs-info { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.hs-kicker { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color: var(--accent); font-weight: 600; }
+.hs-name { font-size: 14px; font-weight: 700; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-meta { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.02em; }
+.hs-meta .sep { color: #3c443a; }
+.hs-continue { flex: none; min-height: 46px; padding: 0 16px; font-size: 12.5px; }
+.hs-continue .ic { width: 16px; height: 16px; }
+
+/* two ways in */
+.home-launch { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.launch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 17px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, #141614, #101210);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+.launch-card.is-over { border-color: var(--accent); background: #171a16; }
+.lc-head { display: flex; flex-direction: column; gap: 6px; }
+.lc-ic {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 130, 79, 0.3);
+  background: rgba(255, 130, 79, 0.1);
+  color: var(--accent);
+}
+.lc-ic--warm { border-color: rgba(120, 170, 255, 0.24); background: rgba(120, 170, 255, 0.08); color: #9dbcf0; }
+.lc-ic .ic { width: 19px; height: 19px; }
+.lc-head h2 { font-size: 15px; font-weight: 700; color: var(--text-hi); letter-spacing: -0.01em; }
+.lc-head p { font-size: 11.5px; line-height: 1.6; color: var(--dim); word-break: keep-all; }
+.lc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.lc-actions .btn { flex: 1 1 130px; min-height: 44px; }
+.lc-drop {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.03em; color: #4e564c;
+  padding: 8px 10px;
+  border: 1px dashed #2c322c;
+  border-radius: var(--r-sm);
+  text-align: center;
+}
+.launch-card.is-over .lc-drop { border-color: var(--accent); color: var(--accent); }
+.lc-samples { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; }
+.sample-btn {
+  display: flex; flex-direction: column; gap: 3px;
+  min-height: 78px;
+  padding: 12px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: #171a17;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.sample-btn:hover { border-color: rgba(255, 130, 79, 0.45); background: #1c201b; }
+.sample-btn:active { transform: scale(0.99); }
+.sample-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sb-name { font-size: 13.5px; font-weight: 700; color: var(--text-hi); }
+.sb-file { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 0.02em; }
+.sb-tag { font-family: var(--mono); font-size: 9.5px; color: var(--dim); line-height: 1.4; }
+
+/* eight signatures */
+.home-frames { display: flex; flex-direction: column; gap: 11px; padding-top: 4px; }
+.hf-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--line-soft); padding-bottom: 9px; }
+.hf-head h2 {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-hi);
+}
+.hf-head h2 .ic { width: 15px; height: 15px; color: var(--accent); }
+.hf-head p { font-size: 11.5px; color: var(--dim); }
+.hf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.hf-card {
+  position: relative;
+  display: flex; flex-direction: column;
+  padding: 7px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: #121412;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.hf-card:hover { border-color: rgba(255, 130, 79, 0.45); background: #171a17; }
+.hf-card:active { transform: scale(0.995); }
+.hf-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hf-thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0c0e0c;
+}
+.hf-thumb canvas { width: 100%; height: 100%; display: block; }
+.hf-foot { display: flex; align-items: center; gap: 6px; padding: 7px 2px 1px; min-width: 0; }
+.hf-name { font-size: 12px; font-weight: 650; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hf-foot .frame-badge {
+  position: static; top: auto; right: auto;
+  margin-left: auto; flex: none;
+  background: transparent; border-color: var(--line); color: var(--dim);
+}
+
+.home-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.home-badges li {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: rgba(18, 20, 18, 0.8);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.02em; color: var(--dim);
+}
+.home-badges .ic { width: 13px; height: 13px; color: var(--accent); }
 
 /* ── studio shell (100dvh, no page scroll) ──────────────────────────────── */
 .studio {
@@ -1001,6 +1235,24 @@ input[type="range"]::-moz-range-thumb {
   .inapp-banner { gap: 6px; padding: 5px 6px 5px 8px; }
   .inapp-msg { font-size: 10.5px; }
   .inapp-copy { padding: 0 8px; font-size: 10.5px; }
+
+  /* 랜딩: 폰에서는 한 줄로 쌓는다 */
+  .home-inner { padding: 20px 14px 44px; gap: 16px; }
+  .hero-mark { width: 54px; height: 54px; border-radius: 15px; }
+  .hero-mark svg { width: 31px; height: 31px; }
+  .hero-title-row h1 { font-size: 26px; }
+  .hero-sub { font-size: 13.5px; }
+  .hero-note { font-size: 11.5px; }
+  .home-session { flex-wrap: wrap; gap: 11px; padding: 12px; }
+  .hs-thumb, .hs-thumb canvas { width: 48px; height: 48px; }
+  .hs-info { flex: 1 1 160px; }
+  .hs-continue { width: 100%; }
+  .home-launch { grid-template-columns: 1fr; gap: 10px; }
+  .launch-card { padding: 14px; }
+  .hf-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .hf-head p { display: none; }
+  .home-badges { gap: 6px; }
+  .home-badges li { font-size: 9.5px; padding: 6px 9px; }
 }
 
 @media (max-width: 359px) {
@@ -1414,6 +1666,19 @@ input[type="range"]::-moz-range-thumb {
   .frame-thumb { height: 92px; }
 
   .toasts { left: calc((100vw - var(--ins-w)) / 2); }
+
+  /* 랜딩은 화면 전체를 쓴다 — 인스펙터는 편집기의 도구다 */
+  .hf-grid { grid-template-columns: repeat(4, 1fr); }
+  body[data-view="home"] .sheet { visibility: hidden; pointer-events: none; }
+  body[data-view="home"] .toasts { left: 50%; }
+}
+
+@media (min-width: 640px) {
+  .hf-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .hf-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* 짧은 PC 화면(예: 1280×720)에서는 스트립 두 줄의 높이를 줄여 캔버스를 지킨다 */
