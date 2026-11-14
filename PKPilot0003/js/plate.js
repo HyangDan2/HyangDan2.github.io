@@ -35,12 +35,12 @@
     gallery: {
       label: 'Classic Gallery', tag: 'MATTE', light: true,
       base: '#f8f6f2', ink: '#1c1a17', muted: '#78726b', line: 'rgba(28,26,23,0.18)',
-      accent: '#ff824f', geo: { pad: 7, extra: 17, radius: 0.6 }
+      accent: '#ff824f', geo: { pad: 4.5, extra: 13, radius: 0.6 }
     },
     dual: {
       label: 'Dual Deck', tag: '2-LINE', light: true,
       base: '#ffffff', ink: '#101110', muted: '#7a7a75', line: 'rgba(16,17,16,0.15)',
-      accent: '#ff824f', geo: { pad: 5.5, extra: 21, radius: 0.25 }
+      accent: '#ff824f', geo: { pad: 3.8, extra: 13.5, radius: 0.25 }
     },
     strap: {
       label: 'Strap Bar', tag: 'WIDE', light: true,
@@ -51,12 +51,12 @@
     film: {
       label: 'Film Sprocket', tag: '35MM', light: false,
       base: '#16150f', ink: '#f0e9d9', muted: '#a89c86', line: 'rgba(240,233,217,0.22)',
-      accent: '#e0703c', geo: { pad: 6, extra: 16, radius: 0.3 }
+      accent: '#e0703c', geo: { pad: 6, extra: 12.5, radius: 0.3 }
     },
     studio: {
       label: 'Studio Dark', tag: 'DARK', light: false,
       base: '#101110', ink: '#f4f2ed', muted: '#8d8b85', line: 'rgba(244,242,237,0.16)',
-      accent: '#ff824f', geo: { pad: 5.5, extra: 15.5, radius: 1.2 }
+      accent: '#ff824f', geo: { pad: 3.8, extra: 11.5, radius: 1.2 }
     },
     edge: {
       label: 'Minimal Edge', tag: 'FLUSH', light: true,
@@ -66,7 +66,7 @@
     pro: {
       label: 'Pro Studio', tag: 'GRID', light: true,
       base: '#f6f5f1', ink: '#15171a', muted: '#6f736e', line: 'rgba(21,23,26,0.14)',
-      accent: '#ff824f', geo: { pad: 8, extra: 25, radius: 0 }
+      accent: '#ff824f', geo: { pad: 4.5, extra: 14.5, radius: 0 }
     }
   };
 
@@ -398,37 +398,52 @@
   }
 
   /* ── 02 Classic Gallery ────────────────────────────────────────────────── */
+  /* A 13% matte instead of 17%: the rows close up (mark 0.075, spec 0.40,
+     rule 0.53, signature 0.685, date 0.855) and every size carries a band
+     ceiling of its own, so on a thin plate the copy keeps the presence it had
+     in the taller band instead of shrinking with the air around it. The mark
+     is capped against the spec row it sits above, so even the 12.8:1 Hasselblad
+     wordmark cannot reach it. */
   function drawGallery(ctx, L) {
     var f = L.fields, c = L.colors, u = L.u, band = L.band;
     var top = L.photoBox.y + L.PH, cx = L.W / 2, maxW = L.W - L.inset * 2;
-    var emH = Math.min(u * 30, band * 0.19);
+    var specSize = Math.min(u * 15, band * 0.105);
+    var specY = top + band * 0.4;
+    var emTop = top + band * 0.075;
+    var emH = Math.min(u * 30, band * 0.2,
+      Math.max(u * 8, specY - specSize * 0.85 - emTop - band * 0.03));
 
     if (L.emblem) {
       var ef = emFit(L.emblem, emH, L.W * 0.46);
-      emblemAt(ctx, L, L.emblem, cx - ef.w / 2, top + band * 0.1, emH, 'left', L.W * 0.46);
+      emblemAt(ctx, L, L.emblem, cx - ef.w / 2, emTop, emH, 'left', L.W * 0.46);
     }
 
-    text(ctx, join([camera(f)].concat(specParts(f)), '   ·   '), cx, top + band * 0.42, {
-      size: Math.min(u * 15, band * 0.085), family: L.opts.font, weight: 500,
+    text(ctx, join([camera(f)].concat(specParts(f)), '   ·   '), cx, specY, {
+      size: specSize, family: L.opts.font, weight: 500,
       color: c.muted, ls: u * 1.5, align: 'center', maxW: maxW
     });
 
     if (f.caption) {
-      var ruleY = top + band * 0.55;
+      var ruleY = top + band * 0.53;
       hairline(ctx, cx - u * 34, ruleY, cx + u * 34, ruleY, c.line, Math.max(1, u * 1.1));
-      text(ctx, f.caption, cx, top + band * 0.71, {
-        size: Math.min(u * 27, band * 0.105), family: 'serif', italic: true, weight: 400,
+      text(ctx, f.caption, cx, top + band * 0.685, {
+        size: Math.min(u * 27, band * 0.13), family: 'serif', italic: true, weight: 400,
         color: c.ink, align: 'center', ls: u * 0.2, maxW: L.W - L.inset * 3
       });
     }
 
-    text(ctx, dateOf(f).full, cx, top + band * 0.87, {
-      size: Math.min(u * 11, band * 0.062), family: 'mono', color: c.muted,
+    text(ctx, dateOf(f).full, cx, top + band * 0.855, {
+      size: Math.min(u * 11, band * 0.078), family: 'mono', color: c.muted,
       ls: u * 1.6, align: 'center', maxW: maxW
     });
   }
 
   /* ── 03 Dual Deck ──────────────────────────────────────────────────────── */
+  /* Also a 13.5% deck: the rule rides at 0.13, the exposure row at 0.42, the
+     focal/date row at 0.66 and a caption at 0.86. Each size keeps a band
+     ceiling generous enough to hold its weight on a shallow deck (the deck
+     used to be 21%, so a ceiling of the same fraction would have shrunk the
+     type by a third) while the u ceiling still governs on a wide plate. */
   function drawDual(ctx, L) {
     var f = L.fields, c = L.colors, u = L.u, band = L.band;
     var top = L.photoBox.y + L.PH, cx = L.W / 2, maxW = L.W - L.inset * 2;
@@ -441,24 +456,24 @@
       });
     }
 
-    hairline(ctx, L.inset, top + band * 0.14, L.W - L.inset, top + band * 0.14, c.line, Math.max(1, u * 1.1));
+    hairline(ctx, L.inset, top + band * 0.13, L.W - L.inset, top + band * 0.13, c.line, Math.max(1, u * 1.1));
 
     // lower deck — exposure block, two centred rows
     var exposure = join([f.aperture, f.shutter, f.iso], '   ·   ');
     var second = join([f.focal, dateOf(f).full], '   ·   ');
 
-    text(ctx, exposure, cx, top + band * 0.44, {
-      size: Math.min(u * 24, band * 0.15), family: L.opts.font, weight: 600,
+    text(ctx, exposure, cx, top + band * 0.42, {
+      size: Math.min(u * 24, band * 0.2), family: L.opts.font, weight: 600,
       color: c.ink, ls: u * 2, align: 'center', maxW: maxW
     });
     text(ctx, second, cx, top + band * 0.66, {
-      size: Math.min(u * 13, band * 0.085), family: 'mono', color: c.muted,
+      size: Math.min(u * 13, band * 0.11), family: 'mono', color: c.muted,
       ls: u * 1.5, align: 'center', maxW: maxW
     });
 
     if (f.caption) {
       text(ctx, f.caption, cx, top + band * 0.86, {
-        size: Math.min(u * 11, band * 0.07), family: 'serif', italic: true,
+        size: Math.min(u * 11, band * 0.09), family: 'serif', italic: true,
         color: c.muted, ls: u * 0.4, align: 'center', maxW: maxW
       });
     }
@@ -650,8 +665,13 @@
       ls: u * 1.8, align: 'right', maxW: frameMaxW
     });
 
-    /* right stack — ISO / SEC / F, the way the negative edge prints it.
-       Measured first so the left column gets exactly the room that is left. */
+    /* foot — the mark sits at the left edge and its meta block runs beside it,
+       while ISO / SEC / F now print as one horizontal row at the right instead
+       of a three-row stack that claimed the whole height of the foot. The row
+       is measured first (and shrunk toward its share of the width if three
+       pairs would run too wide); whatever is left of the inner width belongs
+       to the left block, so the two can never meet — not on a portrait plate,
+       not on a narrow one. */
     var pairs = [
       { k: 'ISO', v: specKey(f, 'iso') },
       { k: 'SEC', v: specKey(f, 'shutter') },
@@ -660,47 +680,69 @@
 
     var valSize = Math.min(u * 30, L.band * 0.13) * g;
     var keySize = Math.min(u * 13, L.band * 0.058) * g;
-    var stackW = 0;
-    pairs.forEach(function (p) {
-      var vw = measure(ctx, p.v, { size: valSize, family: 'mono', weight: 500 });
-      var kw = measure(ctx, p.k, { size: keySize, family: 'mono', ls: u });
-      stackW = Math.max(stackW, vw + u * 10 + kw);
-    });
-    var leftMaxW = Math.max(u * 140, inner - stackW - u * 24);
-
-    if (L.emblem) {
-      var emH = Math.min(u * 26, L.band * 0.16) * g;
-      emblemAt(ctx, L, L.emblem, pad, top + flow * 0.14, emH, 'left', inner * 0.42);
+    var keyGap = u * 10, pairGap = u * 30;
+    var rowAt = function (k) {
+      return { val: valSize * k, key: keySize * k, keyGap: keyGap * k, pairGap: pairGap * k, ls: u * k };
+    };
+    var rowWidth = function (k) {
+      var s = rowAt(k), sum = 0;
+      pairs.forEach(function (p, i) {
+        if (i) sum += s.pairGap;
+        sum += measure(ctx, p.k, { size: s.key, family: 'mono', ls: s.ls }) + s.keyGap +
+               measure(ctx, p.v, { size: s.val, family: 'mono', weight: 500 });
+      });
+      return sum;
+    };
+    var rowRoom = inner * 0.6, rk = 1;
+    if (pairs.length && rowWidth(1) > rowRoom) {
+      var rlo = 0.4, rhi = 1;
+      for (var rn = 0; rn < 12; rn++) {
+        var rmid = (rlo + rhi) / 2;
+        if (rowWidth(rmid) <= rowRoom) rlo = rmid; else rhi = rmid;
+      }
+      rk = rlo;
     }
+    var row = rowAt(rk);
+    var stackW = pairs.length ? rowWidth(rk) : 0;
 
-    text(ctx, f.caption || camera(f), pad, top + flow * 0.41, {
+    var emH = Math.min(u * 36, L.band * 0.24) * g;
+    var emW = L.emblem
+      ? emblemAt(ctx, L, L.emblem, pad, top + flow * 0.49 - emH / 2, emH, 'left', inner * 0.26)
+      : 0;
+    var tx = pad + (L.emblem ? emW + u * 22 : 0);
+    var textW = Math.max(u * 100, W - pad - stackW - u * 26 - tx);
+
+    text(ctx, f.caption || camera(f), tx, top + flow * 0.235, {
       size: Math.min(u * 22, L.band * 0.1) * g, family: 'serif', italic: true,
-      color: c.ink, ls: u * 0.3, maxW: leftMaxW
+      color: c.ink, ls: u * 0.3, maxW: textW
     });
 
-    text(ctx, join([camera(f), f.focal], '   ·   '), pad, top + flow * 0.6, {
+    text(ctx, join([camera(f), f.focal], '   ·   '), tx, top + flow * 0.45, {
       size: Math.min(u * 13.5, L.band * 0.062) * g, family: 'mono', color: c.muted,
-      ls: u * 1.1, maxW: leftMaxW
+      ls: u * 1.1, maxW: textW
     });
-    text(ctx, optics(f), pad, top + flow * 0.72, {
+    text(ctx, optics(f), tx, top + flow * 0.605, {
       size: Math.min(u * 12, L.band * 0.055) * g, family: 'mono', color: c.muted,
-      ls: u * 0.9, maxW: leftMaxW
+      ls: u * 0.9, maxW: textW
     });
     /* the date line ends the block, a clear step above the perforation row */
-    text(ctx, dateOf(f).full, pad, top + flow * 0.85, {
+    text(ctx, dateOf(f).full, tx, top + flow * 0.76, {
       size: Math.min(u * 12, L.band * 0.055) * g, family: 'mono', color: c.muted,
-      ls: u * 1.1, maxW: Math.min(leftMaxW, W * 0.6)
+      ls: u * 1.1, maxW: textW
     });
 
-    var rx = W - pad, ry = top + flow * 0.24;
-    pairs.forEach(function (p) {
-      var vw = text(ctx, p.v, rx, ry, {
-        size: valSize, family: 'mono', weight: 500, color: c.ink, align: 'right'
+    /* the far corner: one right-aligned row of label + value pairs */
+    var rx = W - pad - stackW, ry = top + flow * 0.86;
+    pairs.forEach(function (p, i) {
+      var kw = measure(ctx, p.k, { size: row.key, family: 'mono', ls: row.ls });
+      var vw = measure(ctx, p.v, { size: row.val, family: 'mono', weight: 500 });
+      text(ctx, p.k, rx, ry, {
+        size: row.key, family: 'mono', color: c.accent, ls: row.ls
       });
-      text(ctx, p.k, rx - vw - u * 10, ry - u * 2, {
-        size: keySize, family: 'mono', color: c.accent, align: 'right', ls: u * 1
+      text(ctx, p.v, rx + kw + row.keyGap, ry, {
+        size: row.val, family: 'mono', weight: 500, color: c.ink
       });
-      ry += flow * 0.18;
+      rx += kw + row.keyGap + vw + (i < pairs.length - 1 ? row.pairGap : 0);
     });
   }
 
@@ -711,7 +753,7 @@
     var inner = W - pad * 2, gutter = u * 28;
 
     // accent rail
-    var railY = top + band * 0.1;
+    var railY = top + band * 0.11;
     hairline(ctx, pad, railY, W - pad, railY, c.line, Math.max(1, u * 1.2));
     ctx.save();
     ctx.fillStyle = c.accent;
@@ -721,56 +763,60 @@
     /* the right column is measured first; the left column then claims what is
        left of the inner width, so a long exposure line never pushes into it */
     var specStr = join(specParts(f), '   ·   ');
-    var specSize = Math.min(u * 15, band * 0.062);
+    var specSize = Math.min(u * 15, band * 0.078);
     var dateStr = dateOf(f).full;
-    var dateSize = Math.min(u * 12, band * 0.048);
+    var dateSize = Math.min(u * 12, band * 0.06);
     var rightW = Math.min(inner * 0.62, Math.max(
       measure(ctx, specStr, { size: specSize, family: 'mono', ls: u * 0.6 }),
       measure(ctx, dateStr, { size: dateSize, family: 'mono', ls: u * 0.6 })
     ));
 
-    // emblem + camera block
+    // emblem + camera block, both riding the 0.44 line, the lens row at 0.63
     var emH = Math.min(u * 32, band * 0.26);
     var emMaxW = 0;
     if (L.emblem) {
       emMaxW = inner - gutter - rightW - u * 30 - u * 240;
       emH = Math.max(u * 14, Math.min(emH, emMaxW / (E.widthFor(L.emblem, 1) || 1)));
     }
-    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.34, emH, 'left', Math.max(u * 90, emMaxW));
+    var rowY = top + band * 0.44;
+    var emW = emblemAt(ctx, L, L.emblem, pad, rowY - emH / 2, emH, 'left', Math.max(u * 90, emMaxW));
     var tx = pad + (L.emblem ? emW + u * 30 : 0);
     var leftMaxW = Math.max(u * 120, inner - (tx - pad) - gutter - rightW);
 
-    text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, top + band * 0.47, {
-      size: Math.min(u * 22, band * 0.09), family: L.opts.font, weight: 600,
+    text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, rowY, {
+      size: Math.min(u * 22, band * 0.105), family: L.opts.font, weight: 600,
       color: c.ink, ls: u * 0.4, maxW: leftMaxW
     });
-    text(ctx, optics(f), tx, top + band * 0.62, {
-      size: Math.min(u * 13, band * 0.055), family: 'mono', color: c.muted,
+    text(ctx, optics(f), tx, top + band * 0.63, {
+      size: Math.min(u * 13, band * 0.07), family: 'mono', color: c.muted,
       ls: u * 0.9, maxW: leftMaxW
     });
 
-    text(ctx, specStr, W - pad, top + band * 0.47, {
+    text(ctx, specStr, W - pad, rowY, {
       size: specSize, family: 'mono', color: c.ink,
       ls: u * 0.6, align: 'right', maxW: rightW
     });
-    text(ctx, dateStr, W - pad, top + band * 0.61, {
+    text(ctx, dateStr, W - pad, top + band * 0.63, {
       size: dateSize, family: 'mono', color: c.muted,
       ls: u * 0.6, align: 'right', maxW: rightW
     });
 
     /* the footer keeps the band's own rhythm and moves clear of the lower
-       corner brackets horizontally, so the two can never sit on each other */
-    var bInset = u * 16, bLen = u * 26;
+       corner brackets: sideways past the bracket's arm, and high enough that
+       its letters sit above that arm instead of hanging outside the corner
+       mark. The bracket is cut from `u` but capped by the band, so on a slim
+       band it shrinks with the mat and leaves the footer its room. */
+    var bInset = Math.min(u * 16, band * 0.11), bLen = Math.min(u * 26, band * 0.17);
     var footX = Math.max(pad, bInset + bLen + u * 8);
-    var footY = L.H - band * 0.15;
+    var footY = L.H - Math.max(band * 0.14, bInset + u * 9);
     if (f.caption) {
       text(ctx, f.caption, footX, footY, {
-        size: Math.min(u * 11.5, band * 0.045), family: 'mono', color: c.muted,
+        size: Math.min(u * 11.5, band * 0.058), family: 'mono', color: c.muted,
         upper: true, ls: u * 1.4, maxW: W * 0.6
       });
     }
     text(ctx, 'SHUTTERPLATE · 03', W - footX, footY, {
-      size: Math.min(u * 11.5, band * 0.045), family: 'mono', color: c.muted,
+      size: Math.min(u * 11.5, band * 0.058), family: 'mono', color: c.muted,
       ls: u * 1.4, align: 'right', maxW: W * 0.4
     });
 
@@ -833,69 +879,74 @@
   }
 
   /* ── 08 Pro Studio ─────────────────────────────────────────────────────── */
+  /* A 14.5% band instead of 25%: the header (mark · model/date · lens) and its
+     rule are pulled up to the slim band, and the full specification now prints
+     as one four-column bar (colW = inner / 4) with the footer rule and its
+     caption settling under it. Each cell is clipped to its own column, so no
+     two columns and no column and the plate edge can meet. */
   function drawPro(ctx, L) {
     var f = L.fields, c = L.colors, u = L.u, band = L.band;
     var top = L.photoBox.y + L.PH, pad = L.inset, W = L.W;
     var inner = W - pad * 2;
 
-    var emH = Math.min(u * 28, band * 0.14);
-    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.12, emH, 'left', inner * 0.4);
+    var emH = Math.min(u * 28, band * 0.16);
+    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.09, emH, 'left', inner * 0.4);
     var tx = pad + (L.emblem ? emW + u * 24 : 0);
     /* the date owns its own column on the headline row; the model and lens are
        measured against what is left after the emblem */
     var dateStr = dateOf(f).full;
-    var dateSize = Math.min(u * 12, band * 0.045);
+    var dateSize = Math.min(u * 12, band * 0.05);
     var dateW = Math.min(
       measure(ctx, dateStr, { size: dateSize, family: 'mono', ls: u * 1.1 }), inner * 0.32);
     var usedX = tx - pad;
     var headMaxW = Math.max(u * 120, inner - usedX - dateW - u * 24);
 
-    text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, top + band * 0.21, {
-      size: Math.min(u * 22, band * 0.085), family: L.opts.font, weight: 600,
+    text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, top + band * 0.19, {
+      size: Math.min(u * 22, band * 0.1), family: L.opts.font, weight: 600,
       color: c.ink, ls: u * 0.3, maxW: headMaxW
     });
-    text(ctx, dateStr, W - pad, top + band * 0.21, {
+    text(ctx, dateStr, W - pad, top + band * 0.19, {
       size: dateSize, family: 'mono', color: c.muted,
       ls: u * 1.1, align: 'right', maxW: dateW
     });
-    text(ctx, optics(f), tx, top + band * 0.30, {
-      size: Math.min(u * 12.5, band * 0.048), family: 'mono', color: c.muted,
+    text(ctx, optics(f), tx, top + band * 0.3, {
+      size: Math.min(u * 12.5, band * 0.055), family: 'mono', color: c.muted,
       ls: u * 0.8, maxW: Math.max(u * 120, inner - usedX)
     });
 
-    hairline(ctx, pad, top + band * 0.37, W - pad, top + band * 0.37, c.line, Math.max(1, u * 1.2));
+    hairline(ctx, pad, top + band * 0.375, W - pad, top + band * 0.375, c.line, Math.max(1, u * 1.2));
 
-    // full specification grid — two columns, two rows
+    // full specification bar — four columns on one row
     var cells = [
       { label: 'ISO', value: f.iso },
       { label: 'SHUTTER', value: f.shutter },
       { label: 'APERTURE', value: f.aperture },
       { label: 'FOCAL', value: f.focal }
     ];
-    var colW = inner / 2;
-    var rowY = [top + band * 0.46, top + band * 0.63];
+    var colW = inner / 4;
+    var labelY = top + band * 0.475, valueY = top + band * 0.625;
+    var colMaxW = Math.max(u * 40, colW - u * 14);
     cells.forEach(function (cell, i) {
-      var cx0 = pad + (i % 2) * colW;
-      var y = rowY[Math.floor(i / 2)];
-      text(ctx, cell.label, cx0, y, {
-        size: Math.min(u * 9.5, band * 0.033), family: 'mono', color: c.accent,
-        ls: u * 2, maxW: colW * 0.9
+      var cx0 = pad + i * colW;
+      text(ctx, cell.label, cx0, labelY, {
+        size: Math.min(u * 9.5, band * 0.048), family: 'mono', color: c.accent,
+        ls: u * 2, maxW: colMaxW
       });
-      text(ctx, cell.value || '—', cx0, y + band * 0.095, {
-        size: Math.min(u * 19, band * 0.072), family: L.opts.font, weight: 500,
-        color: c.ink, ls: u * 0.4, maxW: colW * 0.9
+      text(ctx, cell.value || '—', cx0, valueY, {
+        size: Math.min(u * 19, band * 0.09), family: L.opts.font, weight: 500,
+        color: c.ink, ls: u * 0.4, maxW: colMaxW
       });
     });
 
-    hairline(ctx, pad, L.H - band * 0.17, W - pad, L.H - band * 0.17, c.line, Math.max(1, u));
+    hairline(ctx, pad, L.H - band * 0.2, W - pad, L.H - band * 0.2, c.line, Math.max(1, u));
     if (f.caption) {
       text(ctx, f.caption, pad, L.H - band * 0.075, {
-        size: Math.min(u * 11, band * 0.04), family: 'mono', color: c.muted,
+        size: Math.min(u * 11, band * 0.045), family: 'mono', color: c.muted,
         upper: true, ls: u * 1.6, maxW: inner * 0.6
       });
     }
     text(ctx, 'HD2LAB · PRO STUDIO 08', W - pad, L.H - band * 0.075, {
-      size: Math.min(u * 10, band * 0.036), family: 'mono', color: c.muted,
+      size: Math.min(u * 10, band * 0.04), family: 'mono', color: c.muted,
       ls: u * 1.6, align: 'right', maxW: inner * 0.4
     });
   }
