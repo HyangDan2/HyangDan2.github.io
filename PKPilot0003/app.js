@@ -18,7 +18,9 @@
     { file: 'assets/samples/sample-03.jpg', label: 'Canon EOS R5' }
   ];
 
-  var MAX_EDGE = 4096;
+  /* 제목의 "원본 1:1" 계약이 우선한다 — 내보내기는 사진의 원래 픽셀 그대로다.
+     기기가 그만한 캔버스를 못 들면 아래 사다리를 한 칸씩 내려가며 재시도한다. */
+  var FALLBACK_EDGES = [4096, 3072, 2048];
 
   /* ── in-app browsers ──────────────────────────────────────────────────────
      KakaoTalk's Android WebView — and Instagram's, Facebook's, Naver's — will
@@ -66,6 +68,7 @@
     style: PL.ORDER[0],
     emblemChoice: 'auto',
     autoEmblem: 'hd2lab',
+    emblemMono: false,      // false — makers' own colours, true — All Black 단색
     geo: PL.defaults(PL.ORDER[0]),
     ratio: 0,
     font: 'sans',
@@ -110,6 +113,7 @@
     strip: $('#frameStrip'),
     frameCount: $('#frameCount'),
     emblemGrid: $('#emblemGrid'),
+    emblemMonoSeg: $('#emblemMonoSeg'),
     emblemHint: $('#emblemHint'),
     padRange: $('#padRange'), extraRange: $('#extraRange'), radiusRange: $('#radiusRange'),
     padVal: $('#padVal'), extraVal: $('#extraVal'), radiusVal: $('#radiusVal'),
@@ -267,13 +271,20 @@
     return b;
   }
 
+  /* The tiles sit on the panel's dark ground, so they ask for the night value
+     of each maker's colour — Samsung blue is lifted to #3B6BFF there — while
+     All Black hands every tile the one panel ink. */
+  function tileColors() {
+    return { ink: INK, accent: ACCENT, base: BASE, light: false, mono: !!state.emblemMono };
+  }
+
   function buildEmblems() {
     var auto = emblemTile('auto', 'Auto', '');
-    auto.querySelector('.emblem-mark').innerHTML = EM.svg(state.autoEmblem, { ink: INK, accent: ACCENT, base: BASE });
+    auto.querySelector('.emblem-mark').innerHTML = EM.svg(state.autoEmblem, tileColors());
     el.emblemGrid.appendChild(auto);
 
     EM.list.forEach(function (e) {
-      el.emblemGrid.appendChild(emblemTile(e.id, e.name, EM.svg(e.id, { ink: INK, accent: ACCENT, base: BASE })));
+      el.emblemGrid.appendChild(emblemTile(e.id, e.name, EM.svg(e.id, tileColors())));
     });
 
     var none = emblemTile('none', 'None', '<span style="font-family:var(--mono);font-size:16px;color:#6b746a">—</span>');
@@ -294,14 +305,28 @@
   }
 
   function syncEmblems() {
+    var colors = tileColors();
     $$('.emblem-tile', el.emblemGrid).forEach(function (t) {
       t.setAttribute('aria-checked', t.dataset.emblem === state.emblemChoice ? 'true' : 'false');
+      var mark = $('.emblem-mark', t);
+      var id = t.dataset.emblem;
+      if (!mark) return;
+      if (id === 'auto') mark.innerHTML = EM.svg(state.autoEmblem, colors);
+      else if (id !== 'none') mark.innerHTML = EM.svg(id, colors);
     });
-    var autoTile = $('.emblem-tile[data-emblem="auto"] .emblem-mark', el.emblemGrid);
-    if (autoTile) autoTile.innerHTML = EM.svg(state.autoEmblem, { ink: INK, accent: ACCENT, base: BASE });
-    el.emblemHint.textContent = state.emblemChoice === 'auto'
+    $$('button', el.emblemMonoSeg).forEach(function (b) {
+      b.setAttribute('aria-pressed', String((b.dataset.emblemMono === 'mono') === !!state.emblemMono));
+    });
+    var mode = state.emblemMono ? ' All Black — 한 가지 잉크로 인쇄합니다.' : '';
+    el.emblemHint.textContent = (state.emblemChoice === 'auto'
       ? 'EXIF Make 기준 자동 선택 — 현재 ' + EM.get(state.autoEmblem).name
-      : '수동 선택 — EXIF와 무관하게 고정됩니다.';
+      : '수동 선택 — EXIF와 무관하게 고정됩니다.') + mode;
+  }
+
+  function setEmblemMono(on) {
+    state.emblemMono = !!on;
+    syncEmblems();
+    renderAll();
   }
 
   /* ── fields ───────────────────────────────────────────────────────────── */
@@ -925,6 +950,71 @@
     });
   }
 
+  /* ── export resolution ──────────────────────────────────────────────────
+     A plate leaves at the photo's own resolution: a 6000×4000 frame becomes a
+     6000×4000 JPEG, because a print only ever holds the pixels it was given.
+     Only a device that cannot hold that many pixels steps down, and only as
+     far as it must. iOS Safari refuses a canvas allocation by total area
+     without raising: the canvas keeps a stale width, getContext() comes back
+     null, or toBlob hands over null / 0 bytes. So each rung is judged by what
+     it actually produced, never by whether it was asked. */
+  function exportRungs(L) {
+    var native = Math.max(L.W, L.H);
+    var rungs = [0];                 // 0 — the frame's own 1:1 pixel size
+    FALLBACK_EDGES.forEach(function (edge) {
+      if (edge < native) rungs.push(edge);
+    });
+    return rungs;
+  }
+
+  function paintPlateCanvas(L, edge) {
+    var k = edge ? Math.min(1, edge / Math.max(L.W, L.H)) : 1;
+    var ow = Math.max(1, Math.round(L.W * k));
+    var oh = Math.max(1, Math.round(L.H * k));
+    var off = document.createElement('canvas');
+    off.width = ow;
+    off.height = oh;
+    if (off.width !== ow || off.height !== oh) return null;    // allocation refused
+    var ctx = null;
+    try { ctx = off.getContext('2d'); } catch (e) { ctx = null; }
+    if (!ctx) return null;
+    try {
+      ctx.fillStyle = L.colors.base;
+      ctx.fillRect(0, 0, ow, oh);
+      if (k !== 1) ctx.setTransform(k, 0, 0, k, 0, 0);
+      PL.paint(ctx, L);
+    } catch (e) {
+      return null;                                             // the paint died
+    }
+    return { canvas: off, w: ow, h: oh, k: k, edge: edge || 0 };
+  }
+
+  /* The first rung that yields real bytes wins. A reduced rung carries the
+     edge it was reduced to, so the studio can say what it saved. */
+  function encodePlate(L, mime, quality) {
+    var rungs = exportRungs(L);
+    var i = 0;
+    function attempt() {
+      if (i >= rungs.length) return Promise.resolve(null);
+      var edge = rungs[i++];
+      var job = paintPlateCanvas(L, edge);
+      if (!job) return attempt();
+      return canvasBlob(job.canvas, mime, quality).then(function (blob) {
+        if (!blob || !blob.size) {
+          job.canvas.width = 0;
+          job.canvas.height = 0;          // hand the pixels back before the next rung
+          return attempt();
+        }
+        job.blob = blob;
+        job.reduced = !!edge;
+        job.reducedEdge = edge ? Math.max(job.w, job.h) : 0;
+        job.attempts = i;
+        return job;
+      }, function () { return attempt(); });
+    }
+    return attempt();
+  }
+
   function saveBlob(blob, name) {
     if (!blob) return false;
     var url = URL.createObjectURL(blob);
@@ -959,30 +1049,23 @@
           ? EM.fromMake(fields.make, fields.model)
           : state.emblemChoice;
         var L = PL.layout({ w: img.naturalWidth, h: img.naturalHeight, img: img }, {
-          style: state.style, fields: fields, emblem: emblem,
+          style: state.style, fields: fields, emblem: emblem, emblemMono: state.emblemMono,
           padPct: state.geo.padPct, extraPct: state.geo.extraPct, radiusPct: state.geo.radiusPct,
           ratio: state.ratio, font: state.font, stock: state.stock,
           frameNo: frameNumber(fields.datetime)
         });
-        var k = Math.min(1, MAX_EDGE_PX / Math.max(L.W, L.H));
-        var ow = Math.max(1, Math.round(L.W * k));
-        var oh = Math.max(1, Math.round(L.H * k));
-        var off = document.createElement('canvas');
-        off.width = ow;
-        off.height = oh;
-        var ctx = off.getContext('2d');
-        ctx.fillStyle = L.colors.base;
-        ctx.fillRect(0, 0, ow, oh);
-        ctx.setTransform(k, 0, 0, k, 0, 0);
-        PL.paint(ctx, L);
-        release();
         var png = state.format === 'png';
-        return {
-          canvas: off, w: ow, h: oh,
-          mime: png ? 'image/png' : 'image/jpeg',
-          ext: png ? 'png' : 'jpg',
-          name: EX.fileName(fields, png ? 'png' : 'jpg')
-        };
+        /* same contract as the single save: 1:1 first, the ladder only if the
+           device refuses the pixels */
+        return encodePlate(L, png ? 'image/png' : 'image/jpeg', state.quality / 100)
+          .then(function (job) {
+            release();
+            if (!job) return null;
+            job.mime = png ? 'image/png' : 'image/jpeg';
+            job.ext = png ? 'png' : 'jpg';
+            job.name = EX.fileName(fields, job.ext);
+            return job;
+          });
       });
     }).catch(function () { release(); return null; });
   }
@@ -990,7 +1073,7 @@
   async function bulkExport() {
     var ws = state.ws;
     if (ws.bulk || ws.entries.length < 2) return null;
-    var total = ws.entries.length, saved = 0, failed = 0;
+    var total = ws.entries.length, saved = 0, failed = 0, reduced = 0;
     ws.bulk = { total: total, saved: 0 };
     var say = function (text) {
       if (!el.bulkStatus) return;
@@ -1008,12 +1091,17 @@
         if (!job) {
           failed++;
         } else {
-          var blob = await canvasBlob(job.canvas, job.mime, state.quality / 100);
-          if (blob && saveBlob(blob, job.name)) {
+          if (job.reduced) {
+            reduced++;
+            say((i + 1) + ' / ' + total + ' · ' + entry.name +
+              ' · 기기 메모리 제한으로 ' + job.reducedEdge + 'px');
+          }
+          if (saveBlob(job.blob, job.name)) {
             saved++;
             window.__lastExport = {
-              name: job.name, bytes: blob.size, w: job.w, h: job.h,
-              format: job.ext === 'png' ? 'png' : 'jpeg', style: state.style
+              name: job.name, bytes: job.blob.size, w: job.w, h: job.h,
+              format: job.ext === 'png' ? 'png' : 'jpeg', style: state.style,
+              reducedEdge: job.reducedEdge || 0
             };
           } else {
             failed++;
@@ -1027,14 +1115,16 @@
     }
     ws.bulk = null;
     syncWsUI();
-    say(saved + ' / ' + total + '장 저장 완료' + (failed ? ' · ' + failed + '장 실패' : ''));
+    say(saved + ' / ' + total + '장 저장 완료' + (failed ? ' · ' + failed + '장 실패' : '')
+      + (reduced ? ' · ' + reduced + '장은 기기 메모리 제한으로 축소' : ''));
     setTimeout(function () {
       if (el.bulkStatus && !state.ws.bulk) el.bulkStatus.hidden = true;
     }, 6000);
     toast(saved
       ? saved + '장을 저장했습니다' + (failed ? ' · ' + failed + '장 실패' : '')
-      : '일괄 저장에 실패했습니다', saved ? '' : 'error');
-    return { saved: saved, failed: failed, total: total };
+        + (reduced ? ' · ' + reduced + '장은 기기 메모리 제한으로 축소 저장' : '')
+      : '일괄 저장에 실패했습니다', saved ? (reduced ? 'warn' : '') : 'error');
+    return { saved: saved, failed: failed, total: total, reduced: reduced };
   }
 
   /* ── placeholder art (so the strip previews before a photo arrives) ────── */
@@ -1122,6 +1212,7 @@
       style: styleId || state.style,
       fields: state.fields,
       emblem: resolveEmblem(),
+      emblemMono: state.emblemMono,
       padPct: state.geo.padPct,
       extraPct: state.geo.extraPct,
       radiusPct: state.geo.radiusPct,
@@ -1278,8 +1369,9 @@
       if (el.dockSaveBtn) el.dockSaveBtn.disabled = true;
       return;
     }
-    var k = Math.min(1, MAX_EDGE / Math.max(L.W, L.H));
-    var ow = Math.round(L.W * k), oh = Math.round(L.H * k);
+    /* 1:1 — the frame is the photo plus its borders, so this is exactly what
+       the file will measure unless the device has to step down. */
+    var ow = L.W, oh = L.H;
     el.renderChip.textContent = ow + ' × ' + oh;
     el.exportSize.textContent = ow + ' × ' + oh + ' px';
     el.exportName.textContent = EX.fileName(state.fields, state.format === 'png' ? 'png' : 'jpg');
@@ -1293,7 +1385,6 @@
      prepared file is cached and handed over inside the click; when the cache
      is stale the result card opens and carries its own share button, which is
      a fresh tap again. */
-  var MAX_EDGE_PX = MAX_EDGE;
   var prepared = null;
 
   function canShareFiles() {
@@ -1326,35 +1417,19 @@
      still matches what the sheet says it will save. */
   function exportSignature() {
     return [state.style, state.format, state.quality, state.ratio, state.font, state.stock,
-      state.emblemChoice, resolveEmblem(), state.geo.padPct, state.geo.extraPct, state.geo.radiusPct,
+      state.emblemChoice, resolveEmblem(), state.emblemMono ? 'mono' : 'color',
+      state.geo.padPct, state.geo.extraPct, state.geo.radiusPct,
       state.fields.make, state.fields.model, state.fields.lens, state.fields.focal,
       state.fields.aperture, state.fields.shutter, state.fields.iso,
       state.fields.datetime, state.fields.caption,
       state.photo ? state.photo.name : ''].join('|');
   }
 
-  function renderExportJob() {
-    var p = state.photo;
-    var L = layoutFor(p.img, p.w, p.h);
-    var k = Math.min(1, MAX_EDGE_PX / Math.max(L.W, L.H));
-    var ow = Math.max(1, Math.round(L.W * k));
-    var oh = Math.max(1, Math.round(L.H * k));
-
-    var off = document.createElement('canvas');
-    off.width = ow;
-    off.height = oh;
-    var ctx = off.getContext('2d');
-    ctx.fillStyle = L.colors.base;
-    ctx.fillRect(0, 0, ow, oh);
-    ctx.setTransform(k, 0, 0, k, 0, 0);
-    PL.paint(ctx, L);
-
-    var format = state.format === 'png' ? 'png' : 'jpeg';
-    var mime = format === 'png' ? 'image/png' : 'image/jpeg';
-    return {
-      canvas: off, w: ow, h: oh, format: format, mime: mime,
-      name: EX.fileName(state.fields, format === 'png' ? 'png' : 'jpg')
-    };
+  function lockExport(busy) {
+    el.downloadBtn.disabled = !!busy || !state.photo;
+    el.headerDownloadBtn.disabled = !!busy || !state.photo;
+    if (el.shareBtn) el.shareBtn.disabled = !!busy || !state.photo;
+    if (el.previewBtn) el.previewBtn.disabled = !!busy || !state.photo;
   }
 
   function prepareExport() {
@@ -1362,56 +1437,48 @@
     var sig = exportSignature();
     if (prepared && prepared.signature === sig) return Promise.resolve(prepared);
 
-    var job = renderExportJob();
-    el.downloadBtn.disabled = true;
-    el.headerDownloadBtn.disabled = true;
-    if (el.shareBtn) el.shareBtn.disabled = true;
-    if (el.previewBtn) el.previewBtn.disabled = true;
+    var p = state.photo;
+    var L = layoutFor(p.img, p.w, p.h);      // the photo's own bitmap, 1:1
+    var format = state.format === 'png' ? 'png' : 'jpeg';
+    var mime = format === 'png' ? 'image/png' : 'image/jpeg';
+    var name = EX.fileName(state.fields, format === 'png' ? 'png' : 'jpg');
+    lockExport(true);
 
-    return new Promise(function (resolve) {
-      var finish = function (blob, dataUrl) {
-        el.downloadBtn.disabled = !state.photo;
-        el.headerDownloadBtn.disabled = !state.photo;
-        if (el.shareBtn) el.shareBtn.disabled = !state.photo;
-        if (el.previewBtn) el.previewBtn.disabled = !state.photo;
-        if (!blob) {
-          toast('내보내기에 실패했습니다 — 사진 크기를 줄여 보세요', 'error');
-          resolve(null);
-          return;
-        }
+    /* The data URL is prepared alongside the blob: in-app browsers refuse a
+       blob: download, and the result card's long-press save needs an <img>
+       source the WebView will actually render. */
+    return encodePlate(L, mime, state.quality / 100).then(function (job) {
+      lockExport(false);
+      if (!job) {
+        toast('내보내기에 실패했습니다 — 사진 크기를 줄여 보세요', 'error');
+        return null;
+      }
+      return readAsDataURL(job.blob).then(
+        function (dataUrl) { return dataUrl; },
+        function () { return ''; }
+      ).then(function (dataUrl) {
         var file = null;
         try {
-          file = new File([blob], job.name, {
-            type: blob.type || job.mime, lastModified: Date.now()
+          file = new File([job.blob], name, {
+            type: job.blob.type || mime, lastModified: Date.now()
           });
         } catch (e) {
-          file = blob;
+          file = job.blob;
         }
         if (prepared && prepared.url) URL.revokeObjectURL(prepared.url);
         prepared = {
-          blob: blob, file: file, url: URL.createObjectURL(blob),
+          blob: job.blob, file: file, url: URL.createObjectURL(job.blob),
           dataUrl: dataUrl || '',      // the same bytes inline: what a WebView can take
-          name: job.name, bytes: blob.size, w: job.w, h: job.h,
-          format: job.format, style: state.style, signature: sig
+          name: name, bytes: job.blob.size, w: job.w, h: job.h,
+          format: format, style: state.style, signature: sig,
+          reducedEdge: job.reducedEdge || 0   // 0 — saved at the photo's own size
         };
         window.__lastExport = {
-          name: job.name, bytes: blob.size, w: job.w, h: job.h,
-          format: job.format, style: state.style
+          name: name, bytes: job.blob.size, w: job.w, h: job.h,
+          format: format, style: state.style, reducedEdge: job.reducedEdge || 0
         };
-        resolve(prepared);
-      };
-      /* The data URL is prepared alongside the blob: in-app browsers refuse a
-         blob: download, and the result card's long-press save needs an <img>
-         source the WebView will actually render. */
-      var settle = function (blob) {
-        if (!blob) { finish(null); return; }
-        readAsDataURL(blob).then(
-          function (dataUrl) { finish(blob, dataUrl); },
-          function () { finish(blob, ''); }
-        );
-      };
-      if (job.canvas.toBlob) job.canvas.toBlob(settle, job.mime, state.quality / 100);
-      else settle(null);
+        return prepared;
+      });
     });
   }
 
@@ -1462,6 +1529,9 @@
       return Promise.resolve({ shared: false, fallback: true });
     }
     return Promise.resolve(call).then(function () {
+      if (p.reducedEdge) {
+        toast('기기 메모리 제한으로 ' + p.reducedEdge + 'px로 안전 저장했습니다', 'warn');
+      }
       toast('공유 시트에서 ‘이미지 저장’을 고르면 사진 앨범에 들어갑니다');
       return { shared: true };
     }, function (err) {
@@ -1476,11 +1546,16 @@
     return prepareExport().then(function (p) {
       if (!p) return null;
       saveFile(p);
+      /* A file that had to step down says so: the visitor should know why the
+         pixels are fewer than the photo they handed over. */
+      if (p.reducedEdge) {
+        toast('기기 메모리 제한으로 ' + p.reducedEdge + 'px로 안전 저장했습니다', 'warn');
+      }
       if (state.inApp) {
         /* The WebView may swallow that tap without a word, so the card with the
            inline preview opens right behind it — long-press is the way out. */
         openExportCard(p);
-      } else {
+      } else if (!p.reducedEdge) {
         toast(p.w + ' × ' + p.h + ' · ' + bytes(p.bytes) + ' 파일 저장');
       }
       return p;
@@ -1787,6 +1862,16 @@
       renderAll();
       toast('프레임 기본값으로 되돌렸습니다');
     });
+
+    // emblem colour — makers' own colours, or one ink for the whole plate
+    if (el.emblemMonoSeg) {
+      $$('button', el.emblemMonoSeg).forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!!state.emblemMono === (b.dataset.emblemMono === 'mono')) return;
+          setEmblemMono(b.dataset.emblemMono === 'mono');
+        });
+      });
+    }
 
     // export
     $$('button', el.formatSeg).forEach(function (b) {
@@ -2117,6 +2202,7 @@
     loadFile: loadFile,
     loadSample: loadSample,
     setStyle: setStyle,
+    setEmblemMono: setEmblemMono,
     openFiles: openFiles,
     openFolder: openFolder,
     scanAndOpen: scanAndOpen,

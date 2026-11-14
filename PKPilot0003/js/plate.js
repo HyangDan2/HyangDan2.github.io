@@ -340,10 +340,19 @@
     return { h: h, w: w };
   }
 
+  /* All Black is the plate's own ink for the whole mark: the maker's colour
+     and HD2Lab's orange accent alike. The ink is what was chosen to survive on
+     that stock, so a light frame prints black and a dark frame cream. */
+  function emblemColors(L) {
+    var c = L.colors;
+    if (!L.opts || !L.opts.emblemMono) return c;
+    return { ink: c.ink, accent: c.ink, base: c.base, light: c.light, mono: true };
+  }
+
   function emblemAt(ctx, L, id, x, y, h, align, maxW) {
     if (!id) return 0;
     var f = emFit(id, h, maxW);
-    E.draw(ctx, id, x, y, f.w, f.h, L.colors, align || 'left');
+    E.draw(ctx, id, x, y, f.w, f.h, emblemColors(L), align || 'left');
     return f.w;
   }
 
@@ -541,23 +550,51 @@
   }
 
   /* ── 05 Film Sprocket ──────────────────────────────────────────────────── */
+  /* One row of perforations at each margin, and both read from the same two
+     numbers: the hole height and the hole centre's distance from the edge.
+     35mm stock prints its top and bottom rows identically, and a frame that
+     draws a tall row at the top and a squat sliver at the foot stops looking
+     like film. `flow` is what is left of the caption band once the bottom row
+     has claimed its strip — the print block every line below must live in. */
+  function filmPerf(L) {
+    var band = L.padBottom;
+    var holeH = Math.max(L.u * 6, Math.min(L.padTop * 0.19, band * 0.12));
+    var edgeCy = Math.max(holeH * 0.85, Math.min(L.padTop * 0.26, band * 0.14));
+    var top = L.photoBox.y + L.PH;
+    return {
+      holeH: holeH,
+      edgeCy: edgeCy,
+      topCy: edgeCy,
+      botCy: L.H - edgeCy,
+      flow: Math.max(L.u * 4, (L.H - edgeCy - holeH / 2) - top)
+    };
+  }
+
   function drawFilmBase(ctx, L) {
-    var u = L.u, pad = L.padX, band = L.padBottom;
+    var u = L.u, pad = L.padX;
     var hole = 'rgba(238,229,210,0.74)';
+    var perf = filmPerf(L);
 
-    /* the bottom row of perforations sits against the very edge of the stock so
-       the date line and the corner copy above it never fall inside a hole */
-    var topH = L.padTop * 0.19, topCy = L.padTop * 0.26;
-    var botH = band * 0.06, botCy = L.H - band * 0.065;
-
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, topCy, topH, hole);
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, botCy, botH, hole);
+    /* the same hole height, the same distance from its own edge: the two rows
+       are mirror images, so the stock reads the same way up or down */
+    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.topCy, perf.holeH, hole);
+    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.botCy, perf.holeH, hole);
 
     hairline(ctx, 0, L.padTop * 0.60, L.W, L.padTop * 0.60, L.colors.line, Math.max(1, u * 1.1));
+    /* the foot gets the same rule: just inside the bottom perforation row, at
+       the mirror of the gap the top rule keeps above the photo */
+    hairline(ctx, 0, perf.botCy - perf.holeH / 2 - perf.flow * 0.085, L.W,
+      perf.botCy - perf.holeH / 2 - perf.flow * 0.085, L.colors.line, Math.max(1, u * 1.1));
   }
 
   function drawFilm(ctx, L) {
-    var f = L.fields, c = L.colors, u = L.u, band = L.band, pad = L.inset, W = L.W;
+    var f = L.fields, c = L.colors, u = L.u, pad = L.inset, W = L.W;
+    var perf = filmPerf(L);
+    /* every line of copy is a fraction of `flow`, not of the whole band, and
+       every size carries the same factor — the block is the old one scaled to
+       the room the symmetric foot row leaves, so nothing gains or loses grip */
+    var flow = perf.flow;
+    var g = L.band > 0 ? flow / L.band : 1;
     var top = L.photoBox.y + L.PH;
     var inner = W - pad * 2;
 
@@ -592,8 +629,8 @@
       { k: 'F', v: specKey(f, 'aperture') }
     ].filter(function (p) { return p.v; });
 
-    var valSize = Math.min(u * 30, band * 0.13);
-    var keySize = Math.min(u * 13, band * 0.058);
+    var valSize = Math.min(u * 30, L.band * 0.13) * g;
+    var keySize = Math.min(u * 13, L.band * 0.058) * g;
     var stackW = 0;
     pairs.forEach(function (p) {
       var vw = measure(ctx, p.v, { size: valSize, family: 'mono', weight: 500 });
@@ -603,29 +640,30 @@
     var leftMaxW = Math.max(u * 140, inner - stackW - u * 24);
 
     if (L.emblem) {
-      var emH = Math.min(u * 26, band * 0.16);
-      emblemAt(ctx, L, L.emblem, pad, top + band * 0.14, emH, 'left', inner * 0.42);
+      var emH = Math.min(u * 26, L.band * 0.16) * g;
+      emblemAt(ctx, L, L.emblem, pad, top + flow * 0.14, emH, 'left', inner * 0.42);
     }
 
-    text(ctx, f.caption || camera(f), pad, top + band * 0.41, {
-      size: Math.min(u * 22, band * 0.1), family: 'serif', italic: true,
+    text(ctx, f.caption || camera(f), pad, top + flow * 0.41, {
+      size: Math.min(u * 22, L.band * 0.1) * g, family: 'serif', italic: true,
       color: c.ink, ls: u * 0.3, maxW: leftMaxW
     });
 
-    text(ctx, join([camera(f), f.focal], '   ·   '), pad, top + band * 0.6, {
-      size: Math.min(u * 13.5, band * 0.062), family: 'mono', color: c.muted,
+    text(ctx, join([camera(f), f.focal], '   ·   '), pad, top + flow * 0.6, {
+      size: Math.min(u * 13.5, L.band * 0.062) * g, family: 'mono', color: c.muted,
       ls: u * 1.1, maxW: leftMaxW
     });
-    text(ctx, optics(f), pad, top + band * 0.72, {
-      size: Math.min(u * 12, band * 0.055), family: 'mono', color: c.muted,
+    text(ctx, optics(f), pad, top + flow * 0.72, {
+      size: Math.min(u * 12, L.band * 0.055) * g, family: 'mono', color: c.muted,
       ls: u * 0.9, maxW: leftMaxW
     });
-    text(ctx, dateOf(f).full, pad, L.H - band * 0.15, {
-      size: Math.min(u * 12, band * 0.055), family: 'mono', color: c.muted,
+    /* the date line ends the block, a clear step above the perforation row */
+    text(ctx, dateOf(f).full, pad, top + flow * 0.85, {
+      size: Math.min(u * 12, L.band * 0.055) * g, family: 'mono', color: c.muted,
       ls: u * 1.1, maxW: Math.min(leftMaxW, W * 0.6)
     });
 
-    var rx = W - pad, ry = top + band * 0.24;
+    var rx = W - pad, ry = top + flow * 0.24;
     pairs.forEach(function (p) {
       var vw = text(ctx, p.v, rx, ry, {
         size: valSize, family: 'mono', weight: 500, color: c.ink, align: 'right'
@@ -633,7 +671,7 @@
       text(ctx, p.k, rx - vw - u * 10, ry - u * 2, {
         size: keySize, family: 'mono', color: c.accent, align: 'right', ls: u * 1
       });
-      ry += band * 0.18;
+      ry += flow * 0.18;
     });
   }
 
@@ -887,7 +925,7 @@
     helpers: {
       text: text, compound: compound, measure: measure, roundRect: roundRect,
       hairline: hairline, camera: camera, optics: optics, specParts: specParts,
-      dateOf: dateOf, join: join
+      dateOf: dateOf, join: join, filmPerf: filmPerf
     }
   };
 })(window);

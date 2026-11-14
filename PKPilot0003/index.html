@@ -387,6 +387,10 @@
       </div>
 
       <div class="pane" data-pane="emblem" id="paneEmblem" role="tabpanel" aria-label="메이커 엠블럼">
+        <div class="seg emblem-color" id="emblemMonoSeg" role="group" aria-label="엠블럼 색상">
+          <button type="button" data-emblem-mono="color" aria-pressed="true">원본 컬러</button>
+          <button type="button" data-emblem-mono="mono" aria-pressed="false">All Black (단색)</button>
+        </div>
         <div class="emblem-grid" id="emblemGrid" role="radiogroup" aria-label="메이커 엠블럼"></div>
         <p class="hint" id="emblemHint">EXIF Make 기준 자동 선택 — 수동으로 덮어쓸 수 있습니다.</p>
       </div>
@@ -414,7 +418,7 @@
         </div>
         <button class="btn btn-accent btn-block" id="bulkBtn" type="button" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder-open"/></svg><span id="bulkLabel">전체 일괄 저장</span></button>
         <p class="hint" id="bulkStatus" role="status" hidden></p>
-        <p class="hint" id="exportHint">원본 1:1 해상도 기준 · 모바일 메모리 안전을 위해 최대 4096px</p>
+        <p class="hint" id="exportHint">원본 1:1 해상도로 저장 · 기기 메모리가 모자라면 4096 → 3072 → 2048px로 안전 저장</p>
       </div>
     </div>
 
