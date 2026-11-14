@@ -13,6 +13,10 @@
   var MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
   var SERIF = 'Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif';
 
+  /* Official HD2Lab dual-skew mark — the identical geometry is used by the
+     site header, the favicon set and the plate emblems. */
+  var MARK_PATH = 'M15 20L35 10V43L15 53ZM29 24L49 14V47L29 57Z';
+
   function t(s, x, y, size, family, weight, ls, align) {
     return { t: 't', s: s, x: x, y: y, size: size, family: family || SANS,
              weight: weight || 400, ls: ls || 0, align: align || 'left' };
@@ -85,11 +89,14 @@
       ops: [t('OM SYSTEM', 75, 28, 16.5, SANS, 600, 4.6, 'center')]
     },
     {
-      id: 'hd2lab', name: 'HD2Lab', vb: [146, 44],
+      /* The official HD2Lab dual-skew mark, verbatim from the brand sheet
+         (viewBox 0 0 64 64, two stroked parallelograms) followed by the
+         wordmark, so the plate carries the same logo as the site header. */
+      id: 'hd2lab', name: 'HD2Lab', vb: [172, 64],
       ops: [
-        p('M9 15L25 7.4V33.6L9 41.2Z', null, 'accent', 2.8),
-        p('M20 18.4L36 10.8V37L20 44.6Z', null, 'accent', 2.8),
-        t('HD2LAB', 46, 29.5, 20, SANS, 700, 2.4, 'left')
+        p('M15 20L35 10V43L15 53Z', null, 'accent', 4.4),
+        p('M29 24L49 14V47L29 57Z', null, 'accent', 4.4),
+        t('HD2LAB', 62, 42, 22, SANS, 700, 2.2, 'left')
       ]
     }
   ];
@@ -236,6 +243,7 @@
   }
 
   global.SPEmblems = {
+    MARK_PATH: MARK_PATH,
     list: LIST,
     get: function (id) { return BY_ID[id] || BY_ID.hd2lab; },
     has: function (id) { return !!BY_ID[id]; },
