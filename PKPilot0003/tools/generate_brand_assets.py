@@ -51,14 +51,12 @@ MARK_PATH = "M15 20L35 10V43L15 53ZM29 24L49 14V47L29 57Z"
 FAVICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
     '<rect width="64" height="64" rx="12" fill="#101110"/>'
-    f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4" '
-    'stroke-linejoin="round"/></svg>\n'
+    f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4"/></svg>\n'
 )
 
 MARK_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-    f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4" '
-    'stroke-linejoin="round"/></svg>'
+    f'<path d="{MARK_PATH}" fill="none" stroke="#ff824f" stroke-width="4"/></svg>'
 )
 
 FONT_CANDIDATES = [
@@ -191,7 +189,8 @@ def photo_slab(d, box, palette):
     d.rectangle([x0, y0 + h * 0.92, x1, y1], fill=ground)
 
 
-def plate_card(d, box, kind):
+def plate_card(img, box, kind):
+    d = ImageDraw.Draw(img)
     """Compact but faithful mock of the shipped frames."""
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
@@ -240,7 +239,9 @@ def plate_card(d, box, kind):
                 bx += 10
         photo_slab(d, (x0 + pad, y0 + h * 0.11, x1 - pad, y0 + h * 0.62),
                    ("#b98a5c", "#e8b884", "#fff0cc", "#6d4a32", "#3a2718", "#2a1c11"))
-        d.text(((x0 + pad) * S, (y0 + h * 0.72) * S), "HD2Lab",
+        mk = render_mark(10 * S)
+        img.paste(mk, (int((x0 + pad) * S), int((y0 + h * 0.72 - 5.2) * S)), mk)
+        d.text(((x0 + pad + 11) * S, (y0 + h * 0.72) * S), "HD2Lab",
                font=font(7 * S, "SemiBold"), fill="#e0703c")
         d.text(((x0 + pad) * S, (y0 + h * 0.83) * S), "SONY ILCE-7M4 · 35mm",
                font=mono(5 * S), fill="#f0e9d9")
@@ -262,43 +263,47 @@ def build_og(out_dir: str) -> str:
 
     # 2) eyebrow + privacy mark
     r = 5 * S
-    d.ellipse((104 * S - r, 82 * S - r, 104 * S + r, 82 * S + r), fill=ACCENT)
-    spaced(d, (124 * S, 88 * S), "03 / CRAFT · SHUTTERPLATE",
-           font(13.5 * S, "Medium"), MUTED, spacing=2.4 * S)
-    d.text((1096 * S, 88 * S), "LOCAL ONLY · 0 B UPLOAD", font=mono(11 * S), fill=DIM, anchor="rs")
+    d.ellipse((104 * S - r, 90 * S - r, 104 * S + r, 90 * S + r), fill=ACCENT)
+    spaced(d, (124 * S, 96 * S), "03 / CRAFT · SHUTTERPLATE",
+           font(14 * S, "Medium"), MUTED, spacing=2.2 * S)
+    d.text((1096 * S, 96 * S), "LOCAL ONLY · 0 B UPLOAD", font=mono(13 * S), fill=DIM, anchor="rs")
 
-    # 3) dual-skew mark + HD2Lab | SHUTTERPLATE
-    mark = render_mark(80 * S)
-    img.paste(mark, (90 * S, 116 * S), mark)
+    # 3) dual-skew mark + HD2Lab | Shutterplate (PKPilot0001/0002 규격: 100px 각진 마크)
+    mark = render_mark(100 * S)
+    img.paste(mark, (84 * S, 120 * S), mark)
 
-    base_y = 180
-    f_title = font(48 * S, "SemiBold")
-    d.text((186 * S, base_y * S), "HD2Lab", font=f_title, fill=TEXT_HI, anchor="ls")
-    px = 186 * S + d.textlength("HD2Lab", font=f_title) + 16 * S
-    d.line([(px, (base_y - 34) * S), (px, base_y * S)], fill="#3a403a", width=int(2.5 * S))
-    d.text((px + 18 * S, base_y * S), "SHUTTERPLATE", font=f_title, fill=ACCENT, anchor="ls")
+    base_y = 194
+    f_title = font(62 * S, "SemiBold")
+    d.text((224 * S, base_y * S), "HD2Lab", font=f_title, fill=TEXT_HI, anchor="ls")
+    pipe_x = 224 * S + d.textlength("HD2Lab", font=f_title) + 18 * S
+    d.line([(pipe_x, (base_y - 40) * S), (pipe_x, (base_y + 2) * S)],
+           fill="#3a403a", width=int(2.5 * S))
+    fx = pipe_x + 20 * S
+    d.text((fx, base_y * S), "Shutterplate", font=f_title, fill=ACCENT, anchor="ls")
 
-    # 4) headline
-    f_head = font(42 * S, "Bold")
-    d.text((96 * S, 254 * S), "사진 한 장을,", font=f_head, fill=TEXT_HI, anchor="ls")
-    d.text((96 * S, 306 * S), "한 장의 ", font=f_head, fill=TEXT_HI, anchor="ls")
+    # 4) headline + sub copy
+    f_head = font(48 * S, "Bold")
+    d.text((104 * S, 262 * S), "사진 한 장을,", font=f_head, fill=TEXT_HI, anchor="ls")
+    d.text((104 * S, 320 * S), "한 장의 ", font=f_head, fill=TEXT_HI, anchor="ls")
     w = d.textlength("한 장의 ", font=f_head)
-    d.text((96 * S + w, 306 * S), "플레이트", font=f_head, fill=ACCENT, anchor="ls")
-    d.text((96 * S + w + d.textlength("플레이트", font=f_head), 306 * S), "로.",
+    d.text((104 * S + w, 320 * S), "플레이트", font=f_head, fill=ACCENT, anchor="ls")
+    d.text((104 * S + w + d.textlength("플레이트", font=f_head), 320 * S), "로.",
            font=f_head, fill=TEXT_HI, anchor="ls")
 
-    d.text((97 * S, 350 * S), "EXIF를 읽어 노출 스펙·서명을 얹고, 원본 1:1 해상도로 내려받습니다.",
-           font=font(16 * S), fill=MUTED)
-    d.text((97 * S, 376 * S), "8종 시그니처 프레임 · 메이커 엠블럼 10종 · 100% 브라우저 로컬 처리",
-           font=font(16 * S), fill=MUTED)
+    d.text((105 * S, 358 * S),
+           "EXIF를 읽어 노출 스펙·서명을 얹고, 원본 1:1 해상도 그대로 사진 앨범에 저장합니다.",
+           font=font(17.5 * S), fill=MUTED)
+    d.text((105 * S, 386 * S),
+           "8종 시그니처 프레임 · 메이커 엠블럼 11종 · 아이폰은 공유 시트로 바로 사진 저장 · 100% 로컬 처리",
+           font=font(17.5 * S), fill=MUTED)
 
     # 5) frame render strip — three shipped signatures
     tile_w, gap, th = 264, 16, 126
     xs = [96, 96 + tile_w + gap, 96 + 2 * (tile_w + gap)]
     for x, kind in zip(xs, ("horizon", "studio", "film")):
-        plate_card(d, (x, 404, x + tile_w, 404 + th), kind)
+        plate_card(img, (x, 414, x + tile_w, 414 + th), kind)
         label = {"horizon": "CLEAN HORIZON", "studio": "STUDIO DARK", "film": "FILM SPROCKET"}[kind]
-        d.text((x * S, (404 + th + 15) * S), label, font=mono(8 * S), fill=DIM)
+        d.text((x * S, (414 + th + 14) * S), label, font=mono(8 * S), fill=DIM)
 
     # 6) footer
     d.line([(104 * S, 566 * S), (1096 * S, 566 * S)], fill=LINE, width=int(1 * S))

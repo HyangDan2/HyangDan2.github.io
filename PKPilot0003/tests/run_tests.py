@@ -155,7 +155,7 @@ def static_tests():
     refs = []
     for t, d in c.tags:
         if t == "script" and d.get("src"):
-            refs.append(d["src"])
+            refs.append(d["src"].split("?")[0])
         if t == "link" and d.get("href") and not d["href"].startswith(("http", "data:")):
             refs.append(d["href"].split("?")[0])
     missing = [r for r in refs if not os.path.exists(os.path.join(ROOT, r))]
@@ -250,10 +250,40 @@ def static_tests():
     check("official mark path in emblem engine", MARK_PATH in emblems)
     check("emblem engine exposes MARK_PATH", "MARK_PATH: MARK_PATH" in emblems)
     maker_count = len(re.findall(r"id: '(\w+)', name: '", emblems))
-    check("ten maker emblems kept", maker_count == 10, str(maker_count))
-    for maker in ("sony", "canon", "nikon", "fujifilm", "leica", "hasselblad",
+    check("eleven maker emblems kept", maker_count == 11, str(maker_count))
+    for maker in ("sony", "canon", "nikon", "fujifilm", "samsung", "leica", "hasselblad",
                   "apple", "lumix", "omsystem", "hd2lab"):
         check(f"maker emblem {maker}", f"id: '{maker}'" in emblems)
+
+    # ── brands are the makers' own artwork, not type set in a system face ────
+    print("\n[static] official brand artwork")
+    specs = {}
+    for m in re.finditer(r"id: '(\w+)', name: '([^']+)', vb: \[([\d.]+), ([\d.]+)\]", emblems):
+        specs[m.group(1)] = (float(m.group(3)), float(m.group(4)))
+    check("every emblem has a viewBox", len(specs) == 11, str(sorted(specs)))
+    sources_doc = read("EMBLEM-SOURCES.md") if os.path.exists(os.path.join(ROOT, "EMBLEM-SOURCES.md")) else ""
+    check("emblem source ledger present", bool(sources_doc))
+    for maker, (w, h) in specs.items():
+        if maker == "hd2lab":
+            continue
+        block = re.search(r"id: '%s'.*?(?=\n    \{|\n  \];)" % maker, emblems, re.S)
+        body = block.group(0) if block else ""
+        check(f"emblem {maker} is drawn from vector paths",
+              bool(re.search(r"p\('M[-\d.]", body)) and not re.search(r"t\('", body))
+        check(f"emblem {maker} keeps a 100-unit height", abs(h - 100) < 0.01, str(h))
+        check(f"emblem {maker} keeps its source aspect", w > 60, str(w))
+        check(f"emblem {maker} cites its source file",
+              ("commons.wikimedia.org" in sources_doc or "nikon.com" in sources_doc or
+               "omsystem.com" in sources_doc) and maker in sources_doc.lower())
+    check("hd2lab keeps the project wordmark", "t('HD2LAB'" in emblems)
+    for name, want in (("sony", 568.2), ("canon", 481.4), ("nikon", 361.6),
+                       ("fujifilm", 600.9), ("samsung", 652.9), ("hasselblad", 1276.6),
+                       ("apple", 81.4), ("lumix", 513.9), ("omsystem", 868.8)):
+        got = specs.get(name, (0, 100))[0]
+        check(f"emblem {name} aspect matches the official file", abs(got - want) < 1.5,
+              f"{got} vs {want}")
+    check("leica keeps the roundel square", abs(specs.get("leica", (0, 0))[0] - 100) < 0.5,
+          str(specs.get("leica")))
 
     # ── CSS ──────────────────────────────────────────────────────────────────
     print("\n[static] CSS tokens & compact viewport rules")
@@ -406,6 +436,12 @@ FIT_CASES = [
     ("noexif", {}, "none"),
     # a narrow maker mark leaves the most room for copy — the case where the
     # right column is measured against the widest spec and can still overflow
+    ("samsung", {
+        "make": "SAMSUNG", "model": "NX500",
+        "lens": "NX 16-50mm F3.5-5.6 PZ OIS", "focal": "24mm (24mm)",
+        "aperture": "ƒ/3.5", "shutter": "1/250s", "iso": "ISO 800",
+        "datetime": "2026.11.14 09:12", "caption": "창원 바다의 아침",
+    }, "samsung"),
     ("apple", {
         "make": "Apple", "model": "iPhone 15 Pro",
         "lens": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
@@ -751,6 +787,31 @@ def browser_tests(port):
               json.dumps([e for e in fit["ellipsis"] if e[0].startswith("strap/")],
                          ensure_ascii=False))
 
+        # ── every one of the eleven marks on every frame ──────────────────
+        # The brand marks are the makers' own artwork now, so their widths run
+        # from Apple's near-square glyph to the 12.8:1 Hasselblad wordmark.
+        # This paints each mark on each frame on a portrait plate and a wide
+        # one, and asks the same questions: nothing off the plate, nothing on
+        # top of anything else, no line collapsed to «…».
+        print("\n[browser] eleven emblems across eight frames")
+        em_matrix = []
+        for eid in ("sony", "canon", "nikon", "fujifilm", "samsung", "leica",
+                    "hasselblad", "apple", "lumix", "omsystem", "hd2lab"):
+            for sname, w, h in (("2:3", 1200, 1800), ("3:2", 1536, 1024)):
+                for fid, _label in FRAMES:
+                    em_matrix.append({"style": fid, "case": eid, "size": sname,
+                                      "fields": FIT_CASES[0][1], "emblem": eid,
+                                      "w": w, "h": h, "padPct": None})
+        emf = page.evaluate(FIT_JS, em_matrix)
+        check(f"emblems: {len(em_matrix)} plates painted", emf["plates"] == len(em_matrix),
+              f"painted {emf['plates']}")
+        check("emblems: nothing painted off the plate", not emf["overflow"],
+              json.dumps(emf["overflow"], ensure_ascii=False)[:400])
+        check("emblems: no text over text, emblem or sprocket hole", not emf["collide"],
+              json.dumps(emf["collide"], ensure_ascii=False)[:400])
+        check("emblems: no line falls back to the ellipsis", not emf["ellipsis"],
+              json.dumps(emf["ellipsis"], ensure_ascii=False)[:400])
+
         # the same matrix with every padding removed: the film sprocket loop
         # used to divide by a zero pitch and freeze the tab, so this runs on a
         # page of its own that can be thrown away if a regression hangs it.
@@ -954,6 +1015,105 @@ def browser_tests(port):
         page.keyboard.press("Escape")
         check("no late console errors", not errors, str(errors[:3]))
         ctx.close()
+
+        # ── share sheet: the path an iPhone takes ───────────────────────────
+        # Chromium here has no real share sheet, so navigator.canShare/share are
+        # stubbed before the page boots. That proves the wiring — a File of the
+        # right name and type goes to the sheet, a dismissed sheet stays quiet,
+        # a broken sheet falls back to the download — and leaves the one thing
+        # only a real iPhone can answer (what iOS does with the File) unclaimed.
+        print("\n[browser] share sheet branch")
+        shctx = browser.new_context(viewport={"width": 390, "height": 844},
+                                    accept_downloads=True)
+        shpage = shctx.new_page()
+        shpage.set_default_timeout(20000)
+        shpage.add_init_script("""
+          window.__shareLog = [];
+          window.__shareMode = 'ok';
+          Object.defineProperty(navigator, 'canShare', {
+            configurable: true,
+            value: (d) => !!(d && d.files && d.files.length && /^image\//.test(d.files[0].type))
+          });
+          Object.defineProperty(navigator, 'share', {
+            configurable: true,
+            value: (d) => {
+              const f = d && d.files && d.files[0];
+              window.__shareLog.push({name: f ? f.name : null, type: f ? f.type : null,
+                                      size: f ? f.size : 0, files: d && d.files ? d.files.length : 0});
+              if (window.__shareMode === 'abort') {
+                return Promise.reject(new DOMException('Share canceled', 'AbortError'));
+              }
+              if (window.__shareMode === 'fail') return Promise.reject(new Error('no sheet'));
+              return Promise.resolve();
+            }
+          });
+        """)
+        share_errors = []
+        shpage.on("pageerror", lambda e: share_errors.append(str(e)))
+        shpage.goto(base, wait_until="networkidle")
+        shpage.wait_for_timeout(300)
+        check("share: canShare probe reads true when the platform has a sheet",
+              shpage.evaluate("() => SPApp.canShareFiles()") is True)
+        shpage.click("#headerSampleBtn")
+        shpage.wait_for_timeout(900)
+        shpage.click('[data-sheet="export"]')
+        shpage.wait_for_timeout(400)
+        check("share: photo-album door is offered", not shpage.is_hidden("#shareBtn"))
+        shpage.evaluate("async () => { await SPApp.prepareExport(); }")
+        last = shpage.evaluate("() => window.__lastExport")
+        check("prepare: __lastExport keeps its contract",
+              bool(last) and {"name", "bytes", "w", "h", "format", "style"} <= set(last),
+              str(last))
+        shpage.click("#shareBtn")
+        shpage.wait_for_timeout(500)
+        log = shpage.evaluate("() => window.__shareLog")
+        check("share: the sheet receives exactly one file", len(log) == 1, str(log))
+        check("share: file is the JPEG the card promised",
+              bool(log) and re.fullmatch(r"Shutterplate_[^\\/]+_\d{12}\.jpg", log[0]["name"] or "")
+              and log[0]["type"] == "image/jpeg" and log[0]["size"] > 30000,
+              str(log[:1]))
+        check("share: no download is triggered on a clean share",
+              shpage.evaluate("() => document.querySelectorAll('.toast.is-error').length") == 0)
+
+        shpage.evaluate("() => { window.__shareMode = 'abort'; }")
+        before_toasts = shpage.evaluate("() => document.querySelectorAll('.toast').length")
+        shpage.click("#shareBtn")
+        shpage.wait_for_timeout(400)
+        after_toasts = shpage.evaluate("() => document.querySelectorAll('.toast').length")
+        check("share: a dismissed sheet says nothing and downloads nothing",
+              shpage.evaluate("() => window.__shareLog.length") == 2 and
+              after_toasts <= before_toasts, f"toasts {before_toasts}→{after_toasts}")
+
+        shpage.evaluate("() => { window.__shareMode = 'fail'; }")
+        with shpage.expect_download(timeout=25000) as dl2:
+            shpage.click("#shareBtn")
+        check("share: a broken sheet falls back to the file",
+              dl2.value.suggested_filename.startswith("Shutterplate_"),
+              dl2.value.suggested_filename)
+
+        # the result card and the full-screen preview
+        shpage.evaluate("() => { window.__shareMode = 'ok'; }")
+        shpage.click("[data-sheet='export']") if False else None
+        shpage.click("#previewBtn")
+        shpage.wait_for_timeout(600)
+        check("preview: result card opens with the rendered image",
+              shpage.evaluate("() => document.querySelector('#exportModal').classList.contains('is-open')") and
+              shpage.evaluate("() => (document.querySelector('#exportImg').src || '').startsWith('blob:')"))
+        shpage.click("#exportShot")
+        shpage.wait_for_timeout(300)
+        check("preview: full screen view shows the same bitmap",
+              shpage.evaluate("() => document.querySelector('#previewOverlay').classList.contains('is-open')") and
+              shpage.evaluate("() => (document.querySelector('#previewImg').src || '').startsWith('blob:')"))
+        check("preview: does not add a page scrollbar",
+              shpage.evaluate("() => document.documentElement.scrollHeight <= window.innerHeight + 1"))
+        shpage.keyboard.press("Escape")
+        shpage.wait_for_timeout(250)
+        check("preview: Escape returns to the card",
+              shpage.evaluate("() => document.querySelector('#exportModal').classList.contains('is-open')"))
+        shpage.keyboard.press("Escape")
+        shpage.wait_for_timeout(200)
+        check("share: no console errors on any branch", not share_errors, str(share_errors[:3]))
+        shctx.close()
 
         # ── mobile 390 ──────────────────────────────────────────────────────
         print("\n[browser] mobile 390 ergonomics")

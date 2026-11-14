@@ -327,11 +327,24 @@
   }
 
   /* ── shared art ---------------------------------------------------------- */
-  function emblemAt(ctx, L, id, x, y, h, align) {
-    if (!id) return 0;
+  /* Brand marks now come from the makers' own artwork, so their widths vary
+     enormously (Apple is near-square, the Hasselblad wordmark is 12.8x tall).
+     emFit keeps the source aspect but lets a frame cap how wide a mark may
+     run, shrinking its height instead of letting the wordmark eat the row. */
+  function emFit(id, h, maxW) {
     var w = E.widthFor(id, h);
-    E.draw(ctx, id, x, y, w, h, L.colors, align || 'left');
-    return w;
+    if (maxW > 0 && w > maxW) {
+      h = h * (maxW / w);
+      w = maxW;
+    }
+    return { h: h, w: w };
+  }
+
+  function emblemAt(ctx, L, id, x, y, h, align, maxW) {
+    if (!id) return 0;
+    var f = emFit(id, h, maxW);
+    E.draw(ctx, id, x, y, f.w, f.h, L.colors, align || 'left');
+    return f.w;
   }
 
   function sprockets(ctx, x0, x1, cy, h, fill) {
@@ -382,7 +395,8 @@
     var emH = Math.min(u * 30, band * 0.19);
 
     if (L.emblem) {
-      emblemAt(ctx, L, L.emblem, cx - E.widthFor(L.emblem, emH) / 2, top + band * 0.1, emH);
+      var ef = emFit(L.emblem, emH, L.W * 0.46);
+      emblemAt(ctx, L, L.emblem, cx - ef.w / 2, top + band * 0.1, emH, 'left', L.W * 0.46);
     }
 
     text(ctx, join([camera(f)].concat(specParts(f)), '   ·   '), cx, top + band * 0.42, {
@@ -473,7 +487,9 @@
     var rightMaxW = Math.max(u * 90, Math.min(widest, L.W * 0.42 - inset));
     var divX = Math.max(L.W * 0.52, L.W - inset - rightMaxW - u * 34);
     var emH = L.emblem ? Math.min(u * 30, band * 0.22) : 0;
-    var emW = L.emblem ? E.widthFor(L.emblem, emH) : 0;
+    var emFitS = L.emblem ? emFit(L.emblem, emH, Math.max(u * 90, Math.min(u * 280, (divX - inset) * 0.24))) : { h: 0, w: 0 };
+    var emW = emFitS.w;
+    emH = emFitS.h;
     var leftMaxW = Math.max(u * 120, divX - inset - (L.emblem ? emW + u * 44 : u * 26));
 
     // left column — exposure, then the signature / date
@@ -588,7 +604,7 @@
 
     if (L.emblem) {
       var emH = Math.min(u * 26, band * 0.16);
-      emblemAt(ctx, L, L.emblem, pad, top + band * 0.14, emH);
+      emblemAt(ctx, L, L.emblem, pad, top + band * 0.14, emH, 'left', inner * 0.42);
     }
 
     text(ctx, f.caption || camera(f), pad, top + band * 0.41, {
@@ -648,11 +664,12 @@
 
     // emblem + camera block
     var emH = Math.min(u * 32, band * 0.26);
+    var emMaxW = 0;
     if (L.emblem) {
-      var emMaxW = inner - gutter - rightW - u * 30 - u * 240;
+      emMaxW = inner - gutter - rightW - u * 30 - u * 240;
       emH = Math.max(u * 14, Math.min(emH, emMaxW / (E.widthFor(L.emblem, 1) || 1)));
     }
-    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.34, emH);
+    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.34, emH, 'left', Math.max(u * 90, emMaxW));
     var tx = pad + (L.emblem ? emW + u * 30 : 0);
     var leftMaxW = Math.max(u * 120, inner - (tx - pad) - gutter - rightW);
 
@@ -755,7 +772,7 @@
     var inner = W - pad * 2;
 
     var emH = Math.min(u * 28, band * 0.14);
-    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.12, emH);
+    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.12, emH, 'left', inner * 0.4);
     var tx = pad + (L.emblem ? emW + u * 24 : 0);
     /* the date owns its own column on the headline row; the model and lens are
        measured against what is left after the emblem */

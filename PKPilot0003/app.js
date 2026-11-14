@@ -84,7 +84,21 @@
     exportName: $('#exportName'),
     exportStyle: $('#exportStyle'),
     downloadBtn: $('#downloadBtn'),
+    shareBtn: $('#shareBtn'),
+    previewBtn: $('#previewBtn'),
     headerDownloadBtn: $('#headerDownloadBtn'),
+    exportModal: $('#exportModal'),
+    exportImg: $('#exportImg'),
+    exportMeta: $('#exportMeta'),
+    exportShare: $('#exportShare'),
+    exportSave: $('#exportSave'),
+    exportClose: $('#exportClose'),
+    exportShot: $('#exportShot'),
+    exportHintText: $('#exportHintText'),
+    previewOverlay: $('#previewOverlay'),
+    previewImg: $('#previewImg'),
+    previewName: $('#previewName'),
+    previewClose: $('#previewClose'),
     toasts: $('#toasts'),
     portalMenu: $('#portalMenu'),
     portalMenuBtn: $('#portalMenuBtn'),
@@ -299,6 +313,8 @@
       el.photoChip.lastElementChild.textContent = '사진 없음';
       el.downloadBtn.disabled = true;
       el.headerDownloadBtn.disabled = true;
+      if (el.shareBtn) el.shareBtn.disabled = true;
+      if (el.previewBtn) el.previewBtn.disabled = true;
       $('#resetMetaBtn').disabled = true;
       return;
     }
@@ -311,6 +327,8 @@
     el.photoChip.lastElementChild.textContent = p.w + ' × ' + p.h;
     el.downloadBtn.disabled = false;
     el.headerDownloadBtn.disabled = false;
+    if (el.shareBtn) el.shareBtn.disabled = false;
+    if (el.previewBtn) el.previewBtn.disabled = false;
     $('#resetMetaBtn').disabled = false;
     paintSessionThumb();
   }
@@ -603,12 +621,55 @@
   }
 
   /* ── export ───────────────────────────────────────────────────────────── */
-  async function exportPlate() {
-    var p = state.photo;
-    if (!p) { toast('먼저 사진을 불러와 주세요', 'warn'); return; }
+  /* One render, three doors — the photo album, the file system, a full-screen
+     look. iOS only lets a page open the share sheet from a live tap, so a
+     prepared file is cached and handed over inside the click; when the cache
+     is stale the result card opens and carries its own share button, which is
+     a fresh tap again. */
+  var MAX_EDGE_PX = MAX_EDGE;
+  var prepared = null;
 
+  function canShareFiles() {
+    if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' ||
+        typeof navigator.canShare !== 'function') return false;
+    try {
+      if (typeof File !== 'function') return false;
+      var probe = new File(['probe'], 'probe.jpg', { type: 'image/jpeg' });
+      return !!navigator.canShare({ files: [probe] });
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function canShareThis(p) {
+    if (!p || !p.file || typeof navigator.share !== 'function') return false;
+    if (typeof navigator.canShare !== 'function') return true;
+    try { return !!navigator.canShare({ files: [p.file] }); } catch (e) { return false; }
+  }
+
+  function shareCancelled(err) {
+    if (!err) return false;
+    var name = err.name || '';
+    var msg = String(err.message || '').toLowerCase();
+    return name === 'AbortError' || err.code === 20 ||
+      msg.indexOf('abort') >= 0 || msg.indexOf('cancel') >= 0;
+  }
+
+  /* Everything that changes the bitmap — a prepared file only counts while it
+     still matches what the sheet says it will save. */
+  function exportSignature() {
+    return [state.style, state.format, state.quality, state.ratio, state.font, state.stock,
+      state.emblemChoice, resolveEmblem(), state.geo.padPct, state.geo.extraPct, state.geo.radiusPct,
+      state.fields.make, state.fields.model, state.fields.lens, state.fields.focal,
+      state.fields.aperture, state.fields.shutter, state.fields.iso,
+      state.fields.datetime, state.fields.caption,
+      state.photo ? state.photo.name : ''].join('|');
+  }
+
+  function renderExportJob() {
+    var p = state.photo;
     var L = layoutFor(p.img, p.w, p.h);
-    var k = Math.min(1, MAX_EDGE / Math.max(L.W, L.H));
+    var k = Math.min(1, MAX_EDGE_PX / Math.max(L.W, L.H));
     var ow = Math.max(1, Math.round(L.W * k));
     var oh = Math.max(1, Math.round(L.H * k));
 
@@ -623,31 +684,176 @@
 
     var format = state.format === 'png' ? 'png' : 'jpeg';
     var mime = format === 'png' ? 'image/png' : 'image/jpeg';
-    var name = EX.fileName(state.fields, format === 'png' ? 'png' : 'jpg');
+    return {
+      canvas: off, w: ow, h: oh, format: format, mime: mime,
+      name: EX.fileName(state.fields, format === 'png' ? 'png' : 'jpg')
+    };
+  }
+
+  function prepareExport() {
+    if (!state.photo) return Promise.resolve(null);
+    var sig = exportSignature();
+    if (prepared && prepared.signature === sig) return Promise.resolve(prepared);
+
+    var job = renderExportJob();
     el.downloadBtn.disabled = true;
     el.headerDownloadBtn.disabled = true;
+    if (el.shareBtn) el.shareBtn.disabled = true;
+    if (el.previewBtn) el.previewBtn.disabled = true;
 
-    var blob = await new Promise(function (resolve) {
-      if (off.toBlob) off.toBlob(resolve, mime, state.quality / 100);
-      else resolve(null);
+    return new Promise(function (resolve) {
+      var finish = function (blob) {
+        el.downloadBtn.disabled = !state.photo;
+        el.headerDownloadBtn.disabled = !state.photo;
+        if (el.shareBtn) el.shareBtn.disabled = !state.photo;
+        if (el.previewBtn) el.previewBtn.disabled = !state.photo;
+        if (!blob) {
+          toast('내보내기에 실패했습니다 — 사진 크기를 줄여 보세요', 'error');
+          resolve(null);
+          return;
+        }
+        var file = null;
+        try {
+          file = new File([blob], job.name, {
+            type: blob.type || job.mime, lastModified: Date.now()
+          });
+        } catch (e) {
+          file = blob;
+        }
+        if (prepared && prepared.url) URL.revokeObjectURL(prepared.url);
+        prepared = {
+          blob: blob, file: file, url: URL.createObjectURL(blob),
+          name: job.name, bytes: blob.size, w: job.w, h: job.h,
+          format: job.format, style: state.style, signature: sig
+        };
+        window.__lastExport = {
+          name: job.name, bytes: blob.size, w: job.w, h: job.h,
+          format: job.format, style: state.style
+        };
+        resolve(prepared);
+      };
+      if (job.canvas.toBlob) job.canvas.toBlob(finish, job.mime, state.quality / 100);
+      else finish(null);
     });
-    el.downloadBtn.disabled = false;
-    el.headerDownloadBtn.disabled = false;
+  }
 
-    if (!blob) { toast('내보내기에 실패했습니다 — 사진 크기를 줄여 보세요', 'error'); return; }
-
+  function saveFile(p) {
     var a = document.createElement('a');
-    var href = URL.createObjectURL(blob);
+    var href = URL.createObjectURL(p.blob);
     a.href = href;
-    a.download = name;
+    a.download = p.name;
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(href); }, 12000);
+  }
 
-    toast(ow + ' × ' + oh + ' · ' + bytes(blob.size) + ' 저장');
-    window.__lastExport = { name: name, bytes: blob.size, w: ow, h: oh, format: format, style: state.style };
+  /* Must stay synchronous up to navigator.share() so the tap still counts. */
+  function shareNow(p) {
+    if (!canShareThis(p)) {
+      saveFile(p);
+      toast('이 브라우저는 공유 시트가 없어 파일로 저장했습니다', 'warn');
+      return Promise.resolve({ shared: false, fallback: true });
+    }
+    var data = {
+      files: [p.file],
+      title: p.name,
+      text: 'HD2Lab Shutterplate로 만든 플레이트'
+    };
+    var call;
+    try {
+      call = navigator.share(data);
+    } catch (err) {
+      if (shareCancelled(err)) return Promise.resolve({ shared: false, cancelled: true });
+      saveFile(p);
+      toast('공유 시트를 열지 못해 파일로 저장했습니다', 'warn');
+      return Promise.resolve({ shared: false, fallback: true });
+    }
+    return Promise.resolve(call).then(function () {
+      toast('공유 시트에서 ‘이미지 저장’을 고르면 사진 앨범에 들어갑니다');
+      return { shared: true };
+    }, function (err) {
+      if (shareCancelled(err)) return { shared: false, cancelled: true };  // natural dismissal, stay quiet
+      saveFile(p);
+      toast('공유 시트를 열지 못해 파일로 저장했습니다', 'warn');
+      return { shared: false, fallback: true };
+    });
+  }
+
+  function downloadPlate() {
+    return prepareExport().then(function (p) {
+      if (!p) return null;
+      saveFile(p);
+      toast(p.w + ' × ' + p.h + ' · ' + bytes(p.bytes) + ' 파일 저장');
+      return p;
+    });
+  }
+
+  function exportPlate() {
+    if (!state.photo) { toast('먼저 사진을 불러와 주세요', 'warn'); return Promise.resolve(null); }
+    if (!canShareFiles()) return downloadPlate();
+    var sig = exportSignature();
+    if (prepared && prepared.signature === sig) return Promise.resolve(shareNow(prepared));
+    return prepareExport().then(function (p) {
+      if (p) openExportCard(p);
+      return p;
+    });
+  }
+
+  function sharePlate() {
+    if (!state.photo) { toast('먼저 사진을 불러와 주세요', 'warn'); return Promise.resolve(null); }
+    var sig = exportSignature();
+    if (prepared && prepared.signature === sig && canShareThis(prepared)) {
+      return Promise.resolve(shareNow(prepared));
+    }
+    return prepareExport().then(function (p) {
+      if (p) openExportCard(p);
+      return p;
+    });
+  }
+
+  function openPreview() {
+    return prepareExport().then(function (p) {
+      if (!p) return null;
+      openExportCard(p);
+      return p;
+    });
+  }
+
+  /* ── result card + full-screen preview ────────────────────────────────── */
+  function openExportCard(p) {
+    el.exportImg.src = p.url;
+    el.exportMeta.textContent = p.name + ' · ' + p.w + ' × ' + p.h + ' px · ' +
+      bytes(p.bytes) + ' · ' + (p.format === 'png' ? 'PNG' : 'JPEG');
+    var shareable = canShareThis(p);
+    el.exportShare.hidden = !shareable;
+    el.exportHintText.textContent = shareable
+      ? '‘사진 앨범에 저장 / 공유’를 누르고 공유 시트에서 ‘이미지 저장’을 고르면 앨범에 들어갑니다. 미리보기를 길게 눌러 저장할 수도 있습니다.'
+      : '이 브라우저는 공유 시트를 지원하지 않아 파일로 저장합니다. 미리보기를 길게 눌러 사진 앱에 저장할 수도 있습니다.';
+    el.exportModal.classList.add('is-open');
+    el.exportModal.setAttribute('aria-hidden', 'false');
+    el.exportClose.focus({ preventScroll: true });
+  }
+
+  function closeExportCard() {
+    el.exportModal.classList.remove('is-open');
+    el.exportModal.setAttribute('aria-hidden', 'true');
+  }
+
+  function openPreviewOverlay() {
+    if (!prepared) return;
+    el.previewImg.src = prepared.url;
+    el.previewName.textContent = prepared.name + ' · ' + prepared.w + ' × ' + prepared.h;
+    el.previewOverlay.classList.add('is-open');
+    el.previewOverlay.setAttribute('aria-hidden', 'false');
+    closeExportCard();
+    el.previewClose.focus({ preventScroll: true });
+  }
+
+  function closePreviewOverlay() {
+    el.previewOverlay.classList.remove('is-open');
+    el.previewOverlay.setAttribute('aria-hidden', 'true');
   }
 
   /* ── UI sync ──────────────────────────────────────────────────────────── */
@@ -674,6 +880,7 @@
     el.qualityRow.hidden = state.format !== 'jpeg';
     el.qualityVal.textContent = state.quality;
     el.qualityRange.value = state.quality;
+    if (el.shareBtn) el.shareBtn.hidden = !canShareFiles();
   }
 
   function setStyle(style, resetGeo) {
@@ -702,6 +909,7 @@
     $$('[data-sheet]', el.toolbar).forEach(function (b) {
       b.setAttribute('aria-expanded', b.dataset.sheet === name ? 'true' : 'false');
     });
+    if (name === 'export' && state.photo) prepareExport();   // warm the share-tap cache
     el.sheetClose.focus({ preventScroll: true });
   }
 
@@ -818,8 +1026,41 @@
       state.quality = parseInt(el.qualityRange.value, 10);
       el.qualityVal.textContent = state.quality;
     });
-    el.downloadBtn.addEventListener('click', exportPlate);
+    el.downloadBtn.addEventListener('click', downloadPlate);
+    if (el.shareBtn) el.shareBtn.addEventListener('click', sharePlate);
+    if (el.previewBtn) el.previewBtn.addEventListener('click', openPreview);
     el.headerDownloadBtn.addEventListener('click', exportPlate);
+
+    // result card + preview overlay
+    el.exportClose.addEventListener('click', closeExportCard);
+    el.exportSave.addEventListener('click', function () {
+      if (prepared) {
+        saveFile(prepared);
+        toast(prepared.w + ' × ' + prepared.h + ' · ' + bytes(prepared.bytes) + ' 파일 저장');
+      } else {
+        downloadPlate();
+      }
+    });
+    el.exportShare.addEventListener('click', function () {
+      if (prepared) shareNow(prepared);
+    });
+    el.exportShot.addEventListener('click', openPreviewOverlay);
+    el.previewClose.addEventListener('click', function () {
+      closePreviewOverlay();
+      if (prepared) openExportCard(prepared);
+    });
+    el.exportModal.addEventListener('click', function (e) {
+      if (e.target === el.exportModal) closeExportCard();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (el.previewOverlay.classList.contains('is-open')) {
+        closePreviewOverlay();
+        if (prepared) openExportCard(prepared);
+      } else if (el.exportModal.classList.contains('is-open')) {
+        closeExportCard();
+      }
+    });
 
     // toolbar ⇄ sheet
     $$('[data-sheet]', el.toolbar).forEach(function (b) {
@@ -1033,6 +1274,16 @@
     render: render,
     paintStrip: paintStrip,
     exportPlate: exportPlate,
+    prepareExport: prepareExport,
+    downloadPlate: downloadPlate,
+    sharePlate: sharePlate,
+    shareNow: shareNow,
+    openPreview: openPreview,
+    canShareFiles: canShareFiles,
+    canShareThis: canShareThis,
+    shareCancelled: shareCancelled,
+    prepared: function () { return prepared; },
+    openExportCard: function (p) { openExportCard(p || prepared); },
     layoutFor: layoutFor,
     currentLayout: currentLayout,
     isReady: true
