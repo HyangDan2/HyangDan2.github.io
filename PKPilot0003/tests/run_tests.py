@@ -683,6 +683,79 @@ FIT_JS = """(matrix) => {
 }"""
 
 
+# ── painted lines: where the foot of a frame really prints ──────────────────
+# A line of copy with tracking is painted glyph by glyph, so one row arrives at
+# fillText as a dozen calls. This records every call with its box, gathers the
+# calls that share a baseline back into a line, and reports the emblem boxes and
+# the film perforation rails too. That is what lets the suite tell a vertical
+# stack from one horizontal row, or a meta block beside the mark from one under
+# it — by where the pixels landed, not by reading the source.
+LINES_JS = """(matrix) => {
+  const out = [];
+  const c = document.createElement('canvas');
+  for (const item of matrix) {
+    const L = SPPlate.layout({w: item.w, h: item.h, img: null}, {
+      style: item.style, fields: item.fields, emblem: item.emblem, font: 'sans',
+      stock: 'KODAK PORTRA 400', frameNo: '#03', padPct: item.padPct
+    });
+    c.width = Math.max(1, Math.round(L.W));
+    c.height = Math.max(1, Math.round(L.H));
+    const ctx = c.getContext('2d');
+    const recs = [], emblems = [];
+    let inEmblem = false;
+    const origFT = ctx.fillText.bind(ctx);
+    ctx.fillText = function (s, x, y) {
+      if (!inEmblem) {
+        const m = this.measureText(String(s));
+        const px = parseFloat((/(\\d+(?:\\.\\d+)?)px/.exec(this.font) || [0, 0])[1]) || 1;
+        const asc = m.actualBoundingBoxAscent || px * 0.8;
+        const desc = m.actualBoundingBoxDescent || 0;
+        const wd = m.width, al = this.textAlign;
+        const x0 = al === 'center' ? x - wd / 2 : al === 'right' ? x - wd : x;
+        recs.push({s: String(s), x0: x0, x1: x0 + wd, y: y, y0: y - asc, y1: y + desc});
+      }
+      return origFT(s, x, y);
+    };
+    const em = SPEmblems.draw;
+    SPEmblems.draw = function (c2, id, x, y, wd, hh) {
+      const prev = inEmblem;
+      if (c2 === ctx) { inEmblem = true; emblems.push({id: id, x: x, x1: x + wd, y: y, y1: y + hh}); }
+      try { return em.apply(this, arguments); } finally { inEmblem = prev; }
+    };
+    try { SPPlate.paint(ctx, L); } finally { SPEmblems.draw = em; }
+
+    const lines = [];
+    for (const r of recs) {
+      let line = lines.find((l) => Math.abs(l.y - r.y) < 0.6);
+      if (!line) { line = {y: r.y, parts: []}; lines.push(line); }
+      line.parts.push(r);
+    }
+    const r1 = (v) => Math.round(v * 10) / 10;
+    const packed = lines.map((l) => {
+      const parts = l.parts.slice().sort((a, b) => a.x0 - b.x0);
+      const xs = parts.map((p) => r1(p.x0)), xe = parts.map((p) => r1(p.x1));
+      return {
+        s: parts.map((p) => p.s).join(''), y: r1(l.y), parts: parts.length,
+        x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xe),
+        y0: r1(Math.min.apply(null, parts.map((p) => p.y0))),
+        y1: r1(Math.max.apply(null, parts.map((p) => p.y1))),
+        xs: xs, xe: xe, ys: parts.map((p) => r1(p.y))
+      };
+    });
+    const perf = SPPlate.helpers.filmPerf(L);
+    out.push({
+      label: item.style + '/' + item.case + '/' + item.size,
+      W: L.W, H: L.H, band: L.band, pad: L.padX, inset: L.inset,
+      photoBottom: L.photoBox.y + L.PH,
+      botRuleY: r1(perf.botRuleY), flow: r1(perf.flow), railH: r1(perf.railH),
+      lines: packed,
+      emblems: emblems.map((e) => ({id: e.id, x: r1(e.x), x1: r1(e.x1), y: r1(e.y), y1: r1(e.y1)}))
+    });
+  }
+  return out;
+}"""
+
+
 TEXT_JS = """() => {
   const c = document.createElement('canvas');
   c.width = 900; c.height = 140;
@@ -713,6 +786,14 @@ TEXT_JS = """() => {
     ], 20, 90, 'left', H.measure(ctx, 'Hasselblad  X2D 100C', {size: 34, family: 'sans'}) * 0.3)),
   };
 }"""
+
+
+def film_pairs(fields):
+    """The three label/value pairs the Film Sprocket foot prints."""
+    iso = re.sub(r"^ISO\s*", "", fields.get("iso") or "")
+    shutter = re.sub(r"\s*s$", "", fields.get("shutter") or "")
+    aperture = re.sub(r"^[ƒf]\s*/?\s*", "", fields.get("aperture") or "")
+    return [("ISO", iso), ("SEC", shutter), ("F", aperture)]
 
 
 def browser_tests(port):
@@ -1051,6 +1132,186 @@ def browser_tests(port):
               not strap["collide"] and not strap["overflow"] and not strap["ellipsis"],
               json.dumps((strap["collide"] + strap["overflow"] + strap["ellipsis"])[:4],
                          ensure_ascii=False)[:300])
+
+        # ── five frames: the foot each one now keeps ──────────────
+        # The brief trims five mats and re-lays three of them: Classic Gallery
+        # and Dual Deck by closing their rows, Studio Dark by pulling the block
+        # up to its rail, Film Sprocket into a mark + meta block beside it with
+        # one horizontal spec row, and Pro Studio into a four-column bar. The
+        # first block pins the brief's numbers and then measures the band the
+        # plate really paints, on a portrait and a landscape photo, so "slimmer"
+        # means the margin on the plate and not just the constant in the source.
+        print("\n[browser] five frames: slim band, film row, pro bar")
+        GEO = {
+            "gallery": (4.5, 13, 0.6),
+            "dual": (3.8, 13.5, 0.25),
+            "film": (6, 12.5, 0.3),
+            "studio": (3.8, 11.5, 1.2),
+            "pro": (4.5, 14.5, 0),
+        }
+        WAS_EXTRA = {"gallery": 17, "dual": 21, "film": 16, "studio": 15.5, "pro": 25}
+        geo_new = page.evaluate("() => { const o = {}; for (const k of SPPlate.ORDER) "
+                               "o[k] = Object.assign({}, SPPlate.STYLES[k].geo); return o; }")
+        for fid, (pad, extra, radius) in GEO.items():
+            got = geo_new.get(fid) or {}
+            check(f"geo {fid}: padding {pad}% · band {extra}% · radius {radius}%",
+                  abs(got.get("pad", -1) - pad) < 1e-9 and
+                  abs(got.get("extra", -1) - extra) < 1e-9 and
+                  abs(got.get("radius", -1) - radius) < 1e-9, json.dumps(got))
+            dflt = page.evaluate("(s) => SPPlate.defaults(s)", fid)
+            check(f"geo {fid}: the frame opens on those numbers",
+                  abs(dflt["padPct"] - pad) < 1e-9 and abs(dflt["extraPct"] - extra) < 1e-9,
+                  json.dumps(dflt))
+
+        bands = page.evaluate("""() => {
+          const out = {};
+          for (const s of ['gallery','dual','film','studio','pro']) {
+            out[s] = {};
+            for (const sz of [['2:3', 1200, 1800], ['3:2', 1536, 1024]]) {
+              const L = SPPlate.layout({w: sz[1], h: sz[2], img: null},
+                {style: s, fields: SPApp.state.fields, emblem: 'hd2lab', font: 'sans'});
+              out[s][sz[0]] = {band: L.band, pad: L.padX, PH: L.PH, H: L.H, W: L.W};
+            }
+          }
+          return out;
+        }""")
+        for fid, (_pad, extra, _radius) in GEO.items():
+            for size in ("2:3", "3:2"):
+                g = bands[fid][size]
+                depth = (g["band"] - g["pad"]) / g["PH"]
+                check(f"{fid} {size}: the band holds {extra}% of the photo "
+                      f"(was {WAS_EXTRA[fid]}%)",
+                      abs(depth - extra / 100) < 0.004 and depth <= WAS_EXTRA[fid] / 100 - 0.02,
+                      f"depth={depth:.4f} {json.dumps(g)}")
+
+        FIELDS = {cname: fields for cname, fields, _e in FIT_CASES}
+        SIZES = (("2:3", 1200, 1800), ("2:3s", 1024, 1536), ("3:2", 1536, 1024))
+
+        # ── Film Sprocket: mark at the left, meta beside it, one spec row ──
+        # The mark used to sit above a vertical block on the left and the spec
+        # used to stack three rows on the right, halfway up the foot. Both are
+        # gone: the block now runs beside the mark on one left edge, and the
+        # three pairs share a single baseline at the foot's far corner, right-
+        # aligned to the inner edge. Measured from the painted glyphs.
+        print("\n[browser] film sprocket foot: parallel block & one-row spec")
+        foot_matrix = []
+        for cname, fields, emblem in FIT_CASES:
+            if not fields:
+                continue
+            for sname, w, h in SIZES:
+                foot_matrix.append({"style": "film", "case": cname, "size": sname,
+                                    "fields": fields, "emblem": emblem,
+                                    "w": w, "h": h, "padPct": None})
+        foot = page.evaluate(LINES_JS, foot_matrix)
+        check(f"film foot: {len(foot_matrix)} plates measured", len(foot) == len(foot_matrix),
+              f"measured {len(foot)}")
+        for item in foot:
+            _style, cname, size = item["label"].split("/")
+            pairs = film_pairs(FIELDS[cname])
+            tag = f"film foot {cname}/{size}"
+            lines = item["lines"]
+            rows = [l for l in lines if all(k + v in l["s"] for k, v in pairs)]
+            if not check(f"{tag}: ISO · SEC · F print as one horizontal row",
+                         len(rows) == 1 and rows[0]["parts"] >= 6,
+                         json.dumps([l["s"] for l in lines])[:300]):
+                continue
+            row = rows[0]
+            check(f"{tag}: the three pairs share one baseline, side by side",
+                  len(set(row["ys"]) - {row["y"]}) == 0 and len(row["xs"]) >= 6,
+                  json.dumps(row["ys"]))
+            check(f"{tag}: the row is right-aligned to the inner edge",
+                  abs(item["W"] - row["x1"] - item["inset"]) < 1.5,
+                  f"gap={item['W'] - row['x1'] - item['inset']:.1f}px")
+            check(f"{tag}: the row keeps clear of the bottom perforation rule",
+                  row["y1"] <= item["botRuleY"] - 1,
+                  f"y1={row['y1']} rule={item['botRuleY']}")
+            em = item["emblems"][0] if item["emblems"] else None
+            if not check(f"{tag}: the mark is painted at the left edge",
+                         bool(em) and abs(em["x"] - item["pad"]) < 0.6,
+                         json.dumps(item["emblems"])):
+                continue
+            block = [l for l in lines
+                     if l is not row and l["y0"] >= item["photoBottom"] - 0.5
+                     and l["x0"] >= em["x1"]]
+            if not check(f"{tag}: the meta block runs beside the mark, not under it",
+                         len(block) >= 3,
+                         json.dumps([(l["s"], l["x0"], l["y"]) for l in lines])[:300]):
+                continue
+            lefts = [l["x0"] for l in block]
+            check(f"{tag}: every line of the block shares one left edge",
+                  max(lefts) - min(lefts) < 0.6, str(lefts))
+            check(f"{tag}: the mark sits level with the block it labels",
+                  min(l["y0"] for l in block) <= (em["y"] + em["y1"]) / 2 <= max(l["y1"] for l in block),
+                  json.dumps(em))
+            check(f"{tag}: the block never reaches the spec row",
+                  max(l["x1"] for l in block) < row["x0"] - 1,
+                  f"{max(l['x1'] for l in block):.1f} vs {row['x0']:.1f}")
+            check(f"{tag}: the block stays above the bottom rule",
+                  max(l["y1"] for l in block) <= item["botRuleY"] - 1,
+                  f"{max(l['y1'] for l in block)} vs {item['botRuleY']}")
+            check(f"{tag}: the spec row is the foot's lowest line",
+                  row["y"] > max(l["y"] for l in block),
+                  f"row={row['y']} block={max(l['y'] for l in block)}")
+
+        # ── Pro Studio: the 2×2 grid is now one four-column bar ──
+        print("\n[browser] pro studio: four-column spec bar")
+        pro_matrix = []
+        for cname, fields, emblem in FIT_CASES:
+            if not fields:
+                continue
+            for sname, w, h in SIZES:
+                pro_matrix.append({"style": "pro", "case": cname, "size": sname,
+                                   "fields": fields, "emblem": emblem,
+                                   "w": w, "h": h, "padPct": None})
+        pro = page.evaluate(LINES_JS, pro_matrix)
+        check(f"pro bar: {len(pro_matrix)} plates measured", len(pro) == len(pro_matrix),
+              f"measured {len(pro)}")
+        LABELS = ["ISO", "SHUTTER", "APERTURE", "FOCAL"]
+        for item in pro:
+            _style, cname, size = item["label"].split("/")
+            fields = FIELDS[cname]
+            tag = f"pro bar {cname}/{size}"
+            lab = [l for l in item["lines"] if all(k in l["s"] for k in LABELS)]
+            if not check(f"{tag}: the four labels share one row (no second row)",
+                         len(lab) == 1,
+                         json.dumps([l["s"] for l in item["lines"]])[:300]):
+                continue
+            line = lab[0]
+            col_w = (item["W"] - item["pad"] * 2) / 4
+            # a tracked label is painted glyph by glyph, so the four cells are
+            # read back as the four leftmost pens sitting in four equal columns
+            starts = []
+            for i in range(4):
+                lo = item["pad"] + i * col_w
+                starts.append(min((x for x in line["xs"] if lo - 0.6 <= x < lo + col_w),
+                                  default=-1))
+            check(f"{tag}: four cells, one per column, on one baseline",
+                  len(set(line["ys"])) == 1 and all(s >= 0 for s in starts) and
+                  all(abs(starts[i] - (item["pad"] + i * col_w)) < 1.0 for i in range(4)),
+                  json.dumps([round(s, 1) for s in starts]) + f" colW={col_w:.1f}")
+
+            vals = [fields.get("iso") or "", fields.get("shutter") or "",
+                    fields.get("aperture") or "", fields.get("focal") or ""]
+            vline = [l for l in item["lines"] if all(v in l["s"] for v in vals)]
+            if not check(f"{tag}: the four values print as one row under it",
+                         len(vline) == 1 and vline[0]["parts"] >= 4,
+                         json.dumps([l["s"] for l in item["lines"]])[:300]):
+                continue
+            vrow = vline[0]
+            check(f"{tag}: the value row sits below the label row",
+                  vrow["y"] > line["y"], f"{vrow['y']} vs {line['y']}")
+            check(f"{tag}: no value crosses into the next column",
+                  all(int((x0 - item["pad"]) // col_w) == int((x1 - item["pad"] - 0.6) // col_w)
+                      for x0, x1 in zip(vrow["xs"], vrow["xe"])),
+                  json.dumps([(x0, x1) for x0, x1 in zip(vrow["xs"], vrow["xe"])])[:300])
+            rule = item["H"] - item["band"] * 0.2
+            check(f"{tag}: the bar clears the footer rule",
+                  vrow["y1"] < rule - 1, f"y1={vrow['y1']} rule={rule:.1f}")
+            cap = fields.get("caption") or ""
+            foot_line = [l for l in item["lines"] if cap and cap.upper() in l["s"].upper()]
+            check(f"{tag}: the footer caption sits under the rule",
+                  len(foot_line) == 1 and foot_line[0]["y0"] > rule,
+                  json.dumps([(l["s"], l["y0"]) for l in item["lines"]])[:200])
 
         studio_cut = [e for e in fit["ellipsis"] if e[0].startswith("studio/")]
         check("fit: Studio Dark keeps the full exposure row (ISO 400 / 1600)",
