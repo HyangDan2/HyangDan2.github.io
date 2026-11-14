@@ -276,6 +276,14 @@ def static_tests():
               ("commons.wikimedia.org" in sources_doc or "nikon.com" in sources_doc or
                "omsystem.com" in sources_doc) and maker in sources_doc.lower())
     check("hd2lab keeps the project wordmark", "t('HD2LAB'" in emblems)
+    # p(d, fill, stroke, sw, rule) — a rule written into the stroke slot silently
+    # fills the Leica roundel solid, so the argument positions are checked here
+    check("no emblem passes a fill rule as the stroke colour",
+          not re.search(r"p\('M[^']*', '[a-z]+', 'evenodd'\)", emblems))
+    leica_block = re.search(r"id: 'leica'.*?\n    \}", emblems, re.S)
+    check("leica keeps its knockout fill rule",
+          bool(leica_block) and ", null, 0, 'evenodd')" in leica_block.group(0),
+          (leica_block.group(0)[-80:] if leica_block else "no leica spec"))
     for name, want in (("sony", 568.2), ("canon", 481.4), ("nikon", 361.6),
                        ("fujifilm", 600.9), ("samsung", 652.9), ("hasselblad", 1276.6),
                        ("apple", 81.4), ("lumix", 513.9), ("omsystem", 868.8)):
@@ -811,6 +819,43 @@ def browser_tests(port):
               json.dumps(emf["collide"], ensure_ascii=False)[:400])
         check("emblems: no line falls back to the ellipsis", not emf["ellipsis"],
               json.dumps(emf["ellipsis"], ensure_ascii=False)[:400])
+
+        # ── Leica is a knock-out roundel, not a filled disc ───────────────
+        # The mark is one path with the script cut out by the even-odd rule.
+        # If that rule never reaches the canvas or the tile SVG, the roundel
+        # renders solid and the brand name disappears — so both are measured.
+        print("\n[browser] leica knock-out")
+        cut = page.evaluate("""() => {
+          const c = document.createElement('canvas');
+          c.width = c.height = 200;
+          const ctx = c.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, 200, 200);
+          SPEmblems.draw(ctx, 'leica', 0, 0, 200, 200,
+                         {ink: '#000000', accent: '#000000', base: '#ffffff'});
+          const d = ctx.getImageData(0, 0, 200, 200).data;
+          let paper = 0, ink = 0;
+          for (let y = 0; y < 200; y++) {
+            for (let x = 0; x < 200; x++) {
+              const dx = x - 100, dy = y - 100;
+              if (dx * dx + dy * dy > 70 * 70) continue;
+              const i = (y * 200 + x) * 4;
+              const v = d[i] + d[i + 1] + d[i + 2];
+              if (v > 720) paper++; else if (v < 200) ink++;
+            }
+          }
+          return {paper, ink};
+        }""")
+        check("leica: the script is cut out of the roundel on canvas",
+              cut["paper"] > 250 and cut["ink"] > 2000, str(cut))
+        svg_probe = page.evaluate("""() => {
+          const s = SPEmblems.svg('leica', {ink: '#000', accent: '#000', base: '#fff'});
+          const tile = document.querySelector('#emblemGrid [data-emblem="leica"] svg path');
+          return {emblem: s, tile: tile ? tile.getAttribute('fill-rule') : null};
+        }""")
+        check("leica: the SVG tile carries fill-rule=evenodd",
+              'fill-rule="evenodd"' in svg_probe["emblem"] and
+              (svg_probe["tile"] or "") == "evenodd", str(svg_probe["tile"]))
 
         # the same matrix with every padding removed: the film sprocket loop
         # used to divide by a zero pitch and freeze the tab, so this runs on a
