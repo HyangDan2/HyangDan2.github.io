@@ -118,6 +118,26 @@
   var MIN_SHRINK = 0.45;
 
   /**
+   * Largest size between the shrink floor and `ceiling` whose painted width
+   * fits maxW, or -1 when even the floor is too wide. Font advances are not
+   * linear in size — a monospace face snaps to whole-pixel advances, so an 8%
+   * smaller line can measure the same width — hence a search, not a ratio.
+   */
+  function fitSize(ctx, s, opt, ls, maxW, ceiling) {
+    var floor = opt.size * MIN_SHRINK;
+    if (!(ceiling > floor)) ceiling = floor;
+    ctx.font = fontOf(opt, ceiling);
+    if (trackedWidth(ctx, s, ls) <= maxW) return ceiling;
+    var lo = floor, hi = ceiling, best = -1;
+    for (var i = 0; i < 10; i++) {
+      var mid = (lo + hi) / 2;
+      ctx.font = fontOf(opt, mid);
+      if (trackedWidth(ctx, s, ls) <= maxW) { best = mid; lo = mid; } else { hi = mid; }
+    }
+    return best;
+  }
+
+  /**
    * Draw one line of text; shrinks (then ellipsises) to respect opt.maxW.
    * Returns the advance width actually painted.
    */
@@ -130,15 +150,16 @@
     var w = trackedWidth(ctx, s, ls);
     if (opt.maxW && w > opt.maxW) {
       var k = opt.maxW / w;
-      size = Math.max(size * MIN_SHRINK, size * k);
       ls = ls * k;
-      ctx.font = fontOf(opt, size);
-      w = trackedWidth(ctx, s, ls);
-      if (w > opt.maxW && ls > 0) {
+      var fitted = fitSize(ctx, s, opt, ls, opt.maxW, size * k);
+      if (fitted < 0 && ls > 0) {
         /* still too wide at the floor — give up the tracking before cutting */
         ls = 0;
-        w = trackedWidth(ctx, s, ls);
+        fitted = fitSize(ctx, s, opt, ls, opt.maxW, size * k);
       }
+      size = fitted > 0 ? fitted : size * MIN_SHRINK;
+      ctx.font = fontOf(opt, size);
+      w = trackedWidth(ctx, s, ls);
       while (w > opt.maxW && s.length > 2) {
         s = s.slice(0, -2) + '…';
         w = trackedWidth(ctx, s, ls);
@@ -166,7 +187,26 @@
       total += w;
     });
     var k = 1;
-    if (maxW && total > maxW) k = Math.max(MIN_SHRINK, maxW / total);
+    if (maxW && total > maxW) {
+      var measureAt = function (kk) {
+        var sum = 0;
+        parts.forEach(function (p) {
+          ctx.font = fontOf(p, p.size * kk);
+          sum += trackedWidth(ctx, p.s, (p.ls || 0) * kk);
+        });
+        return sum;
+      };
+      var want = maxW / total;
+      if (measureAt(want) <= maxW) k = want;
+      else {
+        var lo = MIN_SHRINK, hi = want, best = -1;
+        for (var n = 0; n < 10; n++) {
+          var mid = (lo + hi) / 2;
+          if (measureAt(mid) <= maxW) { best = mid; lo = mid; } else { hi = mid; }
+        }
+        k = best > 0 ? best : MIN_SHRINK;
+      }
+    }
     var sx = align === 'center' ? x - total * k / 2 : align === 'right' ? x - total * k : x;
     ctx.textBaseline = 'alphabetic';
     parts.forEach(function (p, i) {
@@ -601,7 +641,7 @@
     var specSize = Math.min(u * 15, band * 0.062);
     var dateStr = dateOf(f).full;
     var dateSize = Math.min(u * 12, band * 0.048);
-    var rightW = Math.min(inner * 0.5, Math.max(
+    var rightW = Math.min(inner * 0.62, Math.max(
       measure(ctx, specStr, { size: specSize, family: 'mono', ls: u * 0.6 }),
       measure(ctx, dateStr, { size: dateSize, family: 'mono', ls: u * 0.6 })
     ));
