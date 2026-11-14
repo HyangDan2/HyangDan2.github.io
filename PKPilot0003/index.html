@@ -41,7 +41,7 @@
   <meta name="twitter:description" content="사진 한 장을, 8종 시그니처 프레임의 플레이트로." />
   <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0003/og-image.png?v=20261114-2" />
 
-  <link rel="stylesheet" href="style.css?v=20261114-3" />
+  <link rel="stylesheet" href="style.css?v=20261114-4" />
 </head>
 <body>
   <!-- ── 자체 제작 SVG 아이콘 스프라이트 ─────────────────────────────── -->
@@ -85,9 +85,12 @@
     <!-- 포털 -->
     <symbol id="i-portal-home" viewBox="0 0 24 24"><path d="M4 10.4L12 4l8 6.4V20a1 1 0 0 1-1 1h-4.6v-6.2H9.6V21H5a1 1 0 0 1-1-1z"/></symbol>
     <symbol id="i-portal-apps" viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="7.2" height="7.2" rx="2"/><rect x="13.2" y="3.6" width="7.2" height="7.2" rx="2"/><rect x="3.6" y="13.2" width="7.2" height="7.2" rx="2"/><rect x="13.2" y="13.2" width="7.2" height="7.2" rx="2"/></symbol>
+    <!-- 워크스페이스 -->
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.4 7.6a1.8 1.8 0 0 1 1.8-1.8h4.4l2.1 2.3h6.9a1.8 1.8 0 0 1 1.8 1.8v9.5a1.8 1.8 0 0 1-1.8 1.8H5.2a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M3.4 10.6h17.2"/></symbol>
+    <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M3.4 8.2a1.8 1.8 0 0 1 1.8-1.8h4.2l1.9 2.1h6.3a1.8 1.8 0 0 1 1.8 1.8v1.3"/><path d="M4.2 20.4h13.9a1.8 1.8 0 0 0 1.7-1.2l1.7-5.1a1 1 0 0 0-.9-1.3H6.9a1.8 1.8 0 0 0-1.7 1.2l-1.9 5.4z"/></symbol>
   </svg>
 
-  <a class="skip-link" href="#toolbar">도구 모음으로 건너뛰기</a>
+  <a class="skip-link" href="#stage">스튜디오로 건너뛰기</a>
 
   <header class="app-header">
     <a class="brand" href="https://hyangdan2.github.io/" target="_blank" rel="noopener noreferrer" title="HD2Lab Web-HQ">
@@ -101,6 +104,23 @@
     </a>
 
     <div class="header-actions">
+      <!-- PC 워크스페이스 열기 (≥1024px) -->
+      <div class="pc-open" id="pcOpen">
+        <button class="hbtn" id="openFilesBtn" type="button" title="사진 여러 장 열기 — 워크스페이스" aria-label="사진 여러 장 열기">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg>
+          <span class="hbtn-label">파일 열기</span>
+        </button>
+        <button class="hbtn" id="openFolderBtn" type="button" title="폴더 열기 — Workspace" aria-label="폴더 열기">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder-open"/></svg>
+          <span class="hbtn-label">폴더 열기</span>
+        </button>
+        <label class="pc-rec" for="recursiveToggle" title="폴더를 열 때 하위 폴더의 사진까지 포함">
+          <input type="checkbox" id="recursiveToggle" />
+          <span>하위 폴더</span>
+        </label>
+      </div>
+      <input id="wsFileInput" type="file" accept="image/*" multiple hidden />
+      <input id="wsFolderInput" type="file" accept="image/*" webkitdirectory directory multiple hidden />
       <button class="hbtn" id="headerSampleBtn" type="button" title="샘플 사진 불러오기" aria-label="샘플 사진 불러오기">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg>
         <span class="hbtn-label">샘플</span>
@@ -134,7 +154,7 @@
     <h1 class="sr-only">Shutterplate — HD2Lab 포토 프레임 스튜디오</h1>
 
     <!-- ── 프리뷰 스테이지 ─────────────────────────────────────────── -->
-    <section class="stage" id="stage" aria-label="플레이트 프리뷰">
+    <section class="stage" id="stage" aria-label="플레이트 프리뷰" tabindex="-1">
       <div class="stage-bar">
         <span class="chip" id="photoChip"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg><span>사진 없음</span></span>
         <span class="chip chip--ghost" id="styleChip">CLEAN HORIZON</span>
@@ -168,6 +188,10 @@
           <div class="empty-row">
             <button class="btn btn-accent" id="emptySampleBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg><span>샘플 사진 불러오기</span></button>
           </div>
+          <div class="empty-row empty-row--pc">
+            <button class="btn btn-quiet" id="emptyOpenFilesBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg><span>파일 열기</span></button>
+            <button class="btn btn-quiet" id="emptyOpenFolderBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder-open"/></svg><span>폴더 열기 (Workspace)</span></button>
+          </div>
           <div class="inapp-banner" id="inappBanner" data-inapp-banner role="status" hidden>
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>
             <p class="inapp-msg"><b data-inapp-name>카카오톡</b> 안에서는 사진 저장이 막힙니다 — 우측 상단 ⋯ → ‘다른 브라우저로 열기’로 열어 주세요</p>
@@ -193,6 +217,8 @@
         </span>
       </div>
       <div class="session-actions">
+        <button class="btn btn-ghost pc-only" id="sessionOpenFilesBtn" type="button" title="사진 여러 장 열기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg><span>파일 열기</span></button>
+        <button class="btn btn-ghost pc-only" id="sessionOpenFolderBtn" type="button" title="폴더 열기 (Workspace)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder-open"/></svg><span>폴더</span></button>
         <button class="btn btn-ghost" id="changeBtn" type="button" title="사진 변경"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-swap"/></svg><span>변경</span></button>
         <button class="btn btn-ghost" id="clearBtn" type="button" title="비우기" aria-label="캔버스 비우기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg><span class="hide-xs">비우기</span></button>
       </div>
@@ -206,6 +232,27 @@
         <span class="strip-hint">휠 · 드래그 · 스와이프</span>
       </div>
       <div class="strip-track" id="frameStrip" role="radiogroup" aria-label="프레임 스타일 선택"></div>
+    </section>
+
+    <!-- ── 워크스페이스 사진 스트립 (PC · 여러 장/폴더 열었을 때) ────── -->
+    <section class="ws-strip" id="wsStrip" aria-label="워크스페이스 사진 목록" hidden>
+      <div class="ws-head">
+        <button class="ws-toggle" id="wsToggle" type="button" aria-expanded="true" aria-controls="wsTrack">
+          <svg class="ic ws-chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+          <svg class="ic ws-folder" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder-open"/></svg>
+          <b id="wsName">워크스페이스</b>
+          <span class="ws-count" id="wsCount">0 / 0</span>
+        </button>
+        <span class="ws-status" id="wsStatus" role="status" hidden></span>
+        <label class="ws-sort-wrap">
+          <span class="sr-only">워크스페이스 정렬</span>
+          <select id="wsSort" aria-label="워크스페이스 정렬">
+            <option value="name">이름 ↑</option>
+            <option value="reverse">이름 ↓</option>
+          </select>
+        </label>
+      </div>
+      <div class="ws-track" id="wsTrack" role="listbox" aria-label="워크스페이스 사진 선택"></div>
     </section>
 
     <!-- ── 도구 모음 ──────────────────────────────────────────────── -->
@@ -227,8 +274,23 @@
 
   <!-- ── 제어 패널 (플로팅 시트 / 바텀시트) ─────────────────────────── -->
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
-  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true">
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true" data-active="exif">
     <span class="sheet-grip" aria-hidden="true"></span>
+    <!-- PC 고정 인스펙터 탭 (≥1024px). 모바일은 하단 도구 모음이 같은 역할을 합니다. -->
+    <div class="ins-tabs" id="insTabs" role="tablist" aria-label="플레이트 인스펙터">
+      <button class="ins-tab" type="button" data-tab="exif" role="tab" aria-selected="true" aria-controls="paneExif">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg><span>EXIF 편집</span>
+      </button>
+      <button class="ins-tab" type="button" data-tab="geometry" role="tab" aria-selected="false" aria-controls="paneGeometry">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-frame"/></svg><span>프레임/여백</span>
+      </button>
+      <button class="ins-tab" type="button" data-tab="emblem" role="tab" aria-selected="false" aria-controls="paneEmblem">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stamp"/></svg><span>엠블럼</span>
+      </button>
+      <button class="ins-tab" type="button" data-tab="export" role="tab" aria-selected="false" aria-controls="paneExport">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>내보내기</span>
+      </button>
+    </div>
     <header class="sheet-head">
       <div class="sheet-heading">
         <p class="sheet-kicker" id="sheetKicker">CONTROL</p>
@@ -238,7 +300,7 @@
     </header>
 
     <div class="sheet-body">
-      <div class="pane" data-pane="exif">
+      <div class="pane" data-pane="exif" id="paneExif" role="tabpanel" aria-label="EXIF 편집">
         <div class="field">
           <span class="field-label"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg>Camera</span>
           <div class="field-pair">
@@ -280,7 +342,7 @@
         <p class="hint">값을 고치면 캔버스가 즉시 다시 그려집니다. 비어 있는 항목은 프레임에서 생략됩니다.</p>
       </div>
 
-      <div class="pane" data-pane="geometry">
+      <div class="pane" data-pane="geometry" id="paneGeometry" role="tabpanel" aria-label="프레임 여백">
         <div class="slider">
           <label for="padRange">보더 패딩 <b id="padVal">3.4%</b></label>
           <input type="range" id="padRange" min="0" max="14" step="0.2" value="3.4" />
@@ -324,12 +386,13 @@
         <button class="btn btn-quiet btn-block" id="resetGeoBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg><span>프레임 기본값으로</span></button>
       </div>
 
-      <div class="pane" data-pane="emblem">
+      <div class="pane" data-pane="emblem" id="paneEmblem" role="tabpanel" aria-label="메이커 엠블럼">
         <div class="emblem-grid" id="emblemGrid" role="radiogroup" aria-label="메이커 엠블럼"></div>
         <p class="hint" id="emblemHint">EXIF Make 기준 자동 선택 — 수동으로 덮어쓸 수 있습니다.</p>
       </div>
 
-      <div class="pane" data-pane="export">
+      <div class="pane" data-pane="export" id="paneExport" role="tabpanel" aria-label="내보내기">
+        <div class="export-pane-controls">
         <div class="seg seg--wide" id="formatSeg" role="group" aria-label="파일 형식">
           <button type="button" data-format="jpeg" aria-pressed="true">JPEG 고화질</button>
           <button type="button" data-format="png" aria-pressed="false">PNG 무손실</button>
@@ -337,6 +400,7 @@
         <div class="slider" id="qualityRow">
           <label for="qualityRange">JPEG 품질 <b id="qualityVal">95</b></label>
           <input type="range" id="qualityRange" min="70" max="100" step="1" value="95" />
+        </div>
         </div>
         <div class="readout">
           <p><span>출력 해상도</span><b id="exportSize">—</b></p>
@@ -348,8 +412,28 @@
           <button class="btn btn-quiet" id="downloadBtn" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>파일로 내려받기</span></button>
           <button class="btn btn-quiet" id="previewBtn" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg><span>미리보기</span></button>
         </div>
+        <button class="btn btn-accent btn-block" id="bulkBtn" type="button" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder-open"/></svg><span id="bulkLabel">전체 일괄 저장</span></button>
+        <p class="hint" id="bulkStatus" role="status" hidden></p>
         <p class="hint" id="exportHint">원본 1:1 해상도 기준 · 모바일 메모리 안전을 위해 최대 4096px</p>
       </div>
+    </div>
+
+    <!-- PC 고정 인스펙터 하단 도크 — 시트를 여닫지 않고 바로 저장 -->
+    <div class="ins-dock" id="insDock">
+      <div class="ins-dock-row">
+        <div class="seg seg--wide seg--dock" id="formatSegDock" role="group" aria-label="파일 형식">
+          <button type="button" data-format="jpeg" aria-pressed="true">JPEG</button>
+          <button type="button" data-format="png" aria-pressed="false">PNG</button>
+        </div>
+        <button class="btn btn-accent" id="dockSaveBtn" type="button" disabled title="현재 사진 저장">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>저장</span>
+        </button>
+      </div>
+      <div class="slider ins-dock-quality" id="qualityRowDock">
+        <label for="qualityRangeDock">JPEG 품질 <b id="qualityValDock">95</b></label>
+        <input type="range" id="qualityRangeDock" min="70" max="100" step="1" value="95" />
+      </div>
+      <p class="ins-dock-meta"><span id="dockSize">—</span><span id="dockCount">—</span></p>
     </div>
   </section>
 
@@ -398,6 +482,6 @@
   <script src="js/emblems.js?v=20261114-2" defer></script>
   <script src="js/exif-core.js?v=20261114-2" defer></script>
   <script src="js/plate.js?v=20261114-2" defer></script>
-  <script src="app.js?v=20261114-3" defer></script>
+  <script src="app.js?v=20261114-4" defer></script>
 </body>
 </html>
