@@ -21,6 +21,22 @@ Dual Deck · Studio Dark 세 프레임만 얇은 밴드를 유지합니다. 로�
 | `ui-frame-pro-desktop.png` · `ui-frame-pro-landscape.png` | 1440×900 | Pro Studio 원복본 — 넉넉한 밴드 + 스펙 2×2 격자 |
 | `ui-frame-gallery-desktop.png` · `ui-frame-dual-desktop.png` · `ui-frame-studio-desktop.png` | 1440×900 | 밴드 다이어트를 유지한 세 프레임 |
 
+### 라이브 배포 확인 (b534a98)
+
+`https://hyangdan2.github.io/PKPilot0003/` 를 Playwright(Chromium)로 직접 열어 받은 실측본입니다.
+
+| 파일 | 내용 |
+| --- | --- |
+| `ui-landing-live-desktop.png` | 라이브 첫 화면이 랜딩 — 히어로 · 2단 카드 · 8장 쇼케이스 |
+| `ui-landing-live-session.png` | 타이틀 클릭으로 돌아온 라이브 랜딩 — `sample-02.jpg` 1024 × 1536 · Pro Studio 프레임 |
+| `ui-landing-live-menu.png` | 라이브 `⋮` 메뉴 — WORKSPACE · SAMPLES · NAVIGATION |
+| `ui-frame-film-live.png` · `ui-frame-pro-live.png` | 라이브 필름 스프로킷(메타 4줄 + 세로 스택) · 프로 스튜디오(2×2 격자) |
+
+실측: 라이브 파일 SHA-256 = 저장소 파일 — `index.html` · `style.css` · `app.js` · `js/plate.js` 모두 일치(HTTP 200),
+콘솔 에러 0건. 라이브 `SPPlate.STYLES` geo — film `6 / 16 / 0.3`, pro `8 / 25 / 0`,
+gallery `4.5 / 13 / 0.6`, dual `3.8 / 13.5 / 0.25`, studio `3.8 / 11.5 / 1.2`.
+세로 사진에서 측정한 실제 밴드(사진 높이 대비) — Gallery 13% · Dual 13.5% · Film 16% · Studio 11.5% · Pro 25%.
+
 
 ## 카카오톡 인앱 저장 대응 (2026-11-14 세 번째 배포)
 
