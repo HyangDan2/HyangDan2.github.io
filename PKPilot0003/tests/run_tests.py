@@ -555,7 +555,7 @@ FIT_SIZES = [("2:3", 1200, 1800), ("2:3s", 1024, 1536), ("3:4", 1500, 2000), ("3
 
 FIT_JS = """(matrix) => {
   const out = {plates: 0, ellipsis: [], overflow: [], collide: [], byStyle: {}, holes: {},
-               filmSlack: 1e9, perf: []};
+               filmSlack: 1e9, ruleSlack: 1e9, badgeRoom: 1e9, perf: [], strap: []};
   const c = document.createElement('canvas');
   const seen = {};
   for (const item of matrix) {
@@ -628,22 +628,52 @@ FIT_JS = """(matrix) => {
       for (const t of texts) if (hit(hb, t)) out.collide.push([label, 'hole', 'sprocket', t.s]);
     }
     /* Film Sprocket: the two rows of perforations are measured where they were
-       actually painted — same hole height, same distance from each edge, and
-       the lowest line of copy clear above the bottom row. */
+       actually painted — same hole height, same distance from each edge, each
+       hole centred in its own rail, and the lowest line of copy clear above
+       the bottom row. */
     if (item.style === 'film') {
       const upper = holes.filter(h => h.y + h.h <= L.H / 2);
       const lower = holes.filter(h => h.y >= L.H / 2);
       const mean = (list) => list.length ? list.reduce((a, h) => a + h.h, 0) / list.length : 0;
+      const fp = SPPlate.helpers.filmPerf(L);
+      const gapAbove = upper.length ? Math.min.apply(null, upper.map(h => h.y)) : -1;
+      const gapBelow = upper.length ? fp.topRuleY - Math.max.apply(null, upper.map(h => h.y + h.h)) : -1;
+      const footAbove = lower.length ? Math.min.apply(null, lower.map(h => h.y)) - fp.botRuleY : -1;
+      const footBelow = lower.length ? L.H - Math.max.apply(null, lower.map(h => h.y + h.h)) : -1;
       out.perf.push({
         label: label,
+        H: L.H,
+        railH: fp.railH, topRuleY: fp.topRuleY, botRuleY: fp.botRuleY,
+        topCy: fp.topCy, botCy: fp.botCy, flow: fp.flow,
         top: upper.length, bot: lower.length,
         topH: mean(upper), botH: mean(lower),
         topEdge: upper.length ? Math.min.apply(null, upper.map(h => h.y)) : -1,
-        botEdge: lower.length ? Math.min.apply(null, lower.map(h => L.H - (h.y + h.h))) : -1
+        botEdge: lower.length ? Math.min.apply(null, lower.map(h => L.H - (h.y + h.h))) : -1,
+        gapAbove: gapAbove, gapBelow: gapBelow,
+        footAbove: footAbove, footBelow: footBelow
       });
       const holeTop = lower.length ? Math.min.apply(null, lower.map(h => h.y)) : L.H;
       const lowest = texts.reduce((m, t) => Math.max(m, t.y1), -1e9);
       out.filmSlack = Math.min(out.filmSlack, holeTop - lowest);
+      /* the print block must also stay above the bottom rule, not only the row */
+      out.ruleSlack = Math.min(out.ruleSlack, fp.botRuleY - lowest);
+      /* and the badge must not touch the top rule or the photo's frame line */
+      out.badgeRoom = Math.min(out.badgeRoom, L.photoBox.y - fp.topRuleY);
+    }
+    /* Strap Bar: the bar's own air — the gap from the photo down to the first
+       line and from the last line down to the stitching. Both are what the
+       frame was tightened for, so they are measured, not eyeballed. */
+    if (item.style === 'strap') {
+      const sb = SPPlate.helpers.strapBand(L);
+      const lowest = texts.reduce((m, t) => Math.max(m, t.y1), -1e9);
+      const highest = texts.reduce((m, t) => Math.min(m, t.y0), 1e9);
+      out.strap.push({
+        label: label, case: item.case, W: L.W, band: L.band, PH: L.PH, padX: L.padX,
+        ratio: (L.band - L.padX) / L.PH,
+        topGap: highest - (L.photoBox.y + L.PH),
+        stitchGap: sb.stitchY - lowest,
+        footGap: L.H - sb.stitchY
+      });
     }
   }
   out.ellipsis = out.ellipsis.slice(0, 6);
@@ -950,6 +980,27 @@ def browser_tests(port):
         worst_e = max(abs(r["topEdge"] - r["botEdge"]) for r in rows) if rows else -1
         check("film: top and bottom edge distances are identical (대칭)",
               rows and worst_e <= 0.5, f"worst Δedge={worst_e:.2f}px")
+        # the rail is the strip each row owns (edge ↔ its own rule): both rails
+        # are cut to one height, and the hole is centred inside its rail, so the
+        # gap above the top hole equals the gap below it, and the same at the
+        # foot — a mirror, not just "same hole, same edge distance".
+        worst_rail = max(abs(r["topRuleY"] - (r["H"] - r["botRuleY"])) for r in rows) if rows else -1
+        check("film: the top rail and the bottom rail are the same height (대칭)",
+              rows and worst_rail <= 0.5, f"worst Δrail={worst_rail:.2f}px")
+        worst_c = max(max(abs(r["topCy"] - r["topRuleY"] / 2),
+                          abs(r["botCy"] - (r["H"] - (r["H"] - r["botRuleY"]) / 2)))
+                      for r in rows) if rows else -1
+        check("film: each sprocket row is centred in its own rail (대칭)",
+              rows and worst_c <= 0.5, f"worst Δcentre={worst_c:.2f}px")
+        worst_gap = max(max(abs(r["gapAbove"] - r["gapBelow"]),
+                            abs(r["footAbove"] - r["footBelow"]))
+                        for r in rows) if rows else -1
+        check("film: the painted holes keep equal gaps to edge and rule (대칭)",
+              rows and worst_gap <= 0.5, f"worst Δgap={worst_gap:.2f}px")
+        check("film: the stock badge keeps clear room between rail and photo",
+              film["badgeRoom"] > 1.0, f"room={film['badgeRoom']:.1f}px")
+        check("film: the print block stays above the bottom rule, not just the row",
+              film["ruleSlack"] > 0, f"slack={film['ruleSlack']:.1f}px")
         check("film: the bottom row clears the lowest date line on every plate",
               film["filmSlack"] > 1.0, f"slack={film['filmSlack']:.1f}px")
         check("film: no line of copy sits on a perforation hole",
@@ -958,6 +1009,48 @@ def browser_tests(port):
         check("film: no text collides and nothing leaves the plate (landscape/portrait/padPct 0)",
               not film["collide"] and not film["overflow"],
               json.dumps((film["collide"] + film["overflow"])[:4], ensure_ascii=False)[:300])
+
+        # ── Strap Bar: the bar is a strap, not a second page ───────────────
+        # The bar used to hold 19% of the photo's height and left a wide empty
+        # gap above the first row and another under the last one. It now holds
+        # 12%, the rows sit high in it and the stitching closes it, so both
+        # gaps are measured here on landscape, portrait and square plates.
+        print("\n[browser] strap bar air")
+        strap_matrix = []
+        for cname, fields, emblem in FIT_CASES:
+            for sname, w, h in (("2:3", 1200, 1800), ("3:2", 1536, 1024), ("1:1", 1400, 1400)):
+                for pad in (None, 0, 4):
+                    strap_matrix.append({"style": "strap", "case": cname, "size": sname,
+                                         "fields": fields, "emblem": emblem,
+                                         "w": w, "h": h, "padPct": pad})
+        strap = page.evaluate(FIT_JS, strap_matrix)
+        srows = strap["strap"]
+        check(f"strap: {len(strap_matrix)} bars painted",
+              len(srows) == len(strap_matrix) and strap["plates"] == len(strap_matrix),
+              f"bars {len(srows)} plates {strap['plates']}")
+        worst_ratio = max(r["ratio"] for r in srows) if srows else -1
+        check("strap: the bar holds no more than 13% of the photo's height",
+              srows and worst_ratio <= 0.13,
+              f"worst={worst_ratio:.3f} " + json.dumps([r["label"] for r in srows if r["ratio"] > 0.13])[:200])
+        typed = [r for r in srows if r["case"] != "noexif"]
+        check(f"strap: {len(typed)} bars carry EXIF lines to measure",
+              len(typed) == len(srows) - 3 * 3, f"typed={len(typed)} of {len(srows)}")
+        tight_top = [r for r in typed if not (0.5 < r["topGap"] < r["band"] * 0.34)]
+        check("strap: the gap under the photo is tight (first row near the top edge)",
+              not tight_top,
+              json.dumps([(r["label"], round(r["topGap"], 1), round(r["band"], 1)) for r in tight_top])[:300])
+        on_stitch = [r for r in typed if r["stitchGap"] <= 0.5]
+        check("strap: no line of copy is painted on the stitching",
+              not on_stitch,
+              json.dumps([(r["label"], round(r["stitchGap"], 1)) for r in on_stitch])[:300])
+        wide_foot = [r for r in srows if r["footGap"] > r["band"] * 0.13]
+        check("strap: the stitching closes the bar (small margin under it)",
+              not wide_foot,
+              json.dumps([(r["label"], round(r["footGap"], 1), round(r["band"], 1)) for r in wide_foot])[:300])
+        check("strap: no text collides and nothing leaves the plate (landscape/portrait/padPct 0)",
+              not strap["collide"] and not strap["overflow"] and not strap["ellipsis"],
+              json.dumps((strap["collide"] + strap["overflow"] + strap["ellipsis"])[:4],
+                         ensure_ascii=False)[:300])
 
         studio_cut = [e for e in fit["ellipsis"] if e[0].startswith("studio/")]
         check("fit: Studio Dark keeps the full exposure row (ISO 400 / 1600)",

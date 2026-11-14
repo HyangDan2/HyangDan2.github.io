@@ -46,7 +46,7 @@
       label: 'Strap Bar', tag: 'WIDE', light: true,
       base: '#ffffff', band: '#f3f1ea', ink: '#111111', muted: '#5f5f5a',
       line: 'rgba(17,17,17,0.16)', accent: '#ff824f',
-      geo: { pad: 0, extra: 19, radius: 0 }
+      geo: { pad: 0, extra: 12, radius: 0 }
     },
     film: {
       label: 'Film Sprocket', tag: '35MM', light: false,
@@ -473,17 +473,33 @@
     ctx.restore();
   }
 
+  /* The bar's two working rows and the stitching that closes it. Kept in one
+     place so the row layout and the tests read the same numbers. */
+  function strapBand(L) {
+    var top = L.photoBox.y + L.PH;
+    return {
+      top: top,
+      band: L.band,
+      row1: top + L.band * 0.33,
+      row2: top + L.band * 0.63,
+      stitchY: L.H - Math.max(L.u * 10, L.band * 0.08)
+    };
+  }
+
   function drawStrap(ctx, L) {
     var f = L.fields, c = L.colors, u = L.u, band = L.band;
-    var top = L.photoBox.y + L.PH, inset = L.inset;
+    var top = L.photoBox.y + L.PH, inset = L.inset, sb = strapBand(L);
 
     // top edge of the strap
     hairline(ctx, 0, top, L.W, top, c.line, Math.max(1, u * 1.4));
 
-    var row1 = top + band * 0.38;
-    var row2 = top + band * 0.62;
-    var primary = Math.min(u * 20, band * 0.13);
-    var secondary = Math.min(u * 13, band * 0.08);
+    /* the bar is a strap, not a second page: the rows sit near the top and the
+       stitching closes the bottom, so the air above the first row and below the
+       last one are both small and equal-ish instead of swallowing the band */
+    var row1 = sb.row1;
+    var row2 = sb.row2;
+    var primary = Math.min(u * 20, band * 0.19);
+    var secondary = Math.min(u * 13, band * 0.12);
 
     var rightTop = join([camera(f)], '');
     var rightBot = optics(f);
@@ -522,15 +538,15 @@
     });
 
     // divider rule
-    hairline(ctx, divX, top + band * 0.2, divX, top + band * 0.78, c.line, Math.max(1, u * 1.4));
+    hairline(ctx, divX, top + band * 0.16, divX, top + band * 0.76, c.line, Math.max(1, u * 1.4));
 
-    // maker emblem tucked against the divider
+    // maker emblem tucked against the divider, centred on its own row band
     if (L.emblem) {
-      emblemAt(ctx, L, L.emblem, divX - u * 26 - emW, top + band * 0.5 - emH / 2, emH);
+      emblemAt(ctx, L, L.emblem, divX - u * 26 - emW, top + band * 0.46 - emH / 2, emH);
     }
 
     // strap stitching along the bottom edge
-    var stitchY = L.H - u * 22;
+    var stitchY = sb.stitchY;
     ctx.save();
     ctx.strokeStyle = 'rgba(17,17,17,0.22)';
     ctx.lineWidth = Math.max(1, u * 1.2);
@@ -542,31 +558,41 @@
     ctx.setLineDash([]);
     ctx.restore();
 
-    if (band > u * 190) {
-      text(ctx, 'HD2LAB  ·  STRAP 04', L.W - inset, L.H - band * 0.06, {
+    /* the mark rides just above the stitching on the right — never on it, and
+       only when the bar is tall enough to hold it without crowding row two */
+    if (band > u * 150) {
+      text(ctx, 'HD2LAB  ·  STRAP 04', L.W - inset, stitchY - u * 7, {
         size: u * 8.5, family: 'mono', color: c.muted, ls: u * 2.2, align: 'right'
       });
     }
   }
 
   /* ── 05 Film Sprocket ──────────────────────────────────────────────────── */
-  /* One row of perforations at each margin, and both read from the same two
-     numbers: the hole height and the hole centre's distance from the edge.
-     35mm stock prints its top and bottom rows identically, and a frame that
-     draws a tall row at the top and a squat sliver at the foot stops looking
-     like film. `flow` is what is left of the caption band once the bottom row
-     has claimed its strip — the print block every line below must live in. */
+  /* One row of perforations at each margin. Each row owns a rail — the strip
+     between its own edge and its own rule — and the hole sits in the middle of
+     that rail, so the gap from the edge to the hole equals the gap from the
+     hole to the rule. Both rails are cut to the same height, which makes the
+     two margins exact mirror images: 35mm stock reads the same way up or down.
+     The rail height is capped below the top margin so that a plate with little
+     padding (padPct 0 keeps only the 5% floor) still has room for the stock
+     badge between the rail and the photo. `flow` is what is left of the caption
+     band once the bottom rail has claimed its strip — the print block every
+     line below must live in. */
   function filmPerf(L) {
     var band = L.padBottom;
     var holeH = Math.max(L.u * 6, Math.min(L.padTop * 0.19, band * 0.12));
     var edgeCy = Math.max(holeH * 0.85, Math.min(L.padTop * 0.26, band * 0.14));
+    var railH = Math.min(edgeCy * 2, L.padTop * 0.56);
     var top = L.photoBox.y + L.PH;
     return {
       holeH: holeH,
       edgeCy: edgeCy,
-      topCy: edgeCy,
-      botCy: L.H - edgeCy,
-      flow: Math.max(L.u * 4, (L.H - edgeCy - holeH / 2) - top)
+      railH: railH,
+      topRuleY: railH,
+      botRuleY: L.H - railH,
+      topCy: railH / 2,
+      botCy: L.H - railH / 2,
+      flow: Math.max(L.u * 4, L.H - railH - top)
     };
   }
 
@@ -580,11 +606,9 @@
     sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.topCy, perf.holeH, hole);
     sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.botCy, perf.holeH, hole);
 
-    hairline(ctx, 0, L.padTop * 0.60, L.W, L.padTop * 0.60, L.colors.line, Math.max(1, u * 1.1));
-    /* the foot gets the same rule: just inside the bottom perforation row, at
-       the mirror of the gap the top rule keeps above the photo */
-    hairline(ctx, 0, perf.botCy - perf.holeH / 2 - perf.flow * 0.085, L.W,
-      perf.botCy - perf.holeH / 2 - perf.flow * 0.085, L.colors.line, Math.max(1, u * 1.1));
+    /* each rule closes its own rail, so the two margins are one measurement */
+    hairline(ctx, 0, perf.topRuleY, L.W, perf.topRuleY, L.colors.line, Math.max(1, u * 1.1));
+    hairline(ctx, 0, perf.botRuleY, L.W, perf.botRuleY, L.colors.line, Math.max(1, u * 1.1));
   }
 
   function drawFilm(ctx, L) {
@@ -608,7 +632,12 @@
     /* stock badge + frame number ride in the top margin, each owning its own
        share of the inner width so one never runs over the other */
     var badgeSize = Math.min(u * 12.5, L.padTop * 0.26);
-    var badgeY = L.padTop * 0.86;
+    /* the badge owns the strip between the top rail and the photo and sits in
+       the middle of it: a baseline on the exact midline would leave the caps
+       riding high, so the baseline drops by half a cap height and the air above
+       and below the letters is the same. It can never reach the rail or the
+       photo's frame line. */
+    var badgeY = (perf.topRuleY + L.photoBox.y) / 2 + badgeSize * 0.35;
     var frameStr = (L.opts.frameNo || '#03') + '   ·   35MM';
     var frameMaxW = Math.min(
       measure(ctx, frameStr, { size: badgeSize, family: 'mono', ls: u * 1.8 }), inner * 0.42);
@@ -925,7 +954,7 @@
     helpers: {
       text: text, compound: compound, measure: measure, roundRect: roundRect,
       hairline: hairline, camera: camera, optics: optics, specParts: specParts,
-      dateOf: dateOf, join: join, filmPerf: filmPerf
+      dateOf: dateOf, join: join, filmPerf: filmPerf, strapBand: strapBand
     }
   };
 })(window);
