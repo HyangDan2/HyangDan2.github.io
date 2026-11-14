@@ -102,7 +102,7 @@ def static_tests():
         "assets/samples/sample-01.jpg", "assets/samples/sample-02.jpg",
         "assets/samples/sample-03.jpg",
         "tests/run_tests.py", "tools/generate_brand_assets.py",
-        "tools/make_samples.py", "README.md",
+        "tools/make_samples.py", "tools/capture_pc_workspace.py", "README.md",
     ]
     for f in required:
         check(f"file exists: {f}", os.path.exists(os.path.join(ROOT, f)))
@@ -221,6 +221,45 @@ def static_tests():
     check("sheet starts closed (aria-hidden)",
           re.search(r'id="sheet"[^>]*aria-hidden="true"', html) is not None)
     check("duplicate accordion layout removed", 'class="acc"' not in html)
+
+    # ── PC 2단 스튜디오 · 워크스페이스 (brief §1–2) ───────────────────────
+    print("\n[static] PC two-column studio & workspace")
+    check("inspector tab row present", 'id="insTabs"' in html)
+    check("four inspector tabs", re.findall(r'data-tab="([a-z]+)"', html) ==
+          ["exif", "geometry", "emblem", "export"], str(re.findall(r'data-tab="([a-z]+)"', html)))
+    check("inspector tabs point at the panes",
+          all(f'aria-controls="pane{p.capitalize()}"' in html
+              for p in ("exif", "geometry", "emblem", "export")))
+    check("export dock present", 'id="insDock"' in html and 'id="dockSaveBtn"' in html)
+    check("dock carries format + quality",
+          'id="formatSegDock"' in html and 'id="qualityRangeDock"' in html)
+    check("workspace strip present", 'id="wsStrip"' in html and 'id="wsTrack"' in html)
+    check("workspace strip starts hidden", re.search(r'id="wsStrip"[^>]*hidden', html) is not None)
+    check("workspace header has name, counter, sort",
+          all(f'id="{i}"' in html for i in ("wsName", "wsCount", "wsSort")) and
+          "이름 ↑" in html and "이름 ↓" in html)
+    check("workspace strip folds", 'id="wsToggle"' in html and 'aria-controls="wsTrack"' in html)
+    check("multi-file open input", re.search(r'id="wsFileInput"[^>]*multiple', html) is not None)
+    check("folder input is a directory picker",
+          re.search(r'id="wsFolderInput"[^>]*webkitdirectory', html) is not None)
+    check("recursive-subfolder option", 'id="recursiveToggle"' in html)
+    check("landing and session bar carry the open buttons",
+          all(f'id="{i}"' in html for i in ("openFilesBtn", "openFolderBtn",
+                                            "emptyOpenFilesBtn", "emptyOpenFolderBtn",
+                                            "sessionOpenFilesBtn", "sessionOpenFolderBtn")))
+    check("bulk export control in the export pane",
+          'id="bulkBtn"' in html and 'id="bulkStatus"' in html)
+    check("open-folder icons in the sprite", "i-folder-open" in ids and "i-folder" in ids)
+    check("folder icon is referenced", 'href="#i-folder-open"' in html)
+    capture = read("tools/capture_pc_workspace.py")
+    check("capture tool keeps the PC evidence reproducible",
+          all(n in capture for n in ("pc-workspace-01-landing.png", "pc-workspace-02-inspector.png",
+                                     "pc-workspace-03-strip.png", "pc-workspace-04-mobile.png")))
+    for shot in ("pc-workspace-01-landing.png", "pc-workspace-02-inspector.png",
+                 "pc-workspace-03-strip.png", "pc-workspace-04-mobile.png",
+                 "pc-workspace-05-sheet.png"):
+        check(f"capture present: verify/{shot}",
+              os.path.exists(os.path.join(ROOT, "verify", shot)))
 
     fields = set(re.findall(r'id="f([A-Z]\w+)"', html))
     check("nine deck fields",
@@ -341,6 +380,24 @@ def static_tests():
           and "translateY(101%)" in css)
     check("desktop sheet floats as a side panel",
           re.search(r"@media \(min-width: 900px\)[\s\S]*?\.sheet\s*\{[^}]*width:\s*420px", css) is not None)
+    check("PC breakpoint is 1024px", "@media (min-width: 1024px)" in css)
+    check("PC columns: stage + a 360-380px inspector",
+          re.search(r"--ins-w:\s*3[67]\dpx", css) is not None
+          and re.search(r"\.studio\s*\{[^}]*margin-right:\s*var\(--ins-w\)", css, re.S) is not None)
+    check("PC inspector is pinned to the right edge",
+          re.search(r"\.sheet\s*\{[^}]*right:\s*0;[^}]*width:\s*var\(--ins-w\)", css, re.S) is not None)
+    check("PC inspector needs no .is-open to show",
+          re.search(r"\.sheet\s*\{[^}]*visibility:\s*visible;[^}]*pointer-events:\s*auto", css, re.S) is not None)
+    check("PC retires the bottom toolbar",
+          re.search(r"\.toolbar \{ display: none; \}", css) is not None)
+    check("PC-only blocks are hidden by default",
+          re.search(r"\.pc-open,\s*\n\s*\.pc-only,[\s\S]*?display: none;", css) is not None)
+    check("workspace strip is a horizontal scroller",
+          re.search(r"\.ws-track \{[^}]*overflow-x: auto", css, re.S) is not None)
+    check("collapsed workspace strip hides the track",
+          ".ws-strip.is-collapsed .ws-track { display: none; }" in css)
+    check("PC keeps the accent-ringed selection on the workspace strip",
+          '.ws-item[aria-selected="true"]' in css)
     check("bottom sheet on mobile",
           re.search(r"\.sheet\s*\{[^}]*left:\s*0;\s*right:\s*0;\s*bottom:\s*0", css, re.S) is not None)
     check("prefers-reduced-motion honoured", "prefers-reduced-motion" in css)
@@ -364,6 +421,19 @@ def static_tests():
     check("exifr loaded from local vendor", "js/vendor/exifr.full.umd.js" in html)
     check("4096px export guard", "4096" in app)
     check("export filename pattern", "Shutterplate_" in read("js/exif-core.js"))
+    check("PC breakpoint mirrored in JS", "min-width: 1024px" in app)
+    check("workspace reads a real folder handle", "showDirectoryPicker" in app)
+    check("workspace falls back to a directory input", "wsFolderInput" in app and
+          read("index.html").count("webkitdirectory") == 1)
+    check("workspace thumbnails are lazy", "IntersectionObserver" in app)
+    check("arrow keys step through the workspace", "stepEntry" in app and "ArrowLeft" in app)
+    check("batch export renders photo by photo", "plateJobForFile" in app and "bulkExport" in app)
+    check("batch export respects the 4096px guard", "MAX_EDGE_PX" in app)
+    check("EXIF make/model verbatim rule untouched",
+          "EXIF strings are kept verbatim" in read("js/exif-core.js")
+          and "toUpperCase" not in read("js/exif-core.js"))
+    check("workspace keeps the local-only promise",
+          "업로드 0 B" in html and "File System Access" not in html)
 
     favicon = read("favicon.svg")
     check("favicon.svg uses the dual-skew mark", MARK_PATH in favicon and "#101110" in favicon)
@@ -998,33 +1068,26 @@ def browser_tests(port):
         page.evaluate("() => SPApp.setStyle('horizon')")
         page.wait_for_timeout(150)
 
-        print("\n[browser] control sheets (hidden by default, toggle on demand)")
-        check("sheet hidden by default", page.evaluate(
-            "() => getComputedStyle(document.querySelector('#sheet')).visibility") == "hidden")
+        print("\n[browser] PC inspector (always on screen, tabs switch the pane)")
+        check("inspector is on screen without any tap", page.evaluate(
+            "() => getComputedStyle(document.querySelector('#sheet')).visibility") == "visible")
         check("all panes exist", page.locator(".pane").count() == 4)
         for name, kicker in (("exif", "EXIF 편집"), ("geometry", "프레임 · 여백"),
                              ("emblem", "메이커 엠블럼"), ("export", "내보내기")):
-            page.click(f'[data-sheet="{name}"]')
-            page.wait_for_timeout(280)
-            check(f"sheet opens: {kicker}",
-                  page.evaluate("() => getComputedStyle(document.querySelector('#sheet')).visibility") == "visible"
-                  and page.inner_text("#sheetTitle") == kicker,
+            page.click(f'#insTabs [data-tab="{name}"]')
+            page.wait_for_timeout(200)
+            check(f"inspector tab: {kicker}", page.inner_text("#sheetTitle") == kicker,
                   page.inner_text("#sheetTitle"))
-            check(f"sheet shows only the {name} pane", page.evaluate(
+            check(f"inspector shows only the {name} pane", page.evaluate(
                 """(n) => { const active = [...document.querySelectorAll('.pane.is-active')];
                      return active.length === 1 && active[0].dataset.pane === n; }""", name))
-            check(f"toolbar {name} button marked expanded", page.get_attribute(
-                f'[data-sheet="{name}"]', "aria-expanded") == "true")
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(460)
-            check(f"Escape closes the {name} sheet", page.evaluate(
-                "() => getComputedStyle(document.querySelector('#sheet')).visibility") == "hidden")
-            check(f"toolbar {name} button reset", page.get_attribute(
-                f'[data-sheet="{name}"]', "aria-expanded") == "false")
+            check(f"inspector tab {name} marked selected", page.get_attribute(
+                f'#insTabs [data-tab="{name}"]', "aria-selected") == "true")
+            check(f"stage stays live behind the {name} pane", page.is_visible("#stageCanvas"))
+        page.click('#insTabs [data-tab="exif"]')
+        page.wait_for_timeout(200)
 
         # EXIF edit → live repaint
-        page.click('[data-sheet="exif"]')
-        page.wait_for_timeout(260)
         before = canvas_sig(page)["hash"]
         page.fill("#fCaption", "Jaehyuk Shim")
         page.wait_for_timeout(260)
@@ -1037,12 +1100,10 @@ def browser_tests(port):
         page.wait_for_timeout(600)
         check("reset restores EXIF values",
               page.evaluate("() => SPApp.state.fields.iso") == "ISO 100")
-        page.keyboard.press("Escape")
-        page.wait_for_timeout(200)
 
-        # geometry sheet → sliders and ratio
-        page.click('[data-sheet="geometry"]')
-        page.wait_for_timeout(260)
+        # geometry pane → sliders and ratio
+        page.click('#insTabs [data-tab="geometry"]')
+        page.wait_for_timeout(220)
         page.evaluate("() => { const r = document.querySelector('#padRange');"
                       " r.value = 12; r.dispatchEvent(new Event('input', {bubbles:true})); }")
         page.wait_for_timeout(260)
@@ -1058,12 +1119,10 @@ def browser_tests(port):
         page.wait_for_timeout(300)
         check("reset returns to the frame defaults",
               page.evaluate("() => SPApp.state.ratio") == 0)
-        page.keyboard.press("Escape")
-        page.wait_for_timeout(200)
 
-        # emblem sheet
-        page.click('[data-sheet="emblem"]')
-        page.wait_for_timeout(260)
+        # emblem pane
+        page.click('#insTabs [data-tab="emblem"]')
+        page.wait_for_timeout(240)
         tiles = page.locator(".emblem-tile")
         check("emblem grid has auto + makers + none", tiles.count() >= 12, str(tiles.count()))
         page.click('.emblem-tile[data-emblem="hd2lab"]')
@@ -1072,14 +1131,12 @@ def browser_tests(port):
               page.evaluate("() => SPApp.state.emblemChoice") == "hd2lab")
         page.click('.emblem-tile[data-emblem="auto"]')
         page.wait_for_timeout(200)
-        page.keyboard.press("Escape")
-        page.wait_for_timeout(200)
 
         print("\n[browser] export")
         page.evaluate("() => SPApp.setStyle('classic' in SPPlate.STYLES ? 'classic' : 'gallery')")
         page.evaluate("() => SPApp.setStyle('gallery')")
         page.wait_for_timeout(300)
-        page.click('[data-sheet="export"]')
+        page.click('#insTabs [data-tab="export"]')
         page.wait_for_timeout(260)
         readout = page.text_content("#exportSize") or ""
         want_w, want_h = [int(x) for x in re.findall(r"\d+", readout)[:2]]
@@ -1109,6 +1166,310 @@ def browser_tests(port):
         page.keyboard.press("Escape")
         check("no late console errors", not errors, str(errors[:3]))
         ctx.close()
+
+        # ── PC 1440×900: two-column studio ──────────────────────────────────
+        # From 1024px the same control panel is the fixed right inspector: the
+        # toolbar is gone, the tabs sit on top of it, the export dock sits at
+        # its foot, and the canvas keeps every edit in sight.
+        print("\n[browser] PC 1440: two-column studio & always-on inspector")
+        pctx = browser.new_context(viewport={"width": 1440, "height": 900}, accept_downloads=True)
+        ppage = pctx.new_page()
+        ppage.set_default_timeout(30000)
+        perr = []
+        ppage.on("pageerror", lambda e: perr.append(str(e)))
+        ppage.on("console", lambda m: perr.append(m.text) if m.type == "error" else None)
+        ppage.goto(base, wait_until="networkidle")
+        ppage.wait_for_timeout(400)
+
+        layout = ppage.evaluate("""() => {
+          const r = s => document.querySelector(s).getBoundingClientRect();
+          return {sheet: {x: r('#sheet').x, w: r('#sheet').width, top: r('#sheet').top,
+                          h: r('#sheet').height},
+                  stage: {w: r('.stage').width, x: r('.stage').x},
+                  header: r('.app-header').height,
+                  bar: getComputedStyle(document.querySelector('#toolbar')).display,
+                  tabs: [...document.querySelectorAll('.ins-tab')].map(t => t.dataset.tab),
+                  selected: [...document.querySelectorAll('.ins-tab')]
+                              .filter(t => t.getAttribute('aria-selected') === 'true').map(t => t.dataset.tab),
+                  dock: getComputedStyle(document.querySelector('#insDock')).display,
+                  saveDisabled: document.querySelector('#dockSaveBtn').disabled,
+                  wsHidden: document.querySelector('#wsStrip').hidden,
+                  iw: window.innerWidth, vh: window.innerHeight,
+                  sw: document.documentElement.scrollWidth,
+                  sh: document.documentElement.scrollHeight};
+        }""")
+        check("PC: inspector is pinned to the right edge",
+              abs(layout["sheet"]["x"] + layout["sheet"]["w"] - layout["iw"]) < 2, json.dumps(layout["sheet"]))
+        check("PC: inspector is 360-380px wide", 360 <= layout["sheet"]["w"] <= 380,
+              str(layout["sheet"]["w"]))
+        check("PC: inspector runs from the header to the floor",
+              abs(layout["sheet"]["top"] - layout["header"]) < 2
+              and abs(layout["sheet"]["h"] - (layout["vh"] - layout["header"])) < 2,
+              json.dumps(layout["sheet"]))
+        check("PC: the stage takes the rest of the width",
+              abs(layout["stage"]["w"] + layout["sheet"]["w"] - layout["iw"]) < 2, json.dumps(layout))
+        check("PC: bottom toolbar is retired", layout["bar"] == "none", layout["bar"])
+        check("PC: four inspector tabs", layout["tabs"] == ["exif", "geometry", "emblem", "export"],
+              str(layout["tabs"]))
+        check("PC: EXIF tab opens selected", layout["selected"] == ["exif"], str(layout["selected"]))
+        check("PC: export dock is on screen", layout["dock"] != "none")
+        check("PC: save is disabled while no photo is open", layout["saveDisabled"] is True)
+        check("PC: workspace strip waits for photos", layout["wsHidden"] is True)
+        check("PC: no page scroll",
+              layout["sw"] <= layout["iw"] + 1 and layout["sh"] <= layout["vh"] + 1, json.dumps(layout))
+        check("PC: landing offers 파일 열기 / 폴더 열기",
+              ppage.is_visible("#emptyOpenFilesBtn") and ppage.is_visible("#emptyOpenFolderBtn"))
+
+        ppage.click('#insTabs [data-tab="geometry"]')
+        ppage.wait_for_timeout(240)
+        tab = ppage.evaluate("""() => ({pane: [...document.querySelectorAll('.pane.is-active')].map(p => p.dataset.pane),
+            canvas: document.querySelector('#stageCanvas').getBoundingClientRect().width,
+            sheet: getComputedStyle(document.querySelector('#sheet')).visibility,
+            dock: getComputedStyle(document.querySelector('#insDock')).display})""")
+        check("PC: tab switch lands on the geometry pane", tab["pane"] == ["geometry"], str(tab))
+        check("PC: the canvas stays in sight while editing",
+              tab["canvas"] > 500 and tab["sheet"] == "visible", json.dumps(tab))
+        check("PC: the dock stays under every pane", tab["dock"] != "none", str(tab))
+
+        ppage.click("#emptySampleBtn")
+        ppage.wait_for_function("() => window.SPApp.state.photo", timeout=20000)
+        ppage.wait_for_timeout(800)
+        sig = canvas_sig(ppage)["hash"]
+        stage_w = ppage.evaluate("() => document.querySelector('#stageCanvas').getBoundingClientRect().width")
+        ppage.evaluate("() => { const r = document.querySelector('#padRange');"
+                      " r.value = 11; r.dispatchEvent(new Event('input', {bubbles:true})); }")
+        ppage.wait_for_timeout(320)
+        check("PC: a slider in the inspector repaints the live canvas",
+              canvas_sig(ppage)["hash"] != sig)
+        check("PC: the stage does not move while editing",
+              abs(ppage.evaluate(
+                  "() => document.querySelector('#stageCanvas').getBoundingClientRect().width") - stage_w) < 2)
+        check("PC: the dock's save button wakes with the photo",
+              ppage.is_enabled("#dockSaveBtn"))
+
+        with ppage.expect_download(timeout=30000) as pdl:
+            ppage.click("#dockSaveBtn")
+        check("PC: dock save writes the plate file",
+              re.fullmatch(r"Shutterplate_[^\\/]+_\d{12}\.jpg", pdl.value.suggested_filename) is not None,
+              pdl.value.suggested_filename)
+
+        # ── workspace: several photos at once ───────────────────────────────
+        print("\n[browser] workspace: multi-open, strip, sort, arrows, batch save")
+        SAMPLE_FILES = [os.path.join(ROOT, "assets", "samples", f"sample-0{i}.jpg") for i in (1, 2, 3)]
+        ppage.set_input_files("#wsFileInput", SAMPLE_FILES)
+        ppage.wait_for_function("() => SPApp.workspace().entries.length === 3", timeout=25000)
+        ppage.wait_for_timeout(1500)
+        ws = ppage.evaluate("""() => { const w = SPApp.workspace();
+          return {name: w.name, n: w.entries.length, names: w.entries.map(e => e.name),
+                  hidden: document.querySelector('#wsStrip').hidden,
+                  items: document.querySelectorAll('.ws-item').length,
+                  selected: [...document.querySelectorAll('.ws-item')]
+                              .filter(i => i.getAttribute('aria-selected') === 'true').length,
+                  thumbs: [...document.querySelectorAll('.ws-item img')]
+                            .filter(i => !i.hidden && i.src.startsWith('data:image/jpeg')).length,
+                  count: document.querySelector('#wsCount').textContent,
+                  make: SPApp.state.fields.make,
+                  stage: document.querySelector('#stageCanvas').getBoundingClientRect().width,
+                  sw: document.documentElement.scrollWidth, iw: window.innerWidth,
+                  sh: document.documentElement.scrollHeight, vh: window.innerHeight}; }""")
+        check("workspace: three photos open", ws["n"] == 3, str(ws["n"]))
+        check("workspace: the strip appears", ws["hidden"] is False)
+        check("workspace: one item per photo", ws["items"] == 3, str(ws["items"]))
+        check("workspace: files keep name order",
+              ws["names"] == ["sample-01.jpg", "sample-02.jpg", "sample-03.jpg"], str(ws["names"]))
+        check("workspace: the first photo is selected",
+              ws["selected"] == 1 and ws["make"] == "SONY", json.dumps(ws))
+        check("workspace: counter reads 1 / 3", ws["count"] == "1 / 3", ws["count"])
+        check("workspace: every thumbnail is a local canvas crop", ws["thumbs"] == 3, str(ws["thumbs"]))
+        check("workspace: the stage keeps most of the window", ws["stage"] > 600, str(ws["stage"]))
+        check("workspace: the strip adds no page scroll",
+              ws["sw"] <= ws["iw"] + 1 and ws["sh"] <= ws["vh"] + 1, json.dumps(ws))
+
+        ppage.select_option("#wsSort", "reverse")
+        ppage.wait_for_timeout(420)
+        check("workspace: 이름 ↓ flips the order",
+              ppage.evaluate("() => document.querySelector('.ws-item .ws-name').textContent") == "sample-03.jpg",
+              ppage.evaluate("() => document.querySelector('.ws-item .ws-name').textContent"))
+        ppage.select_option("#wsSort", "name")
+        ppage.wait_for_timeout(340)
+        check("workspace: 이름 ↑ restores it",
+              ppage.evaluate("() => document.querySelector('.ws-item .ws-name').textContent") == "sample-01.jpg",
+              ppage.evaluate("() => document.querySelector('.ws-item .ws-name').textContent"))
+
+        ppage.evaluate("() => { SPApp.setStyle('pro'); SPApp.state.geo.padPct = 9; SPApp.render(); }")
+        ppage.wait_for_timeout(260)
+        ppage.click(".ws-item:nth-child(2)")
+        ppage.wait_for_function(
+            "() => SPApp.workspace().entries[1].id === SPApp.workspace().activeId", timeout=20000)
+        ppage.wait_for_timeout(900)
+        sw = ppage.evaluate("""() => ({make: SPApp.state.fields.make, style: SPApp.state.style,
+            pad: SPApp.state.geo.padPct, exif: document.querySelector('#fMake').value,
+            count: document.querySelector('#wsCount').textContent,
+            name: document.querySelector('#metaName').textContent})""")
+        check("workspace: clicking a photo re-reads its EXIF",
+              sw["make"] == "FUJIFILM" and sw["exif"] == "FUJIFILM" and sw["name"] == "sample-02.jpg",
+              json.dumps(sw))
+        check("workspace: the chosen frame survives the switch", sw["style"] == "pro", str(sw["style"]))
+        check("workspace: the padding survives the switch", sw["pad"] == 9, str(sw["pad"]))
+        check("workspace: the counter follows the active photo", sw["count"] == "2 / 3", sw["count"])
+
+        ppage.keyboard.press("ArrowRight")
+        ppage.wait_for_timeout(950)
+        check("workspace: → advances to the next photo",
+              ppage.evaluate("() => SPApp.state.fields.make") == "Canon",
+              ppage.evaluate("() => SPApp.state.fields.make"))
+        ppage.keyboard.press("ArrowLeft")
+        ppage.wait_for_timeout(950)
+        check("workspace: ← comes back",
+              ppage.evaluate("() => SPApp.state.fields.make") == "FUJIFILM",
+              ppage.evaluate("() => SPApp.state.fields.make"))
+
+        h_open = ppage.evaluate("() => document.querySelector('#wsStrip').getBoundingClientRect().height")
+        ppage.click("#wsToggle")
+        ppage.wait_for_timeout(320)
+        h_fold = ppage.evaluate("() => document.querySelector('#wsStrip').getBoundingClientRect().height")
+        check("workspace: the strip folds to its header",
+              h_fold < 44 <= h_open, f"{h_open} → {h_fold}")
+        check("workspace: folded strip hides the track",
+              ppage.evaluate("() => getComputedStyle(document.querySelector('#wsTrack')).display") == "none")
+        ppage.click("#wsToggle")
+        ppage.wait_for_timeout(340)
+        check("workspace: and opens again",
+              ppage.evaluate("() => document.querySelector('#wsStrip').getBoundingClientRect().height") > 100)
+
+        ppage.click('#insTabs [data-tab="export"]')
+        ppage.wait_for_timeout(280)
+        check("bulk: the button counts the photos",
+              ppage.inner_text("#bulkLabel") == "전체 일괄 저장 (3장)", ppage.inner_text("#bulkLabel"))
+        batch = []
+        ppage.on("download", lambda d: batch.append(d.suggested_filename))
+        ppage.click("#bulkBtn")
+        ppage.wait_for_function(
+            "() => SPApp.workspace().bulk === null && document.querySelector('#bulkStatus').textContent.includes('저장 완료')",
+            timeout=120000)
+        ppage.wait_for_timeout(500)
+        check("bulk: one file per photo", len(batch) == 3, str(batch))
+        check("bulk: every plate carries its own EXIF name",
+              len(batch) == 3 and len(set(batch)) == 3
+              and all(re.fullmatch(r"Shutterplate_[^\\/]+_\d{12}\.jpg", n) for n in batch), str(batch))
+        check("bulk: progress reports the full set",
+              "3 / 3" in ppage.inner_text("#bulkStatus"), ppage.inner_text("#bulkStatus"))
+        check("bulk: the live photo is untouched by the batch",
+              ppage.evaluate("() => SPApp.state.fields.make") == "FUJIFILM")
+        check("PC: no console errors with the workspace open", not perr, str(perr[:3]))
+        pctx.close()
+
+        # ── workspace: folder open, both routes ─────────────────────────────
+        # showDirectoryPicker is stubbed with the handle shape the API hands
+        # back (kind/name/values/getFile), so the scan itself runs for real.
+        print("\n[browser] workspace: folder (File System Access) & directory-input fallback")
+        FOLDER_STUB = r"""
+          window.showDirectoryPicker = async () => {
+            const fileHandle = (name, src) => ({kind: 'file', name, getFile: async () => {
+              const r = await fetch(src);
+              const b = await r.blob();
+              return new File([b], name, {type: 'image/jpeg'});
+            }});
+            const dirHandle = (name, children) => ({kind: 'directory', name, values: () => {
+              let i = 0;
+              return {next: async () => i < children.length
+                ? {done: false, value: children[i++]}
+                : {done: true, value: undefined}};
+            }});
+            return dirHandle('테스트 폴더', [
+              fileHandle('A-sample.jpg', '/assets/samples/sample-01.jpg'),
+              fileHandle('B-sample.jpg', '/assets/samples/sample-02.jpg'),
+              dirHandle('sub', [fileHandle('C-sample.jpg', '/assets/samples/sample-03.jpg')])
+            ]);
+          };
+        """
+        fctx = browser.new_context(viewport={"width": 1440, "height": 900})
+        fctx.add_init_script(FOLDER_STUB)
+        fpage = fctx.new_page()
+        fpage.set_default_timeout(30000)
+        ferr = []
+        fpage.on("pageerror", lambda e: ferr.append(str(e)))
+        fpage.goto(base, wait_until="networkidle")
+        fpage.wait_for_timeout(300)
+        fpage.click("#openFolderBtn")
+        fpage.wait_for_function(
+            "() => SPApp.workspace().entries.length === 2 && !SPApp.workspace().scanning", timeout=30000)
+        fpage.wait_for_timeout(900)
+        flat = fpage.evaluate("""() => { const w = SPApp.workspace();
+          return {name: w.name, paths: w.entries.map(e => e.path),
+                  count: document.querySelector('#wsCount').textContent,
+                  hidden: document.querySelector('#wsStrip').hidden,
+                  make: SPApp.state.fields.make}; }""")
+        check("folder: the picked folder is named in the strip", flat["name"] == "테스트 폴더", flat["name"])
+        check("folder: subfolders are left out by default",
+              flat["paths"] == ["A-sample.jpg", "B-sample.jpg"], str(flat["paths"]))
+        check("folder: its first photo opens", flat["make"] == "SONY", flat["make"])
+        check("folder: the strip shows the folder",
+              flat["hidden"] is False and flat["count"] == "1 / 2", json.dumps(flat))
+
+        fpage.check("#recursiveToggle")
+        fpage.click("#openFolderBtn")
+        fpage.wait_for_function(
+            "() => SPApp.workspace().entries.length === 3 && !SPApp.workspace().scanning", timeout=30000)
+        fpage.wait_for_timeout(700)
+        rec = fpage.evaluate("() => SPApp.workspace().entries.map(e => e.path)")
+        check("folder: 하위 폴더 포함 walks the tree",
+              rec == ["A-sample.jpg", "B-sample.jpg", "sub/C-sample.jpg"], str(rec))
+        check("folder: no page errors", not ferr, str(ferr[:3]))
+        fctx.close()
+
+        nctx = browser.new_context(viewport={"width": 1440, "height": 900})
+        nctx.add_init_script("window.showDirectoryPicker = undefined;")
+        npage = nctx.new_page()
+        npage.set_default_timeout(30000)
+        nerr = []
+        npage.on("pageerror", lambda e: nerr.append(str(e)))
+        npage.goto(base, wait_until="networkidle")
+        npage.wait_for_timeout(300)
+        with npage.expect_file_chooser() as fc:
+            npage.click("#openFolderBtn")
+        fc.value.set_files(os.path.join(ROOT, "assets", "samples"))
+        npage.wait_for_function("() => SPApp.workspace().entries.length === 3", timeout=30000)
+        npage.wait_for_timeout(700)
+        fb = npage.evaluate("""() => { const w = SPApp.workspace();
+          return {n: w.entries.length, name: w.name, paths: w.entries.map(e => e.path),
+                  make: SPApp.state.fields.make}; }""")
+        check("fallback: the directory input opens the folder", fb["n"] == 3, json.dumps(fb))
+        check("fallback: relative paths give the folder name", fb["name"] == "samples", fb["name"])
+        check("fallback: its first photo opens", fb["make"] == "SONY", fb["make"])
+        check("fallback: no page errors", not nerr, str(nerr[:3]))
+        nctx.close()
+
+        # ── tablet 900: the sheet path below the 1024 breakpoint ───────────
+        print("\n[browser] tablet 900: toolbar + sheet kept below 1024")
+        tctx = browser.new_context(viewport={"width": 900, "height": 800})
+        tpage = tctx.new_page()
+        tpage.goto(base, wait_until="networkidle")
+        tpage.wait_for_timeout(300)
+        check("tablet: the bottom toolbar is still there",
+              tpage.evaluate("() => getComputedStyle(document.querySelector('#toolbar')).display") != "none")
+        check("tablet: the sheet starts closed", tpage.evaluate(
+            "() => getComputedStyle(document.querySelector('#sheet')).visibility") == "hidden")
+        check("tablet: inspector tabs stay hidden",
+              tpage.evaluate("() => getComputedStyle(document.querySelector('#insTabs')).display") == "none")
+        check("tablet: export dock stays hidden",
+              tpage.evaluate("() => getComputedStyle(document.querySelector('#insDock')).display") == "none")
+        check("tablet: PC open buttons stay hidden", not tpage.is_visible("#openFilesBtn"))
+        for name, kicker in (("exif", "EXIF 편집"), ("geometry", "프레임 · 여백"),
+                             ("emblem", "메이커 엠블럼"), ("export", "내보내기")):
+            tpage.click(f'[data-sheet="{name}"]')
+            tpage.wait_for_timeout(300)
+            check(f"tablet: sheet opens {kicker}",
+                  tpage.evaluate("() => getComputedStyle(document.querySelector('#sheet')).visibility") == "visible"
+                  and tpage.inner_text("#sheetTitle") == kicker, tpage.inner_text("#sheetTitle"))
+            check(f"tablet: sheet shows the {name} pane", tpage.evaluate(
+                """(n) => { const a = [...document.querySelectorAll('.pane.is-active')];
+                     return a.length === 1 && a[0].dataset.pane === n; }""", name))
+            tpage.keyboard.press("Escape")
+            tpage.wait_for_timeout(420)
+            check(f"tablet: Escape closes the {name} sheet", tpage.evaluate(
+                "() => getComputedStyle(document.querySelector('#sheet')).visibility") == "hidden")
+        tctx.close()
 
         # ── share sheet: the path an iPhone takes ───────────────────────────
         # Chromium here has no real share sheet, so navigator.canShare/share are
@@ -1469,6 +1830,24 @@ def browser_tests(port):
           return bad;
         }""")
         check("mobile: touch targets ≥44px", not tiny, str(tiny[:6]))
+
+        pcbits = mpage.evaluate("""() => ({
+            tabs: getComputedStyle(document.querySelector('#insTabs')).display,
+            dock: getComputedStyle(document.querySelector('#insDock')).display,
+            ws: getComputedStyle(document.querySelector('#wsStrip')).display,
+            pcRow: getComputedStyle(document.querySelector('.empty-row--pc')).display,
+            openBtn: document.querySelector('#openFilesBtn').getBoundingClientRect().width,
+            toolbar: getComputedStyle(document.querySelector('#toolbar')).display,
+            sheetVisible: getComputedStyle(document.querySelector('#sheet')).visibility
+        })""")
+        check("mobile: inspector tabs stay out of the phone layout", pcbits["tabs"] == "none", str(pcbits))
+        check("mobile: export dock stays out of the phone layout", pcbits["dock"] == "none", str(pcbits))
+        check("mobile: workspace strip stays out of the phone layout", pcbits["ws"] == "none", str(pcbits))
+        check("mobile: PC open row stays out of the phone layout", pcbits["pcRow"] == "none", str(pcbits))
+        check("mobile: no PC open button in the header", pcbits["openBtn"] == 0, str(pcbits["openBtn"]))
+        check("mobile: the bottom toolbar is still the way in", pcbits["toolbar"] != "none", str(pcbits))
+        check("mobile: the panel is a closed sheet, not a sidebar",
+              pcbits["sheetVisible"] == "hidden", str(pcbits["sheetVisible"]))
 
         layout = mpage.evaluate("""() => {
           const r = s => document.querySelector(s).getBoundingClientRect();

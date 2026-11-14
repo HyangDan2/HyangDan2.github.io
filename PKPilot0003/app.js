@@ -79,6 +79,13 @@
     sampleIdx: 0,
     fitScale: 1,
     sheet: null,
+    pane: 'exif',        // which inspector pane is on screen (always on PC, in the sheet on mobile)
+    /* PC workspace: the photos opened together, or the folder a visitor picked.
+       Everything stays local — handles and Files never leave this device. */
+    ws: {
+      open: false, fromFolder: false, name: '', entries: [], activeId: null,
+      sort: 'name', collapsed: false, scanning: false, bulk: null
+    },
     inApp: ''            // host name when the page runs inside a chat app's WebView
   };
 
@@ -143,7 +150,28 @@
     sheetTitle: $('#sheetTitle'),
     sheetKicker: $('#sheetKicker'),
     sheetClose: $('#sheetClose'),
-    toolbar: $('#toolbar')
+    toolbar: $('#toolbar'),
+    insTabs: $('#insTabs'),
+    formatSegDock: $('#formatSegDock'),
+    qualityRangeDock: $('#qualityRangeDock'),
+    qualityValDock: $('#qualityValDock'),
+    qualityRowDock: $('#qualityRowDock'),
+    dockSaveBtn: $('#dockSaveBtn'),
+    dockSize: $('#dockSize'),
+    dockCount: $('#dockCount'),
+    wsStrip: $('#wsStrip'),
+    wsTrack: $('#wsTrack'),
+    wsName: $('#wsName'),
+    wsCount: $('#wsCount'),
+    wsStatus: $('#wsStatus'),
+    wsSort: $('#wsSort'),
+    wsToggle: $('#wsToggle'),
+    wsFileInput: $('#wsFileInput'),
+    wsFolderInput: $('#wsFolderInput'),
+    recursiveToggle: $('#recursiveToggle'),
+    bulkBtn: $('#bulkBtn'),
+    bulkLabel: $('#bulkLabel'),
+    bulkStatus: $('#bulkStatus')
   };
 
   var FIELD_INPUTS = {
@@ -334,12 +362,29 @@
     return (n / 1024 / 1024).toFixed(2) + ' MB';
   }
 
-  async function loadFile(file, note) {
+  /* exifr wrapped once, so the studio and the workspace's batch export read
+     the same tags the same way. */
+  function readTags(file) {
+    if (!window.exifr || !file) return Promise.resolve(null);
+    var opts = {
+      tiff: true, ifd0: true, exif: true, gps: false, interop: false,
+      translateValues: true, reviveValues: true
+    };
+    return Promise.resolve(exifr.parse(file, opts)).then(
+      function (t) { return t || null; },
+      function () { return null; }
+    );
+  }
+
+  async function loadFile(file, note, opts) {
     var isImage = /^image\//.test(file.type || '') || /\.(jpe?g|png|webp|avif|heic|heif)$/i.test(file.name || '');
     if (!isImage) {
       toast('이미지 파일이 아닙니다 — JPEG · PNG · WebP', 'error');
       return false;
     }
+    /* A file opened on its own leaves the workspace; a step through the
+       workspace keeps it. */
+    if (!(opts && opts.keepWorkspace) && state.ws.open) wsClose();
 
     var url = URL.createObjectURL(file);
     var img = null;
@@ -364,18 +409,8 @@
       }
     }
 
-    var tags = null, count = 0;
-    if (window.exifr) {
-      try {
-        tags = await exifr.parse(file, {
-          tiff: true, ifd0: true, exif: true, gps: false, interop: false,
-          translateValues: true, reviveValues: true
-        });
-        count = EX.tagCount(tags);
-      } catch (e) {
-        tags = null; count = 0;
-      }
-    }
+    var tags = await readTags(file);
+    var count = tags ? EX.tagCount(tags) : 0;
 
     var parsed = EX.fromTags(tags || {});
     var hasCamera = !!(parsed.make || parsed.model);
@@ -412,7 +447,9 @@
     syncPhotoUI(count);
     renderAll();
 
-    toast((note ? note + ' · ' : '') + (hasCamera ? 'EXIF ' + count + '개 항목을 읽었습니다' : 'EXIF 없음 — 템플릿 값으로 시작합니다'));
+    if (!(opts && opts.silent)) {
+      toast((note ? note + ' · ' : '') + (hasCamera ? 'EXIF ' + count + '개 항목을 읽었습니다' : 'EXIF 없음 — 템플릿 값으로 시작합니다'));
+    }
     return true;
   }
 
@@ -485,10 +522,519 @@
     state.fields = EX.templateFor(new Date());
     state.zoom = 1; state.panX = 0; state.panY = 0;
     stripSrcCache = null;
+    wsClose();
     paintFields();
     syncPhotoUI(0);
     renderAll();
     toast('캔버스를 비웠습니다');
+  }
+
+  /* ── workspace (PC) ───────────────────────────────────────────────────────
+     Photos opened together, or a folder read through the File System Access
+     API. Entries keep the handles the browser handed us and are opened one by
+     one; nothing is copied anywhere but this tab's memory. */
+  function isPC() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches;
+  }
+
+  function isPhotoName(name) { return /\.(jpe?g|png|webp|avif|heic|heif)$/i.test(String(name || '')); }
+
+  var entrySeq = 0;
+  function newEntryId() { return 'e' + (++entrySeq); }
+
+  function entryFromFile(file, path) {
+    return {
+      id: newEntryId(),
+      name: file.name || path,
+      path: path || file.name,
+      getFile: function () { return Promise.resolve(file); },
+      thumb: '', queued: false
+    };
+  }
+
+  function entryFromHandle(handle, path) {
+    var id = newEntryId();
+    return {
+      id: id,
+      name: handle.name || path,
+      path: path,
+      getFile: function () { return handle.getFile(); },
+      thumb: '', queued: false
+    };
+  }
+
+  function byPath(a, b) { return a.path.localeCompare(b.path, undefined, { numeric: true }); }
+
+  /* `<input multiple>` and the webkitdirectory fallback both land here. */
+  function entriesFromFiles(files, recursive) {
+    var out = [];
+    Array.prototype.slice.call(files || []).forEach(function (file) {
+      if (!isPhotoName(file.name)) return;
+      var path = file.webkitRelativePath || file.name;
+      /* webkitdirectory always hands over the subfolders too; with the option
+         off only the picked folder's own photos are kept. */
+      if (!recursive && path.split('/').length > 2) return;
+      out.push(entryFromFile(file, path));
+    });
+    out.sort(byPath);
+    return out;
+  }
+
+  function wsEntry(id) {
+    for (var i = 0; i < state.ws.entries.length; i++) {
+      if (state.ws.entries[i].id === id) return state.ws.entries[i];
+    }
+    return null;
+  }
+
+  function wsIndex() {
+    for (var i = 0; i < state.ws.entries.length; i++) {
+      if (state.ws.entries[i].id === state.ws.activeId) return i;
+    }
+    return -1;
+  }
+
+  function wsVisible() {
+    var ws = state.ws;
+    return ws.open && (ws.entries.length >= 2 || (ws.fromFolder && ws.entries.length >= 1));
+  }
+
+  function wsClose() {
+    state.ws.open = false;
+    state.ws.fromFolder = false;
+    state.ws.name = '';
+    state.ws.entries = [];
+    state.ws.activeId = null;
+    state.ws.sort = 'name';
+    state.ws.scanning = false;
+    state.ws.collapsed = false;
+    if (el.wsTrack) el.wsTrack.textContent = '';
+    if (thumbObserver && thumbObserver.disconnect) thumbObserver.disconnect();
+    thumbQueue.length = 0;
+    syncWsUI();
+  }
+
+  function syncWsUI() {
+    var ws = state.ws;
+    var idx = wsIndex();
+    var show = wsVisible();
+    if (el.wsStrip) el.wsStrip.hidden = !show;
+    if (el.wsName) el.wsName.textContent = ws.name || '워크스페이스';
+    if (el.wsCount) el.wsCount.textContent = (idx >= 0 ? idx + 1 : 0) + ' / ' + ws.entries.length;
+    if (el.wsSort) el.wsSort.value = ws.sort;
+    if (el.wsStrip) el.wsStrip.classList.toggle('is-collapsed', !!ws.collapsed);
+    if (el.wsToggle) el.wsToggle.setAttribute('aria-expanded', ws.collapsed ? 'false' : 'true');
+    if (el.wsTrack) {
+      $$('.ws-item', el.wsTrack).forEach(function (n) {
+        n.setAttribute('aria-selected', n.dataset.entry === ws.activeId ? 'true' : 'false');
+      });
+    }
+    if (el.wsStatus) {
+      el.wsStatus.hidden = !ws.scanning;
+      if (ws.scanning) el.wsStatus.textContent = '목록 탐색 중…';
+    }
+    if (el.bulkBtn) {
+      var multi = ws.entries.length >= 2;
+      el.bulkBtn.hidden = !multi;
+      el.bulkBtn.disabled = !!ws.bulk;
+      if (multi && el.bulkLabel) el.bulkLabel.textContent = '전체 일괄 저장 (' + ws.entries.length + '장)';
+    }
+    if (el.dockCount) el.dockCount.textContent = show ? ((idx >= 0 ? idx + 1 : 0) + ' / ' + ws.entries.length) : '';
+  }
+
+  function scrollWsIntoView() {
+    var track = el.wsTrack;
+    if (!track) return;
+    var item = $('.ws-item[aria-selected="true"]', track);
+    if (!item) return;
+    var r = item.getBoundingClientRect(), t = track.getBoundingClientRect();
+    if (r.left < t.left || r.right > t.right) {
+      track.scrollLeft += (r.left - t.left) - (t.width - r.width) / 2;
+    }
+  }
+
+  function buildWsStrip() {
+    if (!el.wsTrack) return;
+    if (thumbObserver && thumbObserver.disconnect) thumbObserver.disconnect();
+    thumbObserver = null;
+    el.wsTrack.textContent = '';
+
+    var frag = document.createDocumentFragment();
+    state.ws.entries.forEach(function (entry) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ws-item';
+      b.dataset.entry = entry.id;
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', entry.id === state.ws.activeId ? 'true' : 'false');
+      b.setAttribute('aria-label', entry.name + ' 열기');
+      b.title = entry.path;
+      b.innerHTML = '<span class="ws-thumb"><img alt="" hidden /></span>' +
+                    '<span class="ws-name"></span>';
+      $('.ws-name', b).textContent = entry.name;
+      if (entry.thumb) {
+        var im = $('img', b);
+        im.src = entry.thumb;
+        im.hidden = false;
+      }
+      b.addEventListener('click', function () { selectEntry(entry.id); });
+      frag.appendChild(b);
+    });
+    el.wsTrack.appendChild(frag);
+
+    /* Only the thumbnails on screen are decoded — a folder of 800 photos must
+       not cost 800 decodes before the first one shows. */
+    if (typeof IntersectionObserver === 'function') {
+      thumbObserver = new IntersectionObserver(function (rows) {
+        rows.forEach(function (row) {
+          if (!row.isIntersecting) return;
+          var entry = wsEntry(row.target.dataset.entry);
+          if (entry && !entry.thumb) queueThumb(entry);
+        });
+      }, { root: el.wsTrack, rootMargin: '240px' });
+      $$('.ws-item', el.wsTrack).forEach(function (n) { thumbObserver.observe(n); });
+    } else {
+      state.ws.entries.forEach(queueThumb);
+    }
+  }
+
+  var thumbQueue = [];
+  var thumbBusy = false;
+  var thumbObserver = null;
+
+  function queueThumb(entry) {
+    if (!entry || entry.thumb || entry.queued) return;
+    entry.queued = true;
+    thumbQueue.push(entry);
+    pumpThumbs();
+  }
+
+  function pumpThumbs() {
+    if (thumbBusy || !thumbQueue.length) return;
+    thumbBusy = true;
+    var entry = thumbQueue.shift();
+    var next = function () {
+      thumbBusy = false;
+      setTimeout(pumpThumbs, 12);   // one decode at a time; yields between them
+    };
+    var drawn = function () { applyThumb(entry); next(); };
+    Promise.resolve(entry.getFile()).then(function (file) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+          var k = Math.min(1, 168 / Math.max(w, h));
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w * k));
+          c.height = Math.max(1, Math.round(h * k));
+          var cx = c.getContext('2d');
+          cx.imageSmoothingQuality = 'high';
+          cx.drawImage(img, 0, 0, c.width, c.height);
+          entry.thumb = c.toDataURL('image/jpeg', 0.72) || '';
+        } catch (e) {
+          entry.thumb = '';
+        }
+        URL.revokeObjectURL(url);
+        drawn();
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        entry.thumb = '';
+        drawn();
+      };
+      img.src = url;
+    }, next);
+  }
+
+  function applyThumb(entry) {
+    if (!el.wsTrack || !entry.thumb) return;
+    var item = $('.ws-item[data-entry="' + entry.id + '"]', el.wsTrack);
+    if (!item) return;
+    var img = $('img', item);
+    if (img) { img.src = entry.thumb; img.hidden = false; }
+  }
+
+  function wsOpen(entries, name, fromFolder) {
+    state.ws.open = entries.length > 0;
+    state.ws.fromFolder = !!fromFolder;
+    state.ws.name = name || '';
+    state.ws.entries = entries;
+    state.ws.activeId = null;
+    state.ws.sort = 'name';
+    state.ws.collapsed = false;
+    state.ws.scanning = false;
+    buildWsStrip();
+    syncWsUI();
+    if (!entries.length) return Promise.resolve(false);
+    return selectEntry(entries[0].id);
+  }
+
+  /* Selecting a photo re-reads its EXIF and repaints, but leaves the frame
+     style, padding, ratio, typeface and emblem the visitor chose alone. */
+  function selectEntry(id) {
+    var entry = wsEntry(id);
+    if (!entry) return Promise.resolve(false);
+    state.ws.activeId = id;
+    syncWsUI();
+    scrollWsIntoView();
+    return Promise.resolve(entry.getFile()).then(function (file) {
+      return loadFile(file, entry.name, { silent: true, keepWorkspace: true });
+    }).then(function (ok) {
+      if (ok === false) toast('이 사진을 열지 못했습니다 — ' + entry.name, 'error');
+      renderAll();
+      return ok;
+    }, function () {
+      toast('이 사진을 열지 못했습니다 — ' + entry.name, 'error');
+      return false;
+    });
+  }
+
+  function stepEntry(delta) {
+    if (state.ws.entries.length < 2) return Promise.resolve(false);
+    var i = wsIndex();
+    if (i < 0) i = 0;
+    var next = Math.max(0, Math.min(state.ws.entries.length - 1, i + delta));
+    if (next === i) return Promise.resolve(false);
+    return selectEntry(state.ws.entries[next].id);
+  }
+
+  function sortWs(mode) {
+    state.ws.sort = mode === 'reverse' ? 'reverse' : 'name';
+    state.ws.entries.sort(function (a, b) {
+      var c = byPath(a, b);
+      return state.ws.sort === 'reverse' ? -c : c;
+    });
+    buildWsStrip();
+    syncWsUI();
+    scrollWsIntoView();
+  }
+
+  /* Photos picked together become a workspace; one photo is just a photo. */
+  function openFiles(list) {
+    var files = Array.prototype.slice.call(list || []);
+    if (!files.length) return Promise.resolve(false);
+    if (files.length === 1) {
+      if (state.ws.open) wsClose();
+      return loadFile(files[0]);
+    }
+    if (!isPC()) {
+      /* The workspace strip lives on the wide layout; on a phone the first
+         photo opens the usual way and the rest are left where they are. */
+      toast('여러 장 보기는 PC 화면에서 열립니다 — 첫 장을 열었습니다', 'warn');
+      return loadFile(files[0]);
+    }
+    var entries = entriesFromFiles(files, true);
+    if (!entries.length) {
+      toast('불러올 사진이 없습니다 — JPEG · PNG · WebP', 'error');
+      return Promise.resolve(false);
+    }
+    var rel = (files[0] && files[0].webkitRelativePath) || '';
+    var name = rel ? rel.split('/')[0] : '여러 장 · ' + entries.length + '장';
+    return wsOpen(entries, name, false).then(function () {
+      toast(entries.length + '장을 열었습니다 — ←/→ 로 넘겨 보세요');
+      return true;
+    });
+  }
+
+  function openFolder() {
+    var recursive = !!(el.recursiveToggle && el.recursiveToggle.checked);
+    if (typeof window.showDirectoryPicker === 'function') {
+      var pick = null;
+      try { pick = window.showDirectoryPicker({ mode: 'read' }); } catch (e) { pick = null; }
+      if (pick && typeof pick.then === 'function') {
+        pick.then(function (handle) {
+          return scanAndOpen(handle, recursive);
+        }, function (err) {
+          if (err && (err.name === 'AbortError' || err.code === 20)) return;   // dismissed, stay quiet
+          if (el.wsFolderInput) el.wsFolderInput.click();
+        });
+        return;
+      }
+    }
+    /* Browser without the File System Access API: the directory input opens
+       the same picker and yields the files with their relative paths. */
+    if (el.wsFolderInput) el.wsFolderInput.click();
+  }
+
+  function scanAndOpen(handle, recursive) {
+    state.ws.open = true;
+    state.ws.fromFolder = true;
+    state.ws.name = handle.name || 'Workspace';
+    state.ws.entries = [];
+    state.ws.activeId = null;
+    state.ws.sort = 'name';
+    state.ws.collapsed = false;
+    state.ws.scanning = true;
+    buildWsStrip();
+    syncWsUI();
+    var lastBuild = 0;
+    return scanDirectory(handle, !!recursive, '', function (entry) {
+      state.ws.entries.push(entry);
+      if (state.ws.entries.length - lastBuild >= 24) {   // show the list as it fills
+        lastBuild = state.ws.entries.length;
+        state.ws.entries.sort(byPath);
+        buildWsStrip();
+        syncWsUI();
+      }
+    }).then(function () {
+      state.ws.scanning = false;
+      state.ws.entries.sort(byPath);
+      buildWsStrip();
+      syncWsUI();
+      if (!state.ws.entries.length) {
+        toast('이 폴더에 불러올 사진이 없습니다', 'warn');
+        return false;
+      }
+      return selectEntry(state.ws.entries[0].id).then(function () {
+        toast(state.ws.name + ' · 사진 ' + state.ws.entries.length + '장을 열었습니다');
+        return true;
+      });
+    }, function () {
+      state.ws.scanning = false;
+      syncWsUI();
+      toast('폴더를 읽지 못했습니다 — 다시 선택해 주세요', 'error');
+      return false;
+    });
+  }
+
+  async function scanDirectory(handle, recursive, prefix, onEntry) {
+    var it = handle.values();
+    var res = await it.next();
+    while (!res.done) {
+      var child = res.value;
+      var path = prefix + child.name;
+      if (child.kind === 'file' && isPhotoName(child.name)) {
+        onEntry(entryFromHandle(child, path));
+      } else if (child.kind === 'directory' && recursive) {
+        await scanDirectory(child, true, path + '/', onEntry);
+      }
+      res = await it.next();
+    }
+  }
+
+  /* ── batch export ────────────────────────────────────────────────────── */
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function canvasBlob(canvas, mime, quality) {
+    return new Promise(function (resolve) {
+      if (!canvas || !canvas.toBlob) { resolve(null); return; }
+      try {
+        canvas.toBlob(function (b) { resolve(b || null); }, mime, quality);
+      } catch (e) { resolve(null); }
+    });
+  }
+
+  function saveBlob(blob, name) {
+    if (!blob) return false;
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 12000);
+    return true;
+  }
+
+  /* One plate for one file, painted with *this* file's EXIF and the frame the
+     visitor has chosen — the same geometry the live preview uses. */
+  function plateJobForFile(file) {
+    var url = URL.createObjectURL(file);
+    var release = function () { try { URL.revokeObjectURL(url); } catch (e) { /* noop */ } };
+    return decodeImage(url).then(function (img) { return img; }, function () {
+      return readAsDataURL(file).then(decodeImage);
+    }).then(function (img) {
+      if (!img) { release(); return null; }
+      return readTags(file).then(function (tags) {
+        var parsed = EX.fromTags(tags || {});
+        var stamp = file.lastModified ? new Date(file.lastModified) : new Date();
+        var fields = (parsed.make || parsed.model)
+          ? EX.merge(parsed, {})
+          : EX.templateFor(stamp);
+        if (!fields.datetime) fields.datetime = EX.fmtDateTime(stamp);
+        var emblem = state.emblemChoice === 'auto'
+          ? EM.fromMake(fields.make, fields.model)
+          : state.emblemChoice;
+        var L = PL.layout({ w: img.naturalWidth, h: img.naturalHeight, img: img }, {
+          style: state.style, fields: fields, emblem: emblem,
+          padPct: state.geo.padPct, extraPct: state.geo.extraPct, radiusPct: state.geo.radiusPct,
+          ratio: state.ratio, font: state.font, stock: state.stock,
+          frameNo: frameNumber(fields.datetime)
+        });
+        var k = Math.min(1, MAX_EDGE_PX / Math.max(L.W, L.H));
+        var ow = Math.max(1, Math.round(L.W * k));
+        var oh = Math.max(1, Math.round(L.H * k));
+        var off = document.createElement('canvas');
+        off.width = ow;
+        off.height = oh;
+        var ctx = off.getContext('2d');
+        ctx.fillStyle = L.colors.base;
+        ctx.fillRect(0, 0, ow, oh);
+        ctx.setTransform(k, 0, 0, k, 0, 0);
+        PL.paint(ctx, L);
+        release();
+        var png = state.format === 'png';
+        return {
+          canvas: off, w: ow, h: oh,
+          mime: png ? 'image/png' : 'image/jpeg',
+          ext: png ? 'png' : 'jpg',
+          name: EX.fileName(fields, png ? 'png' : 'jpg')
+        };
+      });
+    }).catch(function () { release(); return null; });
+  }
+
+  async function bulkExport() {
+    var ws = state.ws;
+    if (ws.bulk || ws.entries.length < 2) return null;
+    var total = ws.entries.length, saved = 0, failed = 0;
+    ws.bulk = { total: total, saved: 0 };
+    var say = function (text) {
+      if (!el.bulkStatus) return;
+      el.bulkStatus.hidden = false;
+      el.bulkStatus.textContent = text;
+    };
+    syncWsUI();
+    say('0 / ' + total + ' · 저장 준비…');
+    for (var i = 0; i < total; i++) {
+      var entry = ws.entries[i];
+      say((i + 1) + ' / ' + total + ' · ' + entry.name);
+      try {
+        var file = await entry.getFile();
+        var job = await plateJobForFile(file);
+        if (!job) {
+          failed++;
+        } else {
+          var blob = await canvasBlob(job.canvas, job.mime, state.quality / 100);
+          if (blob && saveBlob(blob, job.name)) {
+            saved++;
+            window.__lastExport = {
+              name: job.name, bytes: blob.size, w: job.w, h: job.h,
+              format: job.ext === 'png' ? 'png' : 'jpeg', style: state.style
+            };
+          } else {
+            failed++;
+          }
+        }
+      } catch (e) {
+        failed++;
+      }
+      ws.bulk.saved = saved;
+      await sleep(180);   // one download at a time, and the UI keeps breathing
+    }
+    ws.bulk = null;
+    syncWsUI();
+    say(saved + ' / ' + total + '장 저장 완료' + (failed ? ' · ' + failed + '장 실패' : ''));
+    setTimeout(function () {
+      if (el.bulkStatus && !state.ws.bulk) el.bulkStatus.hidden = true;
+    }, 6000);
+    toast(saved
+      ? saved + '장을 저장했습니다' + (failed ? ' · ' + failed + '장 실패' : '')
+      : '일괄 저장에 실패했습니다', saved ? '' : 'error');
+    return { saved: saved, failed: failed, total: total };
   }
 
   /* ── placeholder art (so the strip previews before a photo arrives) ────── */
@@ -728,6 +1274,8 @@
       el.renderChip.textContent = '—';
       el.exportSize.textContent = '—';
       el.exportName.textContent = '—';
+      if (el.dockSize) el.dockSize.textContent = '—';
+      if (el.dockSaveBtn) el.dockSaveBtn.disabled = true;
       return;
     }
     var k = Math.min(1, MAX_EDGE / Math.max(L.W, L.H));
@@ -735,6 +1283,8 @@
     el.renderChip.textContent = ow + ' × ' + oh;
     el.exportSize.textContent = ow + ' × ' + oh + ' px';
     el.exportName.textContent = EX.fileName(state.fields, state.format === 'png' ? 'png' : 'jpg');
+    if (el.dockSize) el.dockSize.textContent = ow + ' × ' + oh + ' px';
+    if (el.dockSaveBtn) el.dockSaveBtn.disabled = false;
   }
 
   /* ── export ───────────────────────────────────────────────────────────── */
@@ -1030,10 +1580,19 @@
     $$('button', el.formatSeg).forEach(function (b) {
       b.setAttribute('aria-pressed', b.dataset.format === state.format ? 'true' : 'false');
     });
+    if (el.formatSegDock) {
+      $$('button', el.formatSegDock).forEach(function (b) {
+        b.setAttribute('aria-pressed', b.dataset.format === state.format ? 'true' : 'false');
+      });
+    }
     el.qualityRow.hidden = state.format !== 'jpeg';
+    if (el.qualityRowDock) el.qualityRowDock.hidden = state.format !== 'jpeg';
     el.qualityVal.textContent = state.quality;
     el.qualityRange.value = state.quality;
+    if (el.qualityValDock) el.qualityValDock.textContent = state.quality;
+    if (el.qualityRangeDock) el.qualityRangeDock.value = state.quality;
     if (el.shareBtn) el.shareBtn.hidden = !canShareFiles();
+    if (el.dockSaveBtn) el.dockSaveBtn.disabled = !state.photo;
   }
 
   function setStyle(style, resetGeo) {
@@ -1047,15 +1606,34 @@
     renderAll();
   }
 
-  /* ── sheet ────────────────────────────────────────────────────────────── */
-  function openSheet(name) {
+  /* ── sheet / inspector ────────────────────────────────────────────────── */
+  /* One control panel, two geometries: on a phone it is the bottom sheet the
+     toolbar raises; from 1024px the same panel is the fixed right inspector,
+     always on screen, with its own tab row and the export dock at the foot. */
+  function setPane(name) {
     if (!SHEETS[name]) return;
-    state.sheet = name;
+    state.pane = name;
     el.sheetTitle.textContent = SHEETS[name].title;
     el.sheetKicker.textContent = SHEETS[name].kicker;
     $$('.pane', el.sheet).forEach(function (p) {
       p.classList.toggle('is-active', p.dataset.pane === name);
     });
+    el.sheet.setAttribute('data-active', name);
+    if (el.insTabs) {
+      $$('[data-tab]', el.insTabs).forEach(function (b) {
+        var on = b.dataset.tab === name;
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.tabIndex = on ? 0 : -1;
+      });
+    }
+    if (name === 'export' && state.photo && !isPC()) prepareExport();   // warm the share-tap cache
+  }
+
+  function openSheet(name) {
+    if (!SHEETS[name]) return;
+    setPane(name);
+    if (isPC()) return;                      // the inspector is already on screen
+    state.sheet = name;
     el.sheet.classList.add('is-open');
     el.sheetBackdrop.classList.add('is-open');
     el.sheet.setAttribute('aria-hidden', 'false');
@@ -1067,6 +1645,7 @@
   }
 
   function closeSheet(restoreFocus) {
+    if (isPC()) return;
     if (!state.sheet) return;
     var last = state.sheet;
     state.sheet = null;
@@ -1083,6 +1662,7 @@
   }
 
   function toggleSheet(name) {
+    if (isPC()) { setPane(name); return; }
     if (state.sheet === name) closeSheet();
     else openSheet(name);
   }
@@ -1110,8 +1690,10 @@
     });
     function dropHandler(e) {
       e.preventDefault();
-      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-      if (f) loadFile(f);
+      var list = e.dataTransfer && e.dataTransfer.files;
+      if (!list || !list.length) return;
+      if (list.length > 1) openFiles(list);
+      else loadFile(list[0]);
     }
     el.dropzone.addEventListener('drop', function (e) { dropHandler(e); });
     el.stageCanvas.addEventListener('drop', dropHandler);
@@ -1128,8 +1710,47 @@
       FIELD_INPUTS[k].addEventListener('input', function () { readField(k); });
     });
     $('#resetMetaBtn').addEventListener('click', function () {
-      if (state.photo && state.photo.file) loadFile(state.photo.file, 'EXIF 다시 읽기');
+      if (state.photo && state.photo.file) loadFile(state.photo.file, 'EXIF 다시 읽기', { keepWorkspace: true });
     });
+
+    // workspace: open several photos / a folder
+    ['#openFilesBtn', '#emptyOpenFilesBtn', '#sessionOpenFilesBtn'].forEach(function (sel) {
+      var b = $(sel);
+      if (b) b.addEventListener('click', function () { if (el.wsFileInput) el.wsFileInput.click(); });
+    });
+    ['#openFolderBtn', '#emptyOpenFolderBtn', '#sessionOpenFolderBtn'].forEach(function (sel) {
+      var b = $(sel);
+      if (b) b.addEventListener('click', openFolder);
+    });
+    if (el.wsFileInput) {
+      el.wsFileInput.addEventListener('change', function () {
+        var files = el.wsFileInput.files;
+        if (files && files.length) openFiles(files);
+        el.wsFileInput.value = '';
+      });
+    }
+    if (el.wsFolderInput) {
+      el.wsFolderInput.addEventListener('change', function () {
+        var files = el.wsFolderInput.files;
+        if (files && files.length) {
+          var recursive = !!(el.recursiveToggle && el.recursiveToggle.checked);
+          var entries = entriesFromFiles(files, recursive);
+          var folder = String((files[0].webkitRelativePath || '')).split('/')[0] || 'Workspace';
+          if (!entries.length) toast('이 폴더에 불러올 사진이 없습니다', 'warn');
+          else wsOpen(entries, folder, true);
+        }
+        el.wsFolderInput.value = '';
+      });
+    }
+    if (el.wsSort) el.wsSort.addEventListener('change', function () { sortWs(el.wsSort.value); });
+    if (el.wsToggle) {
+      el.wsToggle.addEventListener('click', function () {
+        state.ws.collapsed = !state.ws.collapsed;
+        syncWsUI();
+        setTimeout(function () { render(); scheduleStrip(); }, 180);
+      });
+    }
+    if (el.bulkBtn) el.bulkBtn.addEventListener('click', bulkExport);
 
     // geometry
     el.padRange.addEventListener('input', function () {
@@ -1175,10 +1796,30 @@
         render();
       });
     });
+    if (el.formatSegDock) {
+      $$('button', el.formatSegDock).forEach(function (b) {
+        b.addEventListener('click', function () {
+          state.format = b.dataset.format;
+          syncExportUI();
+          render();
+        });
+      });
+    }
     el.qualityRange.addEventListener('input', function () {
       state.quality = parseInt(el.qualityRange.value, 10);
       el.qualityVal.textContent = state.quality;
+      if (el.qualityValDock) el.qualityValDock.textContent = state.quality;
+      if (el.qualityRangeDock) el.qualityRangeDock.value = state.quality;
     });
+    if (el.qualityRangeDock) {
+      el.qualityRangeDock.addEventListener('input', function () {
+        state.quality = parseInt(el.qualityRangeDock.value, 10);
+        el.qualityVal.textContent = state.quality;
+        el.qualityValDock.textContent = state.quality;
+        el.qualityRange.value = state.quality;
+      });
+    }
+    if (el.dockSaveBtn) el.dockSaveBtn.addEventListener('click', downloadPlate);
     el.downloadBtn.addEventListener('click', downloadPlate);
     if (el.shareBtn) el.shareBtn.addEventListener('click', sharePlate);
     if (el.previewBtn) el.previewBtn.addEventListener('click', openPreview);
@@ -1221,6 +1862,36 @@
     });
     el.sheetClose.addEventListener('click', function () { closeSheet(); });
     el.sheetBackdrop.addEventListener('click', function () { closeSheet(); });
+
+    // PC inspector tabs
+    if (el.insTabs) {
+      var tabButtons = $$('[data-tab]', el.insTabs);
+      tabButtons.forEach(function (b, i) {
+        b.addEventListener('click', function () { setPane(b.dataset.tab); });
+        b.addEventListener('keydown', function (e) {
+          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+          e.preventDefault();
+          var next = (i + (e.key === 'ArrowRight' ? 1 : -1) + tabButtons.length) % tabButtons.length;
+          setPane(tabButtons[next].dataset.tab);
+          tabButtons[next].focus({ preventScroll: true });
+        });
+      });
+    }
+
+    /* Photograph by photograph with the arrow keys, the way a folder is meant
+       to be looked at. Inputs and the other strips keep their own keys. */
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (state.ws.entries.length < 2) return;
+      var t = e.target;
+      if (t && t.closest) {
+        if (t.closest('input, select, textarea, [contenteditable]')) return;
+        if (t.closest('#frameStrip') || t.closest('#insTabs')) return;
+      }
+      e.preventDefault();
+      stepEntry(e.key === 'ArrowRight' ? 1 : -1);
+    });
 
     // preview background
     $$('button', $('#bgSeg')).forEach(function (b) {
@@ -1374,6 +2045,29 @@
     }
     window.addEventListener('resize', redraw);
     window.addEventListener('orientationchange', function () { setTimeout(redraw, 240); });
+
+    /* Crossing 1024px swaps the same panel between "bottom sheet" and "fixed
+       inspector": the open pane follows, and the sheet is retired on the way up. */
+    if (typeof window.matchMedia === 'function') {
+      var mq = window.matchMedia('(min-width: 1024px)');
+      var onWide = function () {
+        if (mq.matches) {
+          state.sheet = null;
+          el.sheet.classList.remove('is-open');
+          el.sheetBackdrop.classList.remove('is-open');
+          el.sheet.setAttribute('aria-hidden', 'false');
+          el.sheet.setAttribute('aria-modal', 'false');
+          setPane(state.pane || 'exif');
+        } else {
+          el.sheet.setAttribute('aria-hidden', 'true');
+          el.sheet.setAttribute('aria-modal', 'true');
+        }
+        render();
+        scheduleStrip();
+      };
+      if (mq.addEventListener) mq.addEventListener('change', onWide);
+      else if (mq.addListener) mq.addListener(onWide);
+    }
   }
 
   function zoomBy(factor) {
@@ -1398,11 +2092,18 @@
     el.stage.dataset.bg = state.bg;
     buildEmblems();
     buildStrip();
+    setPane('exif');
+    /* On a wide screen the panel is not a modal dialog — it is simply there. */
+    if (isPC()) {
+      el.sheet.setAttribute('aria-hidden', 'false');
+      el.sheet.setAttribute('aria-modal', 'false');
+    }
     paintFields();
     syncStyleUI();
     syncGeoUI();
     syncExportUI();
     syncPhotoUI(0);
+    syncWsUI();
     bind();
     render();
     paintStrip();
@@ -1416,6 +2117,18 @@
     loadFile: loadFile,
     loadSample: loadSample,
     setStyle: setStyle,
+    openFiles: openFiles,
+    openFolder: openFolder,
+    scanAndOpen: scanAndOpen,
+    selectEntry: selectEntry,
+    stepEntry: stepEntry,
+    sortWs: sortWs,
+    bulkExport: bulkExport,
+    workspace: function () { return state.ws; },
+    entriesFromFiles: entriesFromFiles,
+    setPane: setPane,
+    isPC: isPC,
+    wsVisible: wsVisible,
     setField: function (key, value) {
       if (FIELD_INPUTS[key]) { FIELD_INPUTS[key].value = value; readField(key); }
     },
