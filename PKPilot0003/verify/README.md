@@ -24,6 +24,20 @@
 실측값: 결과 카드 미리보기 `data:image/jpeg;base64` 575,059자 · blob URL(`blob:`)도 함께 준비 ·
 문서 스크롤 844=844(390) / 568=568(320) · 카드 내부 스크롤 546=546(390) · 501=501(320).
 
+### 라이브 배포 확인 (7a72c21)
+
+`https://hyangdan2.github.io/PKPilot0003/` 를 같은 카카오톡 UA로 직접 열어 받은 실측본입니다(콘솔 에러 0건).
+
+| 파일 | 내용 |
+| --- | --- |
+| `inapp-live-390-landing.png` · `inapp-live-390-copy-toast.png` | 라이브 랜딩의 안내 + 주소 복사 토스트 |
+| `inapp-live-390-export-sheet.png` · `inapp-live-390-export-card.png` · `inapp-live-390-preview.png` | 라이브 내보내기 시트 → 결과 카드(미리보기 `data:image/jpeg;base64`) → 전체 화면 미리보기 |
+| `inapp-live-320-landing.png` · `inapp-live-320-export-card.png` | 최소 폭 320×568 |
+| `inapp-live-desktop-normal.png` | 일반 크롬 — 안내 미표시(문서 구조도 기존과 동일) |
+
+- 라이브 파일 SHA-256 = 저장소 파일: `app.js` `44ad7704…`, `style.css` `787e23ec…`, `index.html` `3522bd8d…`
+- 라이브 결과 카드: `#exportImg` src `data:image/jpeg;base64,…`(575,059자) · `p.url` `blob:https:` 병행 · 공유 버튼 숨김 · 문서 스크롤 844=844 · 카드 내부 스크롤 546=546
+
 ## 공식 브랜드 엠블럼 11종 · 사진으로 저장 (2026-11-14 두 번째 배포)
 
 `emblem-` 접두사 파일은 **페이지의 `SPApp.prepareExport()`를 그대로 호출해 받은 1:1 출력물**입니다
