@@ -109,6 +109,9 @@
     var t = tags || {};
     var make = clean(t.Make);
     var model = clean(t.Model);
+    // EXIF strings are kept verbatim — no case normalisation or maker rewriting.
+    // Whatever the camera wrote ("samsung", "NIKON CORPORATION", "SONY") is what
+    // the plate prints; the user edits it in the EXIF sheet when they want to.
     // Many bodies repeat the maker inside the model ("SONY ILCE-7M4" / "ILCE-7M4").
     if (make && model.toLowerCase().indexOf(make.split(' ')[0].toLowerCase()) === 0) {
       var head = make.split(' ')[0];

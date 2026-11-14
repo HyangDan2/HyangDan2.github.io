@@ -724,6 +724,37 @@ def browser_tests(port):
         check("fileName pattern", units["file1"] == "Shutterplate_SONY-ILCE-7M4_202610241732.jpg", units["file1"])
         check("templateFor builds a date", units["tpl"] == "2026.01.02 03:04", units["tpl"])
 
+        print("\n[browser] maker passed through verbatim (no forced rewriting)")
+        makers = page.evaluate("""() => {
+          const E = window.SPExif;
+          return {
+            lower: E.fromTags({Make: 'samsung', Model: 'Galaxy S24 Ultra'}),
+            upper: E.fromTags({Make: 'SAMSUNG', Model: 'Galaxy S24 Ultra'}),
+            mixed: E.fromTags({Make: 'Samsung', Model: 'Galaxy S24 Ultra'}),
+            dedupe: E.fromTags({Make: 'samsung', Model: 'samsung Galaxy S24'}),
+            space: E.fromTags({Make: '  samsung  ', Model: 'SM-S928N'}),
+            sony: E.fromTags({Make: 'SONY', Model: 'ILCE-7M4'}),
+            nikon: E.fromTags({Make: 'NIKON CORPORATION', Model: 'NIKON Z 8'}),
+            none: E.fromTags({})
+          };
+        }""")
+        check("make 'samsung' is kept verbatim (not recased)", makers["lower"]["make"] == "samsung",
+              repr(makers["lower"]["make"]))
+        check("make 'SAMSUNG' is kept verbatim", makers["upper"]["make"] == "SAMSUNG",
+              repr(makers["upper"]["make"]))
+        check("make 'Samsung' is kept verbatim", makers["mixed"]["make"] == "Samsung",
+              repr(makers["mixed"]["make"]))
+        check("only surrounding whitespace is trimmed, case is untouched",
+              makers["space"]["make"] == "samsung", repr(makers["space"]["make"]))
+        check("samsung: model survives untouched",
+              makers["lower"]["model"] == "Galaxy S24 Ultra", repr(makers["lower"]["model"]))
+        check("samsung: maker repeated in model is stripped once",
+              makers["dedupe"]["model"] == "Galaxy S24", repr(makers["dedupe"]["model"]))
+        check("other makers untouched (SONY, NIKON CORPORATION)",
+              makers["sony"]["make"] == "SONY" and makers["nikon"]["make"] == "NIKON CORPORATION",
+              repr((makers["sony"]["make"], makers["nikon"]["make"])))
+        check("no make stays empty", makers["none"]["make"] == "", repr(makers["none"]["make"]))
+
         print("\n[browser] eight frames: geometry, painting, selection")
         sig0 = canvas_sig(page)
         check("preview canvas painted", sig0["n"] > 1000 and sig0["max"] - sig0["min"] > 120,
