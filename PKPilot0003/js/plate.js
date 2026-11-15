@@ -349,10 +349,10 @@
     return { ink: c.ink, accent: c.ink, base: c.base, light: c.light, mono: true };
   }
 
-  function emblemAt(ctx, L, id, x, y, h, align, maxW) {
+  function emblemAt(ctx, L, id, x, y, h, align, maxW, colors) {
     if (!id) return 0;
     var f = emFit(id, h, maxW);
-    E.draw(ctx, id, x, y, f.w, f.h, emblemColors(L), align || 'left');
+    E.draw(ctx, id, x, y, f.w, f.h, colors || emblemColors(L), align || 'left');
     return f.w;
   }
 
@@ -372,15 +372,61 @@
   }
 
   /* ── 01 Clean Horizon ──────────────────────────────────────────────────── */
+  /* The maker row prints the maker's own emblem where the make name used to
+     sit, with the model set beside it as one optically centred lockup:
+     [SAMSUNG mark]  Galaxy S26 Ultra. The mark is sized under the type's cap
+     height, the gap is one fixed optical beat, and the pair centres on the
+     plate as a single group. 'None' (or a make no emblem matches) hands the
+     row back to the plain make + model line. */
+  function horizonLockup(ctx, L, id, label, size, rowY, cx, maxW) {
+    var u = L.u, band = L.band, c = L.colors;
+    var gap = u * 12;
+    /* the emblem may take a third of the row at most: an ultra-wide wordmark
+       shrinks instead of eating the model name */
+    var emMaxW = Math.max(u * 56, maxW * 0.34);
+    var emH = emFit(id, Math.min(u * 26, band * 0.22), emMaxW).h;
+    var emW = emFit(id, emH, emMaxW).w;
+
+    var opt = { size: size, weight: 300, family: L.opts.font, color: c.ink, ls: u * 0.6 };
+    var labelW = measure(ctx, label, opt);
+    var room = Math.max(0, maxW - emW - gap);
+    if (labelW > room && labelW > 0) {
+      /* shrink the type only as far as the floor allows; text() finishes the
+         job (it ellipsises below the floor) so nothing leaves the plate */
+      var k = Math.max(MIN_SHRINK, room / labelW);
+      opt.size = size * k;
+      opt.ls = u * 0.6 * k;
+      labelW = measure(ctx, label, opt);
+    }
+
+    /* optical centring: the mark rides on the type's optical middle, a touch
+       above the baseline, rather than on the baseline itself */
+    var emTop = rowY - opt.size * 0.34 - emH / 2;
+    var x0 = cx - (emW + gap + labelW) / 2;
+    emblemAt(ctx, L, id, x0, emTop, emH, 'left', emMaxW, emblemColors(L));
+    text(ctx, label, x0 + emW + gap, rowY, {
+      size: opt.size, weight: opt.weight, family: opt.family, color: c.ink,
+      ls: opt.ls, align: 'left', maxW: room
+    });
+  }
+
   function drawHorizon(ctx, L) {
     var f = L.fields, c = L.colors, u = L.u, band = L.band, top = L.photoBox.y + L.PH;
     var cx = L.W / 2, maxW = L.W - L.inset * 2;
     var camSize = Math.min(u * 30, band * 0.26);
+    var make = String(f.make || '').trim();
+    var model = String(f.model || '').trim();
+    var emId = L.emblem && E && E.has(L.emblem) ? L.emblem : null;
+    var rowY = top + band * 0.36;
 
-    compound(ctx, [
-      { s: String(f.make || '').trim(), size: camSize, weight: 700, family: L.opts.font, color: c.ink, ls: u * 0.6 },
-      { s: String(f.model || '').trim() ? '  ' + String(f.model).trim() : '', size: camSize, weight: 300, family: L.opts.font, color: c.ink, ls: u * 0.6 }
-    ], cx, top + band * 0.36, 'center', maxW);
+    if (emId && (model || make)) {
+      horizonLockup(ctx, L, emId, model || make, camSize, rowY, cx, maxW);
+    } else {
+      compound(ctx, [
+        { s: make, size: camSize, weight: 700, family: L.opts.font, color: c.ink, ls: u * 0.6 },
+        { s: model ? '  ' + model : '', size: camSize, weight: 300, family: L.opts.font, color: c.ink, ls: u * 0.6 }
+      ], cx, rowY, 'center', maxW);
+    }
 
     text(ctx, join(specParts(f), '  ·  '), cx, top + band * 0.58, {
       size: Math.min(u * 15, band * 0.13), family: 'mono', color: c.muted,

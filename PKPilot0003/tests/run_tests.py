@@ -205,8 +205,28 @@ def static_tests():
           ".brand-mark" not in mark_css)
     check("no page points at the retired circular logo image",
           "logo-mark" not in html and "brand-logo" not in html and "brand-logo" not in mark_css)
-    check("brand name is Shutterplate", 'class="brand-name">Shutterplate<' in html)
-    check("brand badge is HD2Lab", 'class="brand-badge">HD2Lab<' in html)
+    check("brand name is HD2Lab", 'class="brand-name">HD2Lab<' in html)
+    check("brand carries the product as its sub-label",
+          re.search(r'<span class="brand-name">HD2Lab</span>\s*<em>Shutterplate</em>', html) is not None)
+    check("the header no longer wears the HD2Lab pill badge",
+          "brand-badge" not in re.search(r"<header.*?</header>", html, re.S).group(0))
+    check("the header brand is the Web-HQ lockup, dressed as a title",
+          re.search(r"\.brand\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;"
+                    r"[^}]*gap:\s*12px", mark_css, re.S) is not None
+          and re.search(r"\.brand\s*\{[^}]*font-weight:\s*800;[^}]*font-size:\s*25px;"
+                        r"[^}]*letter-spacing:\s*-1\.5px", mark_css, re.S) is not None)
+    check("the brand has no card, border radius or padding of its own",
+          re.search(r"\.brand\s*\{[^}]*padding:\s*0;[^}]*border:\s*0;", mark_css, re.S) is not None
+          and re.search(r"\.brand\s*\{[^}]*background:\s*transparent;", mark_css, re.S) is not None
+          and re.search(r"\.brand\s*\{[^}]*border-radius:", mark_css) is None)
+    check("brand-name is 25px/800 like Web-HQ",
+          re.search(r"\.brand-name\s*\{[^}]*font-size:\s*25px;[^}]*font-weight:\s*800;"
+                    r"[^}]*letter-spacing:\s*-1\.5px", mark_css, re.S) is not None)
+    check("the sub-label is a 12px ruled column like Web-HQ",
+          re.search(r"\.brand em\s*\{[^}]*font-size:\s*12px;[^}]*font-style:\s*normal;"
+                    r"[^}]*font-weight:\s*400;", mark_css, re.S) is not None
+          and re.search(r"\.brand em\s*\{[^}]*border-left:\s*1px solid var\(--line\);"
+                        r"[^}]*padding-left:\s*13px;", mark_css, re.S) is not None)
     check("no PKPilot0003 stamp in the header",
           "PKPilot0003" not in re.search(r"<header.*?</header>", html, re.S).group(0))
     check("no 'CRAFT · SHUTTERPLATE' header meta", "CRAFT · SHUTTERPLATE" not in html)
@@ -427,7 +447,7 @@ def static_tests():
     check("landing frame showcase is a responsive grid",
           re.search(r"\.hf-grid\s*\{[^}]*grid-template-columns:\s*repeat", css, re.S) is not None)
     check("the title button answers hover and focus",
-          re.search(r"\.brand:hover\s*\{", css) is not None and
+          re.search(r"\.brand:hover\b[^{]*\{[^}]*color:", css, re.S) is not None and
           re.search(r"\.brand:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--accent\)",
                     css, re.S) is not None)
     check("the ⋮ menu rows carry a switch state",
@@ -761,6 +781,71 @@ FIT_JS = """(matrix) => {
   out.overflow = out.overflow.slice(0, 6);
   out.collide = out.collide.slice(0, 6);
   return out;
+}"""
+
+
+# ── Clean Horizon: the maker emblem beside the model ────────────────────────
+# The first row of Clean Horizon prints the maker's own emblem in place of the
+# make name, with the model beside it. This paints the frame and reads back the
+# emblem box and every glyph run, so the row can be judged by where the pixels
+# landed: one line, one lockup, centred on the plate.
+HORIZON_JS = """(matrix) => {
+  const c = document.createElement('canvas');
+  return matrix.map((item) => {
+    const em = item.emblem === 'auto' ? SPEmblems.fromMake(item.fields.make, item.fields.model) : item.emblem;
+    const L = SPPlate.layout({w: item.w, h: item.h, img: null}, {
+      style: 'horizon', fields: item.fields, emblem: em, font: 'sans',
+      stock: 'KODAK PORTRA 400', frameNo: '#03'
+    });
+    c.width = Math.max(1, Math.round(L.W)); c.height = Math.max(1, Math.round(L.H));
+    const ctx = c.getContext('2d');
+    const recs = [], emblems = [];
+    let inEmblem = false;
+    const origFT = ctx.fillText.bind(ctx);
+    ctx.fillText = function (s, x, y) {
+      if (!inEmblem) {
+        const m = this.measureText(String(s));
+        const px = parseFloat((/(\\d+(?:\\.\\d+)?)px/.exec(this.font) || [0, 0])[1]) || 1;
+        const asc = m.actualBoundingBoxAscent || px * 0.8, desc = m.actualBoundingBoxDescent || 0;
+        const wd = m.width, al = this.textAlign;
+        const x0 = al === 'center' ? x - wd / 2 : al === 'right' ? x - wd : x;
+        recs.push({s: String(s), x0: x0, x1: x0 + wd, y: y, y0: y - asc, y1: y + desc, px: px});
+      }
+      return origFT(s, x, y);
+    };
+    const draw = SPEmblems.draw;
+    SPEmblems.draw = function (c2, id, x, y, wd, hh) {
+      const prev = inEmblem;
+      if (c2 === ctx) { inEmblem = true; emblems.push({id: id, x: x, x1: x + wd, y: y, y1: y + hh, w: wd, h: hh}); }
+      try { return draw.apply(this, arguments); } finally { inEmblem = prev; }
+    };
+    try { SPPlate.paint(ctx, L); } finally { SPEmblems.draw = draw; }
+
+    const lines = [];
+    for (const r of recs) {
+      let line = lines.find((l) => Math.abs(l.y - r.y) < 0.6);
+      if (!line) { line = {y: r.y, parts: []}; lines.push(line); }
+      line.parts.push(r);
+    }
+    lines.sort((a, b) => a.y - b.y);
+    const n = (v) => Math.round(v * 100) / 100;
+    return {
+      emblem: em, W: L.W, H: L.H, band: L.band, u: L.u,
+      photoBottom: n(L.photoBox.y + L.PH),
+      rowY: n(L.photoBox.y + L.PH + L.band * 0.36),
+      specY: n(L.photoBox.y + L.PH + L.band * 0.58),
+      lines: lines.map((l) => {
+        const p = l.parts.slice().sort((a, b) => a.x0 - b.x0);
+        return {s: p.map((x) => x.s).join(''), y: n(l.y), px: n(p[0].px),
+                x0: n(Math.min.apply(null, p.map((x) => x.x0))),
+                x1: n(Math.max.apply(null, p.map((x) => x.x1))),
+                y0: n(Math.min.apply(null, p.map((x) => x.y0))),
+                y1: n(Math.max.apply(null, p.map((x) => x.y1)))};
+      }),
+      emblems: emblems.map((e) => ({id: e.id, x: n(e.x), x1: n(e.x1), y: n(e.y), y1: n(e.y1),
+                                    w: n(e.w), h: n(e.h)}))
+    };
+  });
 }"""
 
 
@@ -1329,6 +1414,108 @@ def browser_tests(port):
             got = (fit["byStyle"].get(fid) or {})
             check(f"fit: {label} never ellipsises on a portrait plate",
                   got.get("ellipsis") == 0, f"{got.get('ellipsis')} line(s)")
+
+        # ── Clean Horizon: the maker's emblem stands in for the make name ──
+        print("\n[browser] Clean Horizon — maker emblem beside the model")
+        HZ_CASES = [
+            ("samsung", {"make": "samsung", "model": "Galaxy S26 Ultra",
+                         "focal": "24mm", "aperture": "ƒ/1.7", "shutter": "1/120s",
+                         "iso": "ISO 400", "datetime": "2026.11.15 08:40",
+                         "caption": "창원 아침"}, "auto"),
+            ("apple", {"make": "Apple", "model": "iPhone 15 Pro",
+                       "focal": "24mm", "aperture": "ƒ/1.78", "shutter": "1/1200s",
+                       "iso": "ISO 400", "datetime": "2026.11.15 08:40"}, "auto"),
+            ("none", {"make": "SAMSUNG", "model": "NX500",
+                      "focal": "24mm", "aperture": "ƒ/3.5", "shutter": "1/250s",
+                      "iso": "ISO 800", "datetime": "2026.11.15 08:40"}, "none"),
+        ]
+        hz_matrix = []
+        for cname, fields, emblem in HZ_CASES:
+            for sname, w, h in (("2:3", 1200, 1800), ("3:2", 1536, 1024), ("2:3s", 1024, 1536)):
+                hz_matrix.append({"case": cname, "size": sname, "fields": fields,
+                                  "emblem": emblem, "w": w, "h": h})
+        hz = page.evaluate(HORIZON_JS, hz_matrix)
+        by_case = {}
+        for item, res in zip(hz_matrix, hz):
+            by_case.setdefault(item["case"], []).append((item, res))
+
+        check("horizon: every plate painted", len(hz) == len(hz_matrix), f"{len(hz)}")
+        for item, res in by_case["samsung"]:
+            label = f"horizon {item['size']}"
+            # 1. a lowercase make ('samsung') still resolves to the Samsung mark
+            check(f"{label}: macaron-free — lowercase 'samsung' finds the Samsung emblem",
+                  res["emblem"] == "samsung" and len(res["emblems"]) == 1,
+                  json.dumps({"resolved": res["emblem"], "painted": res["emblems"]}))
+            if len(res["emblems"]) != 1:
+                continue
+            em = res["emblems"][0]
+            model = [l for l in res["lines"] if "Galaxy" in l["s"]]
+            check(f"{label}: the model prints on the emblem's row", len(model) == 1,
+                  json.dumps([l["s"] for l in res["lines"]], ensure_ascii=False))
+            if len(model) != 1:
+                continue
+            mrow = model[0]
+            # 2. one lockup: the mark to the left of the model, one optical gap apart
+            check(f"{label}: emblem sits left of the model on the same baseline",
+                  em["x1"] + 1 < mrow["x0"] and abs(em["y"] + em["h"] / 2 - mrow["y"]) < res["band"],
+                  json.dumps({"em": em, "row": mrow}))
+            gap = mrow["x0"] - em["x1"]
+            check(f"{label}: the gap is the ~12u optical beat",
+                  abs(gap - res["u"] * 12) <= max(2.0, res["u"] * 2.5),
+                  f"gap={gap:.2f}px, 12u={res['u'] * 12:.2f}px")
+            # 3. the pair is centred on the plate as one group
+            centre = (em["x"] + mrow["x1"]) / 2
+            check(f"{label}: the emblem + model group is centred",
+                  abs(centre - res["W"] / 2) <= 1.5, f"centre={centre:.2f}, plate={res['W'] / 2:.2f}")
+            # 4. the make name is gone from the row — the mark took its place
+            row_txt = " ".join(l["s"] for l in res["lines"])
+            check(f"{label}: the make name gives way to the mark",
+                  "SAMSUNG" not in row_txt and "samsung" not in row_txt, row_txt)
+            # 5. the mark is sized against the type, not the whole band
+            check(f"{label}: emblem height is the band-capped 26u",
+                  em["h"] <= res["band"] * 0.22 + 0.5 and em["h"] <= res["u"] * 26 + 0.5
+                  and em["h"] > res["u"] * 8,
+                  f"h={em['h']:.2f}, band*0.22={res['band'] * 0.22:.2f}, 26u={res['u'] * 26:.2f}")
+            # 6. optical centring: the mark rides on the type's optical middle
+            optical = mrow["y"] - mrow["px"] * 0.34
+            check(f"{label}: the mark is optically centred on the model type",
+                  abs((em["y"] + em["h"] / 2) - optical) <= mrow["px"] * 0.22,
+                  f"mark centre={em['y'] + em['h'] / 2:.2f}, optical={optical:.2f}")
+            # 7. the mark stays inside the plate, above the band's copy
+            check(f"{label}: the mark stays on the plate and in the band",
+                  em["x"] >= 0 and em["x1"] <= res["W"] + 0.5
+                  and em["y"] >= res["photoBottom"] - 0.5 and em["y1"] <= res["H"] + 0.5,
+                  json.dumps(em))
+            # 8. spec row still second, foot still below
+            spec = [l for l in res["lines"] if "·" in l["s"] and l["y"] > mrow["y"] + 1]
+            check(f"{label}: the spec row stays on the second line",
+                  bool(spec) and abs(spec[0]["y"] - res["specY"]) <= res["band"] * 0.02,
+                  json.dumps({"spec": spec[0] if spec else None, "want": res["specY"]}))
+            foot = [l for l in res["lines"] if "2026" in l["s"]]
+            check(f"{label}: the date line stays below the specs",
+                  len(foot) == 1 and (not spec or foot[0]["y"] > spec[0]["y"] + 1),
+                  json.dumps([l["s"] for l in res["lines"]], ensure_ascii=False))
+            check(f"{label}: nothing painted off the plate",
+                  all(l["x0"] >= -0.5 and l["x1"] <= res["W"] + 0.5 for l in res["lines"]),
+                  json.dumps([(l["s"], l["x0"], l["x1"]) for l in res["lines"]], ensure_ascii=False))
+
+        for item, res in by_case["apple"]:
+            check(f"horizon {item['size']}: the Apple mark stands beside iPhone 15 Pro",
+                  res["emblem"] == "apple" and len(res["emblems"]) == 1
+                  and any("iPhone 15 Pro" in l["s"] for l in res["lines"]),
+                  json.dumps(res["emblems"]))
+
+        for item, res in by_case["none"]:
+            label = f"horizon none {item['size']}"
+            check(f"{label}: no mark is painted", not res["emblems"], json.dumps(res["emblems"]))
+            row = [l for l in res["lines"] if abs(l["y"] - res["rowY"]) <= 1.0]
+            check(f"{label}: the row falls back to make + model",
+                  len(row) == 1 and "SAMSUNG" in row[0]["s"] and "NX500" in row[0]["s"],
+                  json.dumps([l["s"] for l in res["lines"]], ensure_ascii=False))
+            if len(row) == 1:
+                check(f"{label}: the fallback line is still centred",
+                      abs((row[0]["x0"] + row[0]["x1"]) / 2 - res["W"] / 2) <= 1.5,
+                      f"centre={(row[0]['x0'] + row[0]['x1']) / 2:.2f}")
         # ── Film Sprocket: the two perforation rows are mirror images ──────
         # Real 35mm prints the same hole height and the same distance from the
         # edge at both margins. This paints the frame on landscape, portrait and
