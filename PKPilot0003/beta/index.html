@@ -9,6 +9,12 @@
   <title>Shutterplate BETA — HD2Lab Photo Frame Studio</title>
   <link rel="canonical" href="https://hyangdan2.github.io/PKPilot0003/" />
 
+  <!-- Signature face for a custom caption (필기체). Loaded up front so the
+       canvas can print it the moment a visitor picks it. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" />
+
   <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -42,7 +48,7 @@
   <meta name="twitter:description" content="사진을 13종 시그니처 프레임의 플레이트로 — 4컷 멀티 프레임 포함." />
   <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0003/og-image.png?v=20261115-mark" />
 
-  <link rel="stylesheet" href="style.css?v=20261115-beta-3" />
+  <link rel="stylesheet" href="style.css?v=20261115-beta-4" />
 </head>
 <body>
   <!-- ── 자체 제작 SVG 아이콘 스프라이트 ─────────────────────────────── -->
@@ -489,6 +495,28 @@
         <div class="field">
           <span class="field-label"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-caption"/></svg>Caption / Photographer</span>
           <input class="inp" id="fCaption" placeholder="서명 또는 작가명" autocomplete="off" spellcheck="false" aria-label="캡션 또는 작가명" />
+          <div class="seg caption-mode" id="captionModeSeg" role="group" aria-label="캡션 글자체 모드">
+            <button type="button" data-caption-mode="auto" aria-pressed="true">프레임 기본</button>
+            <button type="button" data-caption-mode="custom" aria-pressed="false">커스텀</button>
+          </div>
+          <div class="caption-custom" id="captionCustomPanel" hidden>
+            <div class="caption-line">
+              <span class="caption-label">글자체</span>
+              <div class="font-chips" id="captionFontChips" role="radiogroup" aria-label="캡션 글자체">
+                <button type="button" class="font-chip" data-caption-font="sans" role="radio" aria-checked="true">Sans</button>
+                <button type="button" class="font-chip" data-caption-font="serif" role="radio" aria-checked="false">Serif</button>
+                <button type="button" class="font-chip" data-caption-font="mono" role="radio" aria-checked="false">Mono</button>
+                <button type="button" class="font-chip font-chip--script" data-caption-font="script" role="radio" aria-checked="false">필기체</button>
+              </div>
+            </div>
+            <div class="caption-line">
+              <span class="caption-label">스타일</span>
+              <div class="caption-styles">
+                <label class="check"><input type="checkbox" id="captionBold" /><span>볼드</span></label>
+                <label class="check"><input type="checkbox" id="captionItalic" /><span>이탤릭</span></label>
+              </div>
+            </div>
+          </div>
         </div>
         <button class="btn btn-quiet btn-block" id="resetMetaBtn" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-refresh"/></svg><span>EXIF 값으로 되돌리기</span></button>
         <p class="hint">값을 고치면 캔버스가 즉시 다시 그려집니다. 비어 있는 항목은 프레임에서 생략됩니다.</p>
@@ -655,7 +683,7 @@
   <script src="js/vendor/exifr.full.umd.js" defer></script>
   <script src="js/emblems.js?v=20261115-beta-1" defer></script>
   <script src="js/exif-core.js?v=20261115-beta-1" defer></script>
-  <script src="js/plate.js?v=20261115-beta-1" defer></script>
-  <script src="app.js?v=20261115-beta-3" defer></script>
+  <script src="js/plate.js?v=20261115-beta-4" defer></script>
+  <script src="app.js?v=20261115-beta-4" defer></script>
 </body>
 </html>

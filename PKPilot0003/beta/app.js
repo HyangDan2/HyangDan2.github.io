@@ -75,6 +75,14 @@
     geo: PL.defaults(PL.ORDER[0]),
     ratio: 0,
     font: 'sans',
+    /* The caption is the one line a visitor writes in their own voice, so it can
+       be set in a face of their choosing. 'auto' keeps the frame's signature
+       typography; 'custom' replaces it for the caption alone — the maker, the
+       exposure and the date never follow. */
+    captionMode: 'auto',    // 'auto' | 'custom'
+    captionFont: 'sans',    // 'sans' | 'serif' | 'mono' | 'script'
+    captionBold: false,
+    captionItalic: false,
     stock: 'KODAK PORTRA 400',
     frameNo: '#03',
     format: 'jpeg',
@@ -131,6 +139,11 @@
     ratioSelect: $('#ratioSelect'),
     stockSelect: $('#stockSelect'),
     fontSelect: $('#fontSelect'),
+    captionModeSeg: $('#captionModeSeg'),
+    captionCustomPanel: $('#captionCustomPanel'),
+    captionFontChips: $('#captionFontChips'),
+    captionBold: $('#captionBold'),
+    captionItalic: $('#captionItalic'),
     formatSeg: $('#formatSeg'),
     qualityRow: $('#qualityRow'),
     qualityRange: $('#qualityRange'),
@@ -1993,6 +2006,10 @@
       radiusPct: state.geo.radiusPct,
       ratio: state.ratio,
       font: state.font,
+      captionMode: state.captionMode,
+      captionFont: state.captionFont,
+      captionBold: state.captionBold,
+      captionItalic: state.captionItalic,
       stock: state.stock,
       frameNo: state.frameNo,
       fyraTheme: state.fyraTheme,
@@ -2232,6 +2249,8 @@
       state.fields.make, state.fields.model, state.fields.lens, state.fields.focal,
       state.fields.aperture, state.fields.shutter, state.fields.iso,
       state.fields.datetime, state.fields.caption,
+      state.captionMode, state.captionFont,
+      state.captionBold ? 'bold' : 'book', state.captionItalic ? 'italic' : 'roman',
       state.fyraTheme,
       state.slots.map(function (s) { return s ? s.name + ':' + s.w + 'x' + s.h : '-'; }).join(','),
       state.photo ? state.photo.name : ''].join('|');
@@ -2248,8 +2267,14 @@
     if (!state.photo) return Promise.resolve(null);
     var sig = exportSignature();
     if (prepared && prepared.signature === sig) return Promise.resolve(prepared);
+    /* the caption's face must be in the browser before the plate is painted,
+       or the file would be saved in the fallback hand */
+    return ensureCaptionFont().then(function () { return buildExport(sig); });
+  }
 
+  function buildExport(sig) {
     var p = state.photo;
+    if (!p) return Promise.resolve(null);
     var L = layoutFor(p.img, p.w, p.h, state.style, { full: true });   // the photo's own bitmap, 1:1
     var format = state.format === 'png' ? 'png' : 'jpeg';
     var mime = format === 'png' ? 'image/png' : 'image/jpeg';
@@ -2461,6 +2486,56 @@
     el.extraVal.textContent = state.geo.extraPct + '%';
     el.radiusVal.textContent = state.geo.radiusPct + '%';
     el.ratioSelect.value = String(state.ratio);
+  }
+
+  /* ── caption typography ───────────────────────────────────────────────── */
+  /* 프레임 기본 · 커스텀 and the custom face that goes with it. The panel is
+     only in the room while 커스텀 is on, so the inspector never carries an
+     extra row of controls for a setting nobody asked for. */
+  function syncCaptionUI() {
+    if (el.captionModeSeg) {
+      $$('button', el.captionModeSeg).forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.dataset.captionMode === state.captionMode));
+      });
+    }
+    if (el.captionCustomPanel) el.captionCustomPanel.hidden = state.captionMode !== 'custom';
+    if (el.captionFontChips) {
+      $$('button', el.captionFontChips).forEach(function (b) {
+        b.setAttribute('aria-checked', String(b.dataset.captionFont === state.captionFont));
+      });
+    }
+    if (el.captionBold) el.captionBold.checked = !!state.captionBold;
+    if (el.captionItalic) el.captionItalic.checked = !!state.captionItalic;
+  }
+
+  /* The one face a visitor can pick that is not already in the system: a
+     signature hand. Its family name has to be asked for on its own — a load
+     request takes a single family, not the frame's fallback stack. */
+  var CAPTION_WEBFONT = { script: '"Caveat"' };
+
+  /* A signature face is a webfont: until the browser has really loaded it the
+     canvas prints a fallback shape, and an export made in that instant would
+     keep the wrong hand. So the face is asked for, and the plate repaints when
+     it lands. Nothing is awaited for the built-in stacks, which are always
+     there. */
+  function ensureCaptionFont() {
+    if (state.captionMode !== 'custom') return Promise.resolve();
+    var face = CAPTION_WEBFONT[state.captionFont];
+    if (!face) return Promise.resolve();
+    if (typeof document === 'undefined' || !document.fonts ||
+        typeof document.fonts.load !== 'function') return Promise.resolve();
+    var size = ' 24px ' + face;
+    var spec = (state.captionItalic ? 'italic ' : '') + (state.captionBold ? 700 : 400) + size;
+    var jobs = [document.fonts.load(spec), document.fonts.load('400' + size),
+                document.fonts.load('700' + size)];
+    return Promise.all(jobs).then(function () { return true; }, function () { return false; });
+  }
+
+  /* Any change to the caption's face repaints the plate, and — when a webfont
+     is involved — repaints again once that font is available. */
+  function captionTypeChanged() {
+    renderAll();
+    ensureCaptionFont().then(function () { renderAll(); });
   }
 
   function syncExportUI() {
@@ -2774,6 +2849,42 @@
       state.font = el.fontSelect.value;
       renderAll();
     });
+
+    // caption typography — the frame's own face, or one the visitor picks
+    if (el.captionModeSeg) {
+      $$('button', el.captionModeSeg).forEach(function (b) {
+        b.addEventListener('click', function () {
+          var mode = b.dataset.captionMode === 'custom' ? 'custom' : 'auto';
+          if (state.captionMode === mode) return;
+          state.captionMode = mode;
+          syncCaptionUI();
+          captionTypeChanged();
+        });
+      });
+    }
+    if (el.captionFontChips) {
+      $$('button', el.captionFontChips).forEach(function (b) {
+        b.addEventListener('click', function () {
+          var font = b.dataset.captionFont || 'sans';
+          if (state.captionFont === font) return;
+          state.captionFont = font;
+          syncCaptionUI();
+          captionTypeChanged();
+        });
+      });
+    }
+    if (el.captionBold) {
+      el.captionBold.addEventListener('change', function () {
+        state.captionBold = !!el.captionBold.checked;
+        captionTypeChanged();
+      });
+    }
+    if (el.captionItalic) {
+      el.captionItalic.addEventListener('change', function () {
+        state.captionItalic = !!el.captionItalic.checked;
+        captionTypeChanged();
+      });
+    }
     $('#resetGeoBtn').addEventListener('click', function () {
       state.geo = PL.defaults(state.style);
       state.ratio = 0;
@@ -3149,6 +3260,7 @@
     paintFields();
     syncStyleUI();
     syncGeoUI();
+    syncCaptionUI();
     syncExportUI();
     syncPhotoUI(0);
     syncWsUI();
@@ -3235,6 +3347,10 @@
     openPreview: openPreview,
     canShareFiles: canShareFiles,
     canShareThis: canShareThis,
+    caption: function () {
+      return { mode: state.captionMode, font: state.captionFont,
+               bold: !!state.captionBold, italic: !!state.captionItalic };
+    },
     isInAppBrowser: isInAppBrowser,
     inAppName: inAppName,
     saveFile: saveFile,

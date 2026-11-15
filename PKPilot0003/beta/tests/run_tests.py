@@ -196,6 +196,63 @@ def static_tests():
     check("static: the slot bar has its own styles", ".slot-track" in css and ".slots-head" in css)
     check("static: the theme grid has its own styles", ".fyra-grid" in css and ".fyra-theme" in css)
 
+    # ── the two beta enhancements: photo-edge perforation, caption typography ──
+    check("static: plate.js declares a signature (script) face beside the three stacks",
+          re.search(r'script: ."Caveat", "Brush Script MT", "Nanum Pen Script", cursive.', plate)
+          is not None)
+    check("static: index.html asks Google Fonts for Caveat",
+          "fonts.googleapis.com/css2?family=Caveat" in html)
+    check("static: drawFilmBase anchors the perforation row to the photograph",
+          "var x0 = L.photoBox.x, x1 = L.photoBox.x + L.PW;" in plate and
+          "sprockets(ctx, x0, x1, perf.topCy" in plate and
+          "sprockets(ctx, x0, x1, perf.botCy" in plate)
+    check("static: the sprocket row is solved between its two anchors, not stepped",
+          "function sprocketRow(" in plate and
+          "Math.max(2, Math.round((span - holeW) / pitch) + 1)" in plate and
+          "(span - holeW) / (count - 1)" in plate and
+          "if (span < holeW) return out;" in plate)
+    check("static: the rail hairlines still run the plate's full width",
+          "hairline(ctx, 0, perf.topRuleY, L.W, perf.topRuleY" in plate and
+          "hairline(ctx, 0, perf.botRuleY, L.W, perf.botRuleY" in plate)
+
+    check("static: the caption mode is a two-option toggle",
+          'id="captionModeSeg"' in html and html.count("data-caption-mode=") == 2 and
+          'data-caption-mode="auto"' in html and 'data-caption-mode="custom"' in html)
+    check("static: 프레임 기본 is the caption mode on load",
+          re.search(r'data-caption-mode="auto" aria-pressed="true"', html) is not None)
+    check("static: the custom panel starts hidden",
+          re.search(r'id="captionCustomPanel"[^>]*hidden', html) is not None)
+    check("static: the caption controls sit under the caption input",
+          html.index('id="fCaption"') < html.index('id="captionModeSeg"') <
+          html.index('id="captionCustomPanel"') < html.index('id="resetMetaBtn"'))
+    check("static: the four faces are Sans · Serif · Mono · 필기체",
+          re.findall(r'data-caption-font="(\w+)"', html) == ["sans", "serif", "mono", "script"] and
+          "필기체" in html, str(re.findall(r'data-caption-font="(\w+)"', html)))
+    check("static: Bold and Italic are checkboxes in the panel",
+          'id="captionBold"' in html and 'id="captionItalic"' in html and
+          'type="checkbox" id="captionBold"' in html and "볼드" in html and "이탤릭" in html)
+    check("static: the caption controls carry the dark theme's own styles",
+          ".caption-mode" in css and ".caption-custom" in css and
+          ".font-chip[aria-checked=\"true\"]" in css and ".check input:checked" in css)
+    check("static: app.js carries the caption state",
+          "captionMode: 'auto'" in app and "captionFont: 'sans'" in app and
+          "captionBold: false" in app and "captionItalic: false" in app)
+    check("static: every caption option reaches the plate's opts",
+          all(f"{k}: state.{k}" in app for k in
+              ("captionMode", "captionFont", "captionBold", "captionItalic")))
+    check("static: the prepared file follows the caption's face",
+          "state.captionFont," in app and "state.captionBold ? 'bold'" in app and
+          "state.captionItalic ? 'italic'" in app)
+    check("static: plate.js overrides the caption line only",
+          "function captionStyle(" in plate and "function captionOpt(" in plate and
+          "function isCustomCaption(" in plate)
+    for fn in ("drawHorizon", "drawGallery", "drawDual", "drawStrap", "drawFilm",
+               "drawStudio", "drawPro", "drawPolaroid", "drawFrosted", "drawEditorial",
+               "drawContactSheet", "drawFyra"):
+        block = re.search(rf"function {fn}\(.*?\n  \}}", plate, re.S)
+        check(f"static: {fn} sets its caption in the caption's own face",
+              bool(block) and ("captionOpt(L" in block.group(0) or "captionStyle(L" in block.group(0)), fn)
+
     check("static: the manifest names the beta", "BETA" in manifest["name"])
     check("static: the manifest starts at its own scope", manifest["start_url"] == "./")
 
@@ -227,6 +284,28 @@ def serve():
 
 
 SAMPLES = [os.path.join(BETA, "assets", "samples", f"sample-0{i}.jpg") for i in (1, 2, 3)]
+
+# Every pixel of a plate's caption band, sampled densely: the caption is small
+# type, so a sparse hash would call two different faces the same plate.
+CAPTION_HASH = """(args) => {
+  const app = window.SPApp, PL = window.SPPlate;
+  if (args && args.style) app.setStyle(args.style);
+  const L = app.currentLayout();
+  const k = 460 / L.W;
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(8, Math.round(L.W * k));
+  cv.height = Math.max(8, Math.round(L.H * k));
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = L.colors.base;
+  ctx.fillRect(0, 0, L.W, L.H);
+  PL.paint(ctx, L);
+  const top = Math.max(0, Math.round((L.photoBox.y + L.PH) * k));
+  const d = ctx.getImageData(0, top, cv.width, cv.height - top).data;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 4 * 3) sum = (sum * 131 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) % 1000000007;
+  return sum;
+}"""
 
 
 def rect_of(page, sel):
@@ -279,7 +358,8 @@ PAINT_ONE = """(args) => {
 
 def browser_tests(port):
     names = ["browser: landing", "browser: frame library", "browser: all 13 frames",
-             "browser: new single frames", "browser: slots", "browser: FYRA modal",
+             "browser: new single frames", "browser: sprocket alignment",
+             "browser: caption typography", "browser: slots", "browser: FYRA modal",
              "browser: export", "browser: mobile", "browser: errors"]
     try:
         from playwright.sync_api import sync_playwright
@@ -405,6 +485,178 @@ def browser_tests(port):
               str(frosted_margins["margin"]))
         check("browser: Frosted Glass frosts the caption band",
               frosted_margins["band"][0] > 30, str(frosted_margins["band"]))
+
+        # ── Film Sprocket: the perforation follows the photograph ───────────
+        print("\n[browser] Film Sprocket: the perforation starts and ends on the photo's edges")
+        page.evaluate("() => window.SPApp.setStyle('film')")
+        page.wait_for_timeout(250)
+        perf = page.evaluate("""() => {
+            const app = window.SPApp, H = window.SPPlate.helpers;
+            const L = app.currentLayout();
+            const p = H.filmPerf(L);
+            const row = H.sprocketRow(L.photoBox.x, L.photoBox.x + L.PW, p.holeH);
+            const last = row.holes.length ? row.holes[row.holes.length - 1] : 0;
+            return {left: L.photoBox.x, right: L.photoBox.x + L.PW,
+                    first: row.holes[0], lastRight: last + row.holeW, count: row.holes.length,
+                    holeW: row.holeW, holeH: p.holeH, step: row.step, pitch: row.pitch,
+                    topCy: p.topCy, topRuleY: p.topRuleY, botRuleY: p.botRuleY,
+                    plateW: L.W, pw: L.PW};
+        }""")
+        check("browser: the first hole's left edge is the photo's left edge",
+              abs(perf["first"] - perf["left"]) <= 1, json.dumps(perf))
+        check("browser: the last hole's right edge is the photo's right edge",
+              abs(perf["lastRight"] - perf["right"]) <= 1, json.dumps(perf))
+        check("browser: the row is a row, not a single hole", perf["count"] >= 2, str(perf["count"]))
+        check("browser: the solved step stays on the target pitch (no leftover margin)",
+              abs(perf["step"] - perf["pitch"]) <= perf["holeW"] * 0.35,
+              f'step {perf["step"]:.2f} vs pitch {perf["pitch"]:.2f}')
+        check("browser: the holes never step outside the photograph",
+              perf["first"] >= perf["left"] - 0.5 and perf["lastRight"] <= perf["right"] + 0.5)
+        check("browser: both rails keep the plate's full width",
+              perf["topRuleY"] > 0 and perf["botRuleY"] > perf["topRuleY"])
+
+        holes_px = page.evaluate("""() => {
+            const app = window.SPApp, PL = window.SPPlate, H = PL.helpers;
+            app.setStyle('film');
+            const L = app.currentLayout();
+            const k = 1200 / L.W;
+            const cv = document.createElement('canvas');
+            cv.width = Math.round(L.W * k); cv.height = Math.round(L.H * k);
+            const ctx = cv.getContext('2d');
+            ctx.setTransform(k, 0, 0, k, 0, 0);
+            ctx.fillStyle = L.colors.base; ctx.fillRect(0, 0, L.W, L.H);
+            PL.paint(ctx, L);
+            const p = H.filmPerf(L);
+            const row = H.sprocketRow(L.photoBox.x, L.photoBox.x + L.PW, p.holeH);
+            const at = (x, y) => { const d = ctx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data;
+              return d[0] + d[1] + d[2]; };
+            const gapMid = row.holes[0] + row.holeW + (row.step - row.holeW) / 2;
+            return {
+              inFirst: at(row.holes[0] + row.holeW / 2, p.topCy),
+              beforeFirst: at(L.photoBox.x - p.holeH * 0.85, p.topCy),
+              inLast: at(row.holes[row.holes.length - 1] + row.holeW / 2, p.topCy),
+              afterLast: at(L.photoBox.x + L.PW + p.holeH * 0.85, p.topCy),
+              inGap: at(gapMid, p.topCy),
+              base: L.colors.base
+            };
+        }""")
+        check("browser: a hole is printed at the photo's left edge",
+              holes_px["inFirst"] > holes_px["beforeFirst"] + 200, json.dumps(holes_px))
+        check("browser: a hole is printed at the photo's right edge",
+              holes_px["inLast"] > holes_px["afterLast"] + 200, json.dumps(holes_px))
+        check("browser: the margin before the first hole is bare film base",
+              holes_px["beforeFirst"] < holes_px["inGap"] + 90, json.dumps(holes_px))
+
+        # ── caption typography ─────────────────────────────────────────────
+        print("\n[browser] caption typography: 프레임 기본, then the visitor's own face")
+        page.evaluate("""() => { const a = window.SPApp;
+            a.setView('editor'); a.setPane('exif'); a.setStyle('gallery');
+            a.setField('caption', 'HD2Lab 서명'); }""")
+        page.wait_for_timeout(300)
+        check("browser: 프레임 기본 is the mode on load",
+              page.get_attribute('#captionModeSeg button[data-caption-mode="auto"]', "aria-pressed") == "true" and
+              page.get_attribute('#captionModeSeg button[data-caption-mode="custom"]', "aria-pressed") == "false")
+        check("browser: 프레임 기본 keeps the custom panel closed", page.is_hidden("#captionCustomPanel"))
+        auto_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+
+        page.click('#captionModeSeg button[data-caption-mode="custom"]')
+        page.wait_for_timeout(350)
+        check("browser: 커스텀 opens the panel", page.is_visible("#captionCustomPanel"))
+        check("browser: 커스텀 is now the pressed option",
+              page.get_attribute('#captionModeSeg button[data-caption-mode="custom"]', "aria-pressed") == "true" and
+              page.evaluate("() => window.SPApp.caption().mode") == "custom")
+        chips = page.evaluate("""() => [...document.querySelectorAll('#captionFontChips button')]
+            .map(b => b.textContent.trim())""")
+        check("browser: the panel offers the four faces", chips == ["Sans", "Serif", "Mono", "필기체"], str(chips))
+        check("browser: the panel offers Bold and Italic",
+              page.is_visible("#captionBold") and page.is_visible("#captionItalic"))
+
+        page.click('#captionFontChips button[data-caption-font="serif"]')
+        page.check("#captionBold")
+        page.check("#captionItalic")
+        page.wait_for_timeout(400)
+        cap = page.evaluate("""() => ({caption: window.SPApp.caption(),
+            opts: (function () { const o = window.SPApp.currentLayout().opts;
+              return {mode: o.captionMode, font: o.captionFont, bold: o.captionBold, italic: o.captionItalic}; })()})""")
+        check("browser: Serif + Bold + Italic land in the plate's opts",
+              cap["opts"] == {"mode": "custom", "font": "serif", "bold": True, "italic": True}, json.dumps(cap))
+        check("browser: the checked chip is the chosen face",
+              page.get_attribute('#captionFontChips button[data-caption-font="serif"]', "aria-checked") == "true" and
+              page.get_attribute('#captionFontChips button[data-caption-font="sans"]', "aria-checked") == "false")
+        check("browser: the checkboxes mirror the state",
+              page.evaluate("() => [document.querySelector('#captionBold').checked, "
+                            "document.querySelector('#captionItalic').checked]") == [True, True])
+        serif_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+        check("browser: a custom caption repaints the plate", serif_hash != auto_hash)
+        check("browser: the plate on screen re-rendered without an error", not errors, str(errors[:3]))
+
+        has_type = page.evaluate("""() => {
+            const app = window.SPApp, PL = window.SPPlate;
+            app.state.fields.caption = 'HD2Lab 서명';
+            const shot = (mode, font, bold, italic) => {
+              app.state.captionMode = mode; app.state.captionFont = font;
+              app.state.captionBold = bold; app.state.captionItalic = italic;
+              const L = app.currentLayout();
+              const k = 900 / L.W;
+              const cv = document.createElement('canvas');
+              cv.width = Math.round(L.W * k); cv.height = Math.round(L.H * k);
+              const ctx = cv.getContext('2d');
+              ctx.setTransform(k, 0, 0, k, 0, 0);
+              ctx.fillStyle = L.colors.base; ctx.fillRect(0, 0, L.W, L.H);
+              PL.paint(ctx, L);
+              /* the maker, the exposure and the rule above the signature */
+              const top = Math.round(L.photoBox.y + L.PH);
+              const h = Math.max(1, Math.round(L.band * 0.48 * k));
+              const d = ctx.getImageData(0, Math.round(top * k), cv.width, h).data;
+              let sum = 0;
+              for (let i = 0; i < d.length; i += 4) sum = (sum * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) % 1000000007;
+              return sum;
+            };
+            const a = shot('auto', 'sans', false, false);
+            const b = shot('custom', 'serif', true, true);
+            app.state.captionMode = 'custom'; app.state.captionFont = 'serif';
+            app.state.captionBold = true; app.state.captionItalic = true;
+            return {auto: a, custom: b};
+        }""")
+        check("browser: the maker, the exposure and the date keep the frame's own type",
+              has_type["auto"] == has_type["custom"], json.dumps(has_type))
+
+        page.click('#captionFontChips button[data-caption-font="script"]')
+        page.wait_for_timeout(1600)
+        script_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+        check("browser: the signature face prints its own plate", script_hash != serif_hash)
+        caveat_declared = page.evaluate("""() => [...document.fonts]
+            .some(f => String(f.family).replace(/["']/g, '') === 'Caveat')""")
+        if not caveat_declared:
+            skip("browser: the Caveat webfont is in the browser", "the font request never arrived here")
+        else:
+            check("browser: the Caveat webfont loads for the canvas",
+                  page.evaluate("() => document.fonts.check('16px Caveat')"))
+        page.screenshot(path="/workspace/work/pkpilot0003-beta-typo/caption-script-desktop.png")
+
+        panel_fit = page.evaluate("""() => {
+            const p = document.querySelector('#captionCustomPanel').getBoundingClientRect();
+            const pane = document.querySelector('#paneExif').getBoundingClientRect();
+            const items = [...document.querySelectorAll('#captionFontChips button')]
+              .concat([...document.querySelectorAll('.caption-styles .check')])
+              .map(b => b.getBoundingClientRect());
+            return {panelW: p.width, paneW: pane.width,
+                    inside: items.every(r => r.left >= p.left - 0.5 && r.right <= p.right + 0.5 && r.width > 10),
+                    count: items.length,
+                    overflow: document.documentElement.scrollWidth - window.innerWidth};
+        }""")
+        check("browser: every caption control stays inside its panel",
+              panel_fit["inside"] and panel_fit["count"] == 6, json.dumps(panel_fit))
+        check("browser: the open caption panel does not widen the desktop page",
+              panel_fit["overflow"] <= 1, str(panel_fit["overflow"]))
+
+        page.click('#captionModeSeg button[data-caption-mode="auto"]')
+        page.wait_for_timeout(350)
+        check("browser: 프레임 기본 closes the panel again", page.is_hidden("#captionCustomPanel"))
+        back_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+        check("browser: 프레임 기본 restores the frame's own caption type", back_hash == auto_hash)
+        page.evaluate("() => window.SPApp.setStyle('horizon')")
+        page.wait_for_timeout(200)
 
         # ── slots ──────────────────────────────────────────────────────────
         print("\n[browser] the slot model: load four, replace one, swap two, seed from one")
@@ -871,6 +1123,58 @@ def browser_tests(port):
                          p.top >= 0 && p.bottom <= window.innerHeight && p.height >= 40; }"""))
         check("browser: no console errors on a landscape phone", not lerrors, str(lerrors[:3]))
         lctx.close()
+
+        # ── the caption panel on a phone ─────────────────────────────────
+        print("\n[browser] caption typography on a 390px phone")
+        cctx = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+        cpage = cctx.new_page()
+        cerrs = []
+        cpage.on("pageerror", lambda e: cerrs.append(str(e)))
+        cpage.on("console", lambda m: cerrs.append(m.text) if m.type == "error" else None)
+        cpage.goto(base + "#editor", wait_until="networkidle")
+        cpage.wait_for_timeout(600)
+        cpage.evaluate("() => window.SPApp.loadSampleAt(1, {stay: true})")
+        cpage.wait_for_timeout(1000)
+        cpage.evaluate("""() => { const a = window.SPApp;
+            a.setStyle('gallery'); a.setField('caption', 'HD2Lab 서명'); a.openSheet('exif'); }""")
+        cpage.wait_for_timeout(500)
+        check("browser: the phone shows the caption toggle", cpage.is_visible("#captionModeSeg"))
+        check("browser: the phone keeps the panel closed until 커스텀",
+              cpage.is_hidden("#captionCustomPanel"))
+        cpage.click('#captionModeSeg button[data-caption-mode="custom"]')
+        cpage.wait_for_timeout(450)
+        check("browser: the phone opens the caption panel with one tap",
+              cpage.is_visible("#captionCustomPanel"))
+        cpage.click('#captionFontChips button[data-caption-font="script"]')
+        cpage.wait_for_timeout(1600)
+        mfit = cpage.evaluate("""() => {
+            const vw = document.documentElement.clientWidth;
+            const p = document.querySelector('#captionCustomPanel').getBoundingClientRect();
+            const items = [...document.querySelectorAll('#captionFontChips button')]
+              .concat([...document.querySelectorAll('.caption-styles .check')])
+              .map(b => b.getBoundingClientRect());
+            const seg = [...document.querySelectorAll('#captionModeSeg button')]
+              .map(b => b.getBoundingClientRect());
+            return {vw: vw, panel: [p.left, p.right], segW: seg.map(r => Math.round(r.width)),
+                    inside: items.every(r => r.left >= p.left - 0.5 && r.right <= p.right + 0.5 &&
+                                              r.width > 10 && r.height >= 30),
+                    onscreen: items.every(r => r.left >= -0.5 && r.right <= vw + 0.5),
+                    overflow: document.documentElement.scrollWidth - vw,
+                    mode: window.SPApp.caption()};
+        }""")
+        check("browser: every caption control fits a phone's width",
+              mfit["inside"] and mfit["onscreen"], json.dumps(mfit))
+        check("browser: the caption panel does not push the phone page sideways",
+              mfit["overflow"] <= 1, str(mfit["overflow"]))
+        check("browser: the two modes share the toggle's width",
+              len(mfit["segW"]) == 2 and abs(mfit["segW"][0] - mfit["segW"][1]) <= 2,
+              str(mfit["segW"]))
+        check("browser: the phone's choice is a real plate change",
+              mfit["mode"] == {"mode": "custom", "font": "script", "bold": False, "italic": False})
+        cpage.screenshot(path="/workspace/work/pkpilot0003-beta-typo/caption-script-mobile.png")
+        check("browser: no console errors with the caption panel open on a phone",
+              not cerrs, str(cerrs[:3]))
+        cctx.close()
 
         # ── errors ─────────────────────────────────────────────────────────
         print("\n[browser] console")

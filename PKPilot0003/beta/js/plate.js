@@ -18,6 +18,11 @@
  *
  * Everything is drawn in "plate space" (plate pixels) so the live preview, the
  * frame-strip thumbnails and the 1:1 export share one paint routine.
+ *
+ * Two things belong to the visitor rather than to the frame: the perforation of
+ * Film Sprocket is solved between the photograph's own left and right edges
+ * (sprocketRow), and the caption line can be set in a face of their choosing
+ * (captionOpt) while every other row keeps the frame's signature typography.
  * ==========================================================================*/
 (function (global) {
   'use strict';
@@ -27,7 +32,11 @@
   var FONTS = {
     sans: '"Helvetica Neue", Helvetica, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", Arial, sans-serif',
     mono: 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
-    serif: '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", "Nanum Myeongjo", "Noto Serif KR", serif'
+    serif: '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", "Nanum Myeongjo", "Noto Serif KR", serif',
+    /* the signature face a visitor may set for their own caption line — Caveat
+       is the webfont the page asks for, and a hand-written fallback keeps the
+       plate printable when that request never lands */
+    script: '"Caveat", "Brush Script MT", "Nanum Pen Script", cursive'
   };
 
   /* ── the eight signatures ──────────────────────────────────────────────── */
@@ -259,6 +268,56 @@
     return total * k;
   }
 
+  /* ── caption typography ────────────────────────────────────────────────── */
+  /* Every frame was drawn around one answer to "who took this": a serif
+     signature on the matte stocks, a mono small-caps stamp on the studio
+     plates. A visitor may replace that answer for the caption line alone — the
+     maker, the exposure and the date keep the frame's own typography, because
+     those are the frame's reporting, not the photographer's voice. */
+  function isCustomCaption(L) {
+    return !!(L.opts && L.opts.captionMode === 'custom');
+  }
+
+  function captionStyle(L, baseFont, baseWeight, baseStyle) {
+    if (!isCustomCaption(L)) {
+      return { family: baseFont || 'sans', weight: baseWeight || 400,
+               italic: !!baseStyle, script: baseFont === 'script' };
+    }
+    var key = L.opts.captionFont;
+    var fam = FONTS[key] ? key : 'sans';
+    return {
+      family: fam,
+      weight: L.opts.captionBold ? 700 : 400,
+      italic: !!L.opts.captionItalic,
+      script: fam === 'script'
+    };
+  }
+
+  /* The text options for one caption line: the frame's own defaults, then the
+     visitor's face when the caption is in custom mode. A hand-written face is
+     set the way a signature is set — no tracking, never in caps — while the
+     book faces keep the frame's tracking so the line sits in its band.
+     `keepFrame` is for the lines that only borrow the caption slot: with no
+     caption written the frames print the camera or their own brand there, and
+     that is still the frame's reporting, not the visitor's voice. */
+  function captionOpt(L, base, keepFrame) {
+    var custom = !keepFrame && isCustomCaption(L);
+    var cs = custom
+      ? captionStyle(L, base.family, base.weight, base.italic)
+      : { family: base.family, weight: base.weight, italic: !!base.italic, script: false };
+    var out = {};
+    for (var k in base) { if (Object.prototype.hasOwnProperty.call(base, k)) out[k] = base[k]; }
+    out.family = cs.family;
+    out.weight = cs.weight;
+    out.italic = cs.italic;
+    /* a custom caption is the visitor's own line, so it is set as they typed
+       it — the frame's small caps belong to its stamp, not to their words */
+    if (custom) out.upper = false;
+    /* a hand-written face is set without tracking, the way a signature is */
+    if (custom && cs.script) out.ls = 0;
+    return out;
+  }
+
   function hairline(ctx, x1, y1, x2, y2, color, w) {
     ctx.save();
     ctx.beginPath();
@@ -424,18 +483,46 @@
     return f.w;
   }
 
+  /* The twelve holes of a 35mm row, laid between two anchors.
+
+     A perforation row that steps on a fixed pitch leaves whatever does not
+     divide evenly as a stray gap at the end — on the plate that read as a wide
+     empty shoulder on the right of the photo. So the row is solved instead of
+     stepped: the count comes from the target pitch (a gap of 0.9 holes), and
+     the step is then stretched to swallow the remainder exactly, which puts
+     the first hole's left edge on `x0` and the last hole's right edge on `x1`
+     with no leftover margin at either end. */
+  function sprocketRow(x0, x1, h) {
+    var holeW = h * 1.42, pitch = holeW * 1.9;
+    var span = x1 - x0;
+    var out = { holeW: holeW, pitch: pitch, step: 0, holes: [] };
+    if (!(holeW > 0.5) || !(span > 0)) return out;
+    if (span < holeW) return out;                       // the stock is too narrow for one hole
+    if (span <= holeW * 1.2) {                          // one hole, centred in the run
+      out.holes.push(x0 + (span - holeW) / 2);
+      out.step = 0;
+      return out;
+    }
+    var count = Math.max(2, Math.round((span - holeW) / pitch) + 1);
+    var step = (span - holeW) / (count - 1);
+    for (var i = 0; i < count; i++) out.holes.push(x0 + i * step);
+    out.step = step;
+    return out;
+  }
+
   function sprockets(ctx, x0, x1, cy, h, fill) {
     /* the hole geometry collapses to zero on a plate with no padding — a zero
-       pitch would make the loop below run forever, so refuse it up front */
-    if (!(h > 0.5) || !(x1 > x0)) return;
-    var holeW = h * 1.42, pitch = holeW * 1.9, r = h * 0.2;
-    if (!(holeW > 0.5) || !(pitch > 0.5)) return;
+       pitch would make the row unbounded, so refuse it up front */
+    if (!(h > 0.5)) return;
+    var row = sprocketRow(x0, x1, h);
+    if (!row.holes.length) return;
+    var r = h * 0.2;
     ctx.save();
     ctx.fillStyle = fill;
-    for (var x = x0; x + holeW <= x1; x += pitch) {
-      roundRect(ctx, x, cy - h / 2, holeW, h, r);
+    row.holes.forEach(function (x) {
+      roundRect(ctx, x, cy - h / 2, row.holeW, h, r);
       ctx.fill();
-    }
+    });
     ctx.restore();
   }
 
@@ -516,13 +603,27 @@
       ls: u * 1.4, align: 'center', maxW: maxW
     });
 
-    var foot = join([dateOf(f).full, f.caption], '   ·   ');
-    if (foot) {
+    var footDate = dateOf(f).full;
+    if (footDate || f.caption) {
       hairline(ctx, cx - u * 38, top + band * 0.68, cx + u * 38, top + band * 0.68, c.line, Math.max(1, u));
-      text(ctx, foot, cx, top + band * 0.84, {
-        size: Math.min(u * 11, band * 0.095), family: 'mono', color: c.muted,
-        ls: u * 1.2, align: 'center', maxW: maxW
-      });
+      var footSize = Math.min(u * 11, band * 0.095);
+      var footY = top + band * 0.84;
+      if (f.caption && isCustomCaption(L)) {
+        /* the date is the frame's record and keeps its mono; only the
+           signature changes its voice, so the two are set as two runs */
+        var fs = captionStyle(L, 'mono', 400, false);
+        compound(ctx, [
+          { s: footDate, size: footSize, family: 'mono', color: c.muted, ls: u * 1.2 },
+          { s: footDate ? '   ·   ' : '', size: footSize, family: 'mono', color: c.muted, ls: u * 1.2 },
+          { s: f.caption, size: footSize, family: fs.family, weight: fs.weight, italic: fs.italic,
+            color: c.muted, ls: fs.script ? 0 : u * 1.2 }
+        ], cx, footY, 'center', maxW);
+      } else {
+        text(ctx, join([footDate, f.caption], '   ·   '), cx, footY, {
+          size: footSize, family: 'mono', color: c.muted,
+          ls: u * 1.2, align: 'center', maxW: maxW
+        });
+      }
     }
   }
 
@@ -555,10 +656,10 @@
     if (f.caption) {
       var ruleY = top + band * 0.53;
       hairline(ctx, cx - u * 34, ruleY, cx + u * 34, ruleY, c.line, Math.max(1, u * 1.1));
-      text(ctx, f.caption, cx, top + band * 0.685, {
+      text(ctx, f.caption, cx, top + band * 0.685, captionOpt(L, {
         size: Math.min(u * 27, band * 0.13), family: 'serif', italic: true, weight: 400,
         color: c.ink, align: 'center', ls: u * 0.2, maxW: L.W - L.inset * 3
-      });
+      }));
     }
 
     text(ctx, dateOf(f).full, cx, top + band * 0.855, {
@@ -601,10 +702,10 @@
     });
 
     if (f.caption) {
-      text(ctx, f.caption, cx, top + band * 0.86, {
+      text(ctx, f.caption, cx, top + band * 0.86, captionOpt(L, {
         size: Math.min(u * 11, band * 0.09), family: 'serif', italic: true,
         color: c.muted, ls: u * 0.4, align: 'center', maxW: maxW
-      });
+      }));
     }
   }
 
@@ -666,11 +767,21 @@
       size: primary, family: L.opts.font, weight: 600, color: c.ink, ls: u * 0.8,
       maxW: leftMaxW
     });
-    text(ctx, f.caption ? 'SHOT BY © ' + f.caption : dateOf(f).full, inset, row2, {
-      size: secondary, family: 'mono', color: c.muted, ls: u * 1.4, upper: true,
-      maxW: leftMaxW
-    });
-
+    if (f.caption && isCustomCaption(L)) {
+      /* the stamp prefix is the bar's furniture; the name after it is the
+         visitor's, so the two are set as two runs on the same baseline */
+      var srow = captionStyle(L, 'mono', 400, false);
+      compound(ctx, [
+        { s: 'SHOT BY © ', size: secondary, family: 'mono', color: c.muted, ls: u * 1.4 },
+        { s: f.caption, size: secondary, family: srow.family, weight: srow.weight,
+          italic: srow.italic, color: c.muted, ls: srow.script ? 0 : u * 1.4 }
+      ], inset, row2, 'left', leftMaxW);
+    } else {
+      text(ctx, f.caption ? 'SHOT BY © ' + f.caption : dateOf(f).full, inset, row2, {
+        size: secondary, family: 'mono', color: c.muted, ls: u * 1.4, upper: true,
+        maxW: leftMaxW
+      });
+    }
     // right column — body and lens
     text(ctx, rightTop, L.W - inset, row1, {
       size: primary, family: L.opts.font, weight: 600, color: c.ink, ls: u * 0.5,
@@ -741,14 +852,18 @@
   }
 
   function drawFilmBase(ctx, L) {
-    var u = L.u, pad = L.padX;
+    var u = L.u;
     var hole = 'rgba(238,229,210,0.74)';
     var perf = filmPerf(L);
 
-    /* the same hole height, the same distance from its own edge: the two rows
-       are mirror images, so the stock reads the same way up or down */
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.topCy, perf.holeH, hole);
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.botCy, perf.holeH, hole);
+    /* the two rows are printed to the photograph's own width, not to the
+       plate's: the first hole opens exactly on the photo's left edge and the
+       last one closes exactly on its right edge, so the perforation is the
+       stock the picture is mounted on instead of a strip that starts and ends
+       somewhere in the margin */
+    var x0 = L.photoBox.x, x1 = L.photoBox.x + L.PW;
+    sprockets(ctx, x0, x1, perf.topCy, perf.holeH, hole);
+    sprockets(ctx, x0, x1, perf.botCy, perf.holeH, hole);
 
     /* each rule closes its own rail, so the two margins are one measurement */
     hairline(ctx, 0, perf.topRuleY, L.W, perf.topRuleY, L.colors.line, Math.max(1, u * 1.1));
@@ -827,10 +942,10 @@
                emH, 'left', inner * 0.42);
     }
 
-    text(ctx, f.caption || camera(f), pad, capY, {
+    text(ctx, f.caption || camera(f), pad, capY, captionOpt(L, {
       size: capSize, family: 'serif', italic: true,
       color: c.ink, ls: u * 0.3, maxW: leftMaxW
-    });
+    }, !f.caption));
 
     text(ctx, join([camera(f), f.focal], '   ·   '), pad, top + flow * 0.6, {
       size: Math.min(u * 13.5, L.band * 0.062) * g, family: 'mono', color: c.muted,
@@ -927,10 +1042,10 @@
     var footX = Math.max(pad, bInset + bLen + u * 8);
     var footY = L.H - Math.max(band * 0.14, bInset + u * 9);
     if (f.caption) {
-      text(ctx, f.caption, footX, footY, {
+      text(ctx, f.caption, footX, footY, captionOpt(L, {
         size: Math.min(u * 11.5, band * 0.058), family: 'mono', color: c.muted,
         upper: true, ls: u * 1.4, maxW: W * 0.6
-      });
+      }));
     }
     text(ctx, 'SHUTTERPLATE · 03', W - footX, footY, {
       size: Math.min(u * 11.5, band * 0.058), family: 'mono', color: c.muted,
@@ -1059,10 +1174,10 @@
 
     hairline(ctx, pad, L.H - band * 0.17, W - pad, L.H - band * 0.17, c.line, Math.max(1, u));
     if (f.caption) {
-      text(ctx, f.caption, pad, L.H - band * 0.075, {
+      text(ctx, f.caption, pad, L.H - band * 0.075, captionOpt(L, {
         size: Math.min(u * 11, band * 0.04), family: 'mono', color: c.muted,
         upper: true, ls: u * 1.6, maxW: inner * 0.6
-      });
+      }));
     }
     text(ctx, 'HD2LAB · PRO STUDIO 08', W - pad, L.H - band * 0.075, {
       size: Math.min(u * 10, band * 0.036), family: 'mono', color: c.muted,
@@ -1089,10 +1204,10 @@
     ctx.restore();
 
     var capSize = Math.max(u * 8, Math.min(u * 40, band * 0.22));
-    text(ctx, f.caption || camera(f) || 'HD2Lab Shutterplate', cx, top + band * 0.28, {
+    text(ctx, f.caption || camera(f) || 'HD2Lab Shutterplate', cx, top + band * 0.28, captionOpt(L, {
       size: capSize, family: 'serif', italic: true, color: c.ink,
       ls: u * 0.4, align: 'center', maxW: maxW
-    });
+    }, !f.caption));
 
     var spec = join([f.make, f.model, f.focal, f.aperture, f.shutter, f.iso], '  ·  ');
     text(ctx, spec, cx, top + band * 0.475, {
@@ -1192,10 +1307,10 @@
     });
 
     if (f.caption) {
-      text(ctx, f.caption, pad, top + band * 0.90, {
+      text(ctx, f.caption, pad, top + band * 0.90, captionOpt(L, {
         size: Math.min(u * 15, band * 0.085), family: 'serif', italic: true,
         color: c.ink, ls: u * 0.4, maxW: inner
-      });
+      }));
     }
   }
 
@@ -1217,10 +1332,10 @@
     });
 
     var titleSize = Math.min(u * 56, L.padTop * 0.46);
-    text(ctx, f.caption || camera(f) || 'SHUTTERPLATE', inset, L.padTop * 0.84, {
+    text(ctx, f.caption || camera(f) || 'SHUTTERPLATE', inset, L.padTop * 0.84, captionOpt(L, {
       size: titleSize, family: 'serif', weight: 600, color: c.ink,
       ls: u * 0.1, maxW: maxW
-    });
+    }, !f.caption));
 
     hairline(ctx, inset, top + band * 0.05, W - inset, top + band * 0.05, c.line, Math.max(1, u * 1.2));
 
@@ -1462,10 +1577,10 @@
 
     hairline(ctx, pad, H - foot * 0.8, W - pad, H - foot * 0.8, c.line, Math.max(1, u));
     var footY = H - foot * 0.4;
-    text(ctx, f.caption || 'HD2Lab Shutterplate', pad, footY, {
+    text(ctx, f.caption || 'HD2Lab Shutterplate', pad, footY, captionOpt(L, {
       size: u * 10, family: L.opts.font, weight: 500, color: c.ink,
       ls: u * 1.2, maxW: W * 0.6
-    });
+    }, !f.caption));
     var filled = 0;
     for (var i = 0; i < L.images.length; i++) { if (L.images[i]) filled++; }
     text(ctx, 'CONTACT 01  ·  ' + filled + ' / 4', W - pad, footY, {
@@ -1526,10 +1641,10 @@
       });
       hairline(ctx, L.side, footTop + band * 0.16, W - L.side, footTop + band * 0.16, c.line, Math.max(1, u));
       if (f.caption) {
-        text(ctx, f.caption, W / 2, footTop + band * 0.44, {
+        text(ctx, f.caption, W / 2, footTop + band * 0.44, captionOpt(L, {
           size: Math.min(u * 18, band * 0.26), family: 'serif', italic: true,
           color: c.ink, ls: u * 0.4, align: 'center', maxW: W - L.side * 2
-        });
+        }));
       }
       if (L.emblem) {
         var emH2 = Math.max(u * 7, Math.min(u * 13, band * 0.14));
@@ -1588,10 +1703,10 @@
         size: u * 11, family: 'mono', color: c.accent, ls: u * 2, maxW: fLeftW
       });
       if (f.caption) {
-        text(ctx, f.caption, L.side, footTop + band * 0.56, {
+        text(ctx, f.caption, L.side, footTop + band * 0.56, captionOpt(L, {
           size: Math.min(u * 18, band * 0.15), family: 'serif', italic: true,
           color: c.ink, ls: u * 0.4, maxW: fLeftW
-        });
+        }));
       }
       text(ctx, fCam, W - L.side, footTop + band * 0.56, {
         size: u * 10, family: 'mono', color: c.muted, ls: u * 1,
@@ -1616,10 +1731,10 @@
       });
       hairline(ctx, L.side, footTop + band * 0.12, W - L.side, footTop + band * 0.12, c.line, Math.max(1, u * 1.2));
       if (f.caption) {
-        text(ctx, f.caption, L.side, footTop + band * 0.44, {
+        text(ctx, f.caption, L.side, footTop + band * 0.44, captionOpt(L, {
           size: Math.min(u * 19, band * 0.18), family: 'serif', italic: true,
           color: c.ink, ls: u * 0.3, maxW: W * 0.62
-        });
+        }));
       }
       text(ctx, join([camera(f), optics(f)], '   ·   '), L.side, footTop + band * 0.68, {
         size: u * 10.5, family: 'mono', color: c.muted, ls: u * 1, maxW: W * 0.6
@@ -1733,7 +1848,9 @@
       text: text, compound: compound, measure: measure, roundRect: roundRect,
       hairline: hairline, camera: camera, optics: optics, specParts: specParts,
       dateOf: dateOf, join: join, filmPerf: filmPerf, strapBand: strapBand,
-      drawCover: drawCover, sprockets: sprockets, sprocketsCol: sprocketsCol
+      drawCover: drawCover, sprockets: sprockets, sprocketsCol: sprocketsCol,
+      sprocketRow: sprocketRow,
+      captionStyle: captionStyle, captionOpt: captionOpt, isCustomCaption: isCustomCaption
     }
   };
 })(window);
