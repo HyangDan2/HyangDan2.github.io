@@ -343,6 +343,7 @@
     fromMake: fromMake,
     svg: svg,
     draw: draw,
-    widthFor: widthFor
+    widthFor: widthFor,
+    measure: widthFor
   };
 })(window);

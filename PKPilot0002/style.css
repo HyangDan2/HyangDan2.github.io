@@ -190,59 +190,51 @@ a {
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
 
+/* the Web-HQ lockup: [mark] HD2Lab | Midpoint */
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
+  flex: none;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 25px;
+  letter-spacing: -1.5px;
 }
 
 .mark {
   display: inline-block;
-  width: 14px;
-  height: 19px;
-  border: 2.5px solid var(--accent);
+  width: 17px;
+  height: 22px;
+  border: 3px solid var(--accent);
   transform: skewY(-23deg);
   position: relative;
-  flex: none;
+  flex-shrink: 0;
 }
 
 .mark::after {
   content: '';
   position: absolute;
-  inset: 4px -6px -6px 4px;
-  border: 1.8px solid var(--accent);
+  inset: 4px -8px -7px 4px;
+  border: 2px solid var(--accent);
 }
 
 .brand-name {
   font-weight: 800;
-  font-size: 15.5px;
-  letter-spacing: -0.02em;
-}
-
-.brand-divider {
-  color: var(--border-strong);
-  margin: 0 1px;
+  font-size: 25px;
+  letter-spacing: -1.5px;
 }
 
 .brand em {
   font-style: normal;
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0;
   color: var(--muted);
+  border-left: 1px solid var(--border-strong);
+  padding-left: 13px;
   white-space: nowrap;
-}
-
-.brand .tag {
-  padding: 2px 7px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--muted-2);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  font-family: var(--mono);
 }
 
 .header-actions {
@@ -2844,45 +2836,21 @@ body.is-dragging-pin .pin-person {
     gap: 8px;
   }
 
-  /* 모바일에서도 앱 식별 뱃지(PKPilot0002)를 유지한다 — 좁은 폭에 맞춘 컴팩트 스타일 */
+  /* Web-HQ의 축소 규칙 그대로 — 22px, 간격 10px */
   .brand {
-    gap: 6px;
+    gap: 10px;
     min-width: 0;
-  }
-
-  .brand-divider {
-    display: inline-block;
-    margin: 0 4px;
-    font-size: 11px;
-    line-height: 1;
-    opacity: 0.4;
-    color: var(--muted-2);
-  }
-
-  .brand .tag {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    height: 18px;
-    padding: 0 6px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 130, 79, 0.35);
-    background: rgba(255, 130, 79, 0.1);
-    color: var(--accent);
-    font-size: 9.5px;
-    line-height: 1;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
+    min-height: 42px;
+    font-size: 22px;
   }
 
   .brand-name {
-    font-size: 14.5px;
+    font-size: 22px;
     flex: none;
   }
 
   .brand em {
-    font-size: 12.5px;
+    padding-left: 10px;
     flex: none;
   }
 
@@ -3168,12 +3136,8 @@ body.is-dragging-pin .pin-person {
 }
 
 @media (max-width: 380px) {
-  .brand em {
-    display: none;
-  }
-
-  .brand-divider {
-    margin: 0 2px;
+  .brand-name {
+    font-size: 20px;
   }
 
   .panel-head h1 {
@@ -3209,7 +3173,7 @@ body.is-dragging-pin .pin-person {
   }
 
   .brand {
-    gap: 5px;
+    gap: 8px;
   }
 
   .header-actions {
