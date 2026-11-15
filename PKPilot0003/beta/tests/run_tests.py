@@ -850,6 +850,28 @@ def browser_tests(port):
         check("browser: no console errors at 320px", not serrors, str(serrors[:3]))
         sctx.close()
 
+        # ── the phone on its side ────────────────────────────────────────
+        lctx = browser.new_context(viewport={"width": 844, "height": 390})
+        lpage = lctx.new_page()
+        lerrors = []
+        lpage.on("pageerror", lambda e: lerrors.append(str(e)))
+        lpage.on("console", lambda m: lerrors.append(m.text) if m.type == "error" else None)
+        lpage.goto(base + "#editor", wait_until="networkidle")
+        lpage.wait_for_timeout(500)
+        lpage.evaluate("() => window.SPApp.loadSampleSlots()")
+        lpage.wait_for_timeout(1700)
+        lpage.evaluate("() => window.SPApp.setStyle('fyra04')")
+        lpage.wait_for_timeout(400)
+        lpage.evaluate("() => window.SPApp.openSlotPanel()")
+        lpage.wait_for_timeout(400)
+        check("browser: 844×390 keeps the 4-cut panel on screen",
+              lpage.evaluate("""() => { const st = document.querySelector('#stage').getBoundingClientRect();
+                  const p = document.querySelector('#slotBar').getBoundingClientRect();
+                  return p.top >= st.top - 0.5 && p.bottom <= st.bottom + 0.5 &&
+                         p.top >= 0 && p.bottom <= window.innerHeight && p.height >= 40; }"""))
+        check("browser: no console errors on a landscape phone", not lerrors, str(lerrors[:3]))
+        lctx.close()
+
         # ── errors ─────────────────────────────────────────────────────────
         print("\n[browser] console")
         check("browser: no console errors on desktop", not errors, str(errors[:4]))

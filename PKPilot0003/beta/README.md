@@ -93,7 +93,7 @@ whole plate stays under 7200px on its long edge.
 python3 tests/run_tests.py        # -v for every check, -s to fail on skips
 ```
 
-246 checks across the static and Chromium layers, including the floating 4-cut
+248 checks across the static and Chromium layers, including the floating 4-cut
 control (button placement, panel open/close, cells still loading/replacing/
 swapping from the panel), the hidden single-photo strip on multi-cut plates, zero
 badge overlap on FYRA 04 in both the strip and the landing grid, and the mobile

@@ -1833,6 +1833,12 @@ input[type="range"]::-moz-range-thumb {
   bottom: 66px;               /* just above the 46px button */
   z-index: 8;
   width: min(392px, calc(100% - 24px));
+  /* a short stage (a phone on its side) must never push the panel off the
+     top of the screen: it scrolls inside the plate instead */
+  max-height: calc(100% - 78px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 9px 10px 10px;
   border: 1px solid var(--line);
   border-radius: 15px;
@@ -2066,6 +2072,21 @@ input[type="range"]::-moz-range-thumb {
   .slots--float .slot-pick { padding: 5px 6px; }
   .fyra-thumb { height: 104px; }
   .fyra-note { display: none; }
+}
+/* a phone on its side leaves the plate ~150px tall: the panel turns into one
+   compact row of cells the moment there is no height to spend */
+@media (max-height: 620px) {
+  .slots--float { padding: 7px 8px 8px; }
+  .slots--float .slots-head { padding-bottom: 4px; }
+  .slots--float .slots-hint { display: none; }
+  .slots--float .slot-track { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+  .slots--float .slot-name { display: none; }
+  .slots--float .slot-pick { gap: 0; justify-content: center; padding: 3px; }
+  .slots--float .slot-thumb { width: 28px; height: 28px; }
+  .slots--float .slot-thumb canvas { width: 28px; height: 28px; }
+  .slots--float .slot-act { width: 22px; }
+  .slots--float .slots-actions { margin-top: 6px; }
+  .slots--float .slots-btn { min-height: 30px; }
 }
 @media (max-width: 360px) {
   .brand em { display: none; }
