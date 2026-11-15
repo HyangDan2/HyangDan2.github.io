@@ -377,6 +377,9 @@ def browser_tests(port):
               str(names))
         check("browser: the slot bar is visible on a multi-cut frame",
               page.is_visible("#slotBar"))
+        check("browser: the session card keeps the slot's EXIF count",
+              page.inner_text("#metaExif").strip() != "0 tags",
+              page.inner_text("#metaExif").strip())
         check("browser: four slot tiles are drawn", page.locator("#slotTrack .slot").count() == 4)
         check("browser: every filled tile shows a thumbnail",
               page.evaluate("""() => [...document.querySelectorAll('#slotTrack .slot')]
