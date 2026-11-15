@@ -35,16 +35,33 @@ VERBOSE = "-v" in sys.argv
 
 PASS, FAIL, SKIP = [], [], []
 
-# The eight signatures the brief fixes by name and order.
+# The thirteen signatures the brief fixes by name and order: eleven single-cut
+# frames, then the two multi-cut plates. `kind` decides which layout path a
+# frame takes, so a multi-cut plate never enters the single-photo matrix.
 FRAMES = [
-    ("horizon", "Clean Horizon"),
-    ("gallery", "Classic Gallery"),
-    ("dual", "Dual Deck"),
-    ("strap", "Strap Bar"),
-    ("film", "Film Sprocket"),
-    ("studio", "Studio Dark"),
-    ("edge", "Minimal Edge"),
-    ("pro", "Pro Studio"),
+    ("horizon", "Clean Horizon", "single"),
+    ("gallery", "Classic Gallery", "single"),
+    ("dual", "Dual Deck", "single"),
+    ("strap", "Strap Bar", "single"),
+    ("film", "Film Sprocket", "single"),
+    ("studio", "Studio Dark", "single"),
+    ("edge", "Minimal Edge", "single"),
+    ("pro", "Pro Studio", "single"),
+    ("polaroid", "Instant Polaroid", "single"),
+    ("frosted", "Frosted Glass", "single"),
+    ("editorial", "Editorial Cover", "single"),
+    ("contact", "Contact Sheet", "multi"),
+    ("fyra04", "FYRA 04", "multi"),
+]
+SINGLES = [f for f in FRAMES if f[2] == "single"]
+MULTIS = [f for f in FRAMES if f[2] == "multi"]
+THEMES = [
+    ("classic", "Classic Strip", "1×4"),
+    ("nordic", "Nordic Grid", "2×2"),
+    ("dark", "Dark Studio", "1×4"),
+    ("film", "Film Strip", "1×4"),
+    ("editorial", "Editorial Grid", "2×2"),
+    ("minimal", "Minimal Twin", "2×2"),
 ]
 MARK_PATH = "M15 20L35 10V43L15 53ZM29 24L49 14V47L29 57Z"
 
@@ -161,7 +178,13 @@ def static_tests():
     missing = [r for r in refs if not os.path.exists(os.path.join(ROOT, r))]
     check("every local script/link target exists", not missing, str(missing))
     check("no CDN scripts (offline-first)", not re.search(r"<script[^>]+src=\"https?://", html))
-    check("no external stylesheet", not re.search(r"<link[^>]+rel=\"stylesheet\"[^>]+href=\"https?://", html))
+    # The one external stylesheet is the signature face for a custom caption
+    # (Caveat). It is a font, not a framework: the canvas falls back to the
+    # frame's own script face when the sheet cannot load.
+    ext_css = re.findall(r'<link[^>]+rel="stylesheet"[^>]+href="(https?://[^"]+)"', html)
+    check("the only external stylesheet is the caption script face",
+          all(u.startswith("https://fonts.googleapis.com/css2?family=Caveat") for u in ext_css),
+          str(ext_css))
 
     # ── SVG sprite ───────────────────────────────────────────────────────────
     print("\n[static] SVG sprite")
@@ -240,6 +263,87 @@ def static_tests():
     check("GameHub removed from portal", "GameHub" not in html)
     check("TechnicalHub removed from portal", "TechnicalHub" not in html)
 
+    # ── the production header: the Web-HQ lockup, no build badge ───────────
+    print("\n[static] production header and the promoted 4-cut build")
+    header = re.search(r"<header.*?</header>", html, re.S).group(0)
+    check("the header carries no BETA badge",
+          "beta-badge" not in header and ">BETA<" not in header)
+    check("the header carries no Production return link",
+          "prod-link" not in html and "Production" not in header)
+    check("the stylesheet carries no build-badge or build-link rules",
+          ".beta-badge" not in mark_css and ".prod-link" not in mark_css)
+    check("the brand's own auto margin holds the header row apart",
+          re.search(r"\.brand\s*\{[^}]*margin:\s*0 auto 0 0;", mark_css, re.S) is not None)
+    check("the product name is hidden only at the 360px floor",
+          mark_css.count(".brand em { display: none; }") == 1,
+          str(mark_css.count(".brand em { display: none; }")))
+    check("the header actions carry the auto margin on a phone",
+          re.search(r"\.header-actions \{[^}]*margin-left: auto;", mark_css) is not None)
+
+    # ── the frame library the promotion brings ─────────────────────────────
+    check("landing counts thirteen signatures", "13 SIGNATURE FRAMES" in html)
+    check("the strip head counts thirteen", '<b id="frameCount">13</b>' in html)
+    check("the landing says the last two plates take four photos",
+          "4컷 멀티 프레임" in html)
+    app_js = read("app.js")
+    for eid in ("slotBar", "slotTrack", "slotHint", "slotAllInput", "slotOneInput",
+                "slotAddBtn", "slotSampleBtn", "slotToggle"):
+        check(f"the 4-cut control has #{eid}", f'id="{eid}"' in html)
+    check("the 4-cut control is a toggle for the panel",
+          'aria-controls="slotBar"' in html and 'aria-expanded="false"' in html)
+    check("the panel starts hidden", re.search(r'id="slotBar"[^>]*hidden', html) is not None)
+    check("the 4-cut control sits inside the stage, before the library",
+          html.index('id="slotToggle"') < html.index('aria-label="프레임 갤러리"'))
+    check("the floating control has its own styles",
+          ".slot-fab" in mark_css and ".slots--float" in mark_css)
+    for fn in ("loadSlots", "setSlotFile", "swapSlots", "slotSources", "seedSlots"):
+        check(f"app.js implements {fn}()", f"function {fn}(" in app_js)
+    check("state.slots exists", "slots: []," in app_js)
+
+    for eid in ("fyraModal", "fyraGrid", "fyraClose", "fyraTitle", "fyraThemeName"):
+        check(f"the theme window has #{eid}", f'id="{eid}"' in html)
+    check("the theme window is a dialog with a radio group",
+          'role="dialog"' in html and 'id="fyraGrid" role="radiogroup"' in html)
+    check("the theme window carries the six-theme kicker", "NORDIC 4-CUT · 6 THEMES" in html)
+    check("the re-click hint sits at the tile's bottom-left",
+          re.search(r"\.frame-reclick \{[^}]*top: auto;[^}]*bottom: 6px;[^}]*left: 6px;",
+                    mark_css) is not None)
+
+    # ── caption typography: 프레임 기본, then the visitor's own face ────────
+    check("the caption mode is a two-option toggle",
+          'id="captionModeSeg"' in html and html.count("data-caption-mode=") == 2)
+    check("프레임 기본 is the caption mode on load",
+          re.search(r'data-caption-mode="auto" aria-pressed="true"', html) is not None)
+    check("the custom panel starts hidden",
+          re.search(r'id="captionCustomPanel"[^>]*hidden', html) is not None)
+    check("the caption controls sit under the caption input",
+          html.index('id="fCaption"') < html.index('id="captionModeSeg"') <
+          html.index('id="captionCustomPanel"') < html.index('id="resetMetaBtn"'))
+    check("the four faces are Sans · Serif · Mono · 필기체",
+          re.findall(r'data-caption-font="(\w+)"', html) == ["sans", "serif", "mono", "script"] and
+          "필기체" in html, str(re.findall(r'data-caption-font="(\w+)"', html)))
+    check("Bold and Italic are checkboxes in the panel",
+          'type="checkbox" id="captionBold"' in html and
+          'type="checkbox" id="captionItalic"' in html and "볼드" in html and "이탤릭" in html)
+    check("app.js carries the caption state",
+          "captionMode: 'auto'" in app_js and "captionFont: 'sans'" in app_js and
+          "captionBold: false" in app_js and "captionItalic: false" in app_js)
+    check("every caption option reaches the plate's opts",
+          all(f"{k}: state.{k}" in app_js for k in
+              ("captionMode", "captionFont", "captionBold", "captionItalic")))
+    check("plate.js overrides the caption line only",
+          "function captionStyle(" in read("js/plate.js") and
+          "function captionOpt(" in read("js/plate.js"))
+
+    check("the manifest names the production build",
+          json.loads(read("manifest.json"))["name"] == "HD2Lab Shutterplate")
+    check("the canonical URL is the production one",
+          'rel="canonical" href="https://hyangdan2.github.io/PKPilot0003/"' in html)
+    check("og:url is the production URL",
+          'property="og:url" content="https://hyangdan2.github.io/PKPilot0003/"' in html)
+    check("the title line is the production one",
+          "<title>Shutterplate — HD2Lab Photo Frame Studio</title>" in html)
+
     # ── landing → title → the ⋮ menu (the Film Studio shape) ──────────────
     print("\n[static] landing page, title-to-home, the three-section ⋮ menu")
     check("landing view present", 'id="homeView"' in html)
@@ -276,7 +380,7 @@ def static_tests():
           all(x in html for x in ("가로 풍경", "sample-01.jpg", "세로 카페", "sample-02.jpg")))
     check("landing offers photo + folder open", "사진 선택" in html and "폴더 열기" in html)
     check("landing accepts a drop", "끌어다 놓" in html)
-    check("landing shows the eight-frame showcase", 'id="homeFrameGrid"' in html)
+    check("landing shows the thirteen-frame showcase", 'id="homeFrameGrid"' in html)
 
     check("menu button announces a menu", 'aria-haspopup="menu"' in html)
     check("menu is a role=menu list", 'role="menu"' in portal)
@@ -366,17 +470,24 @@ def static_tests():
     check("copy icon in the sprite", "i-copy" in ids)
 
     # ── frame engine source ──────────────────────────────────────────────────
-    print("\n[static] eight frame signatures")
+    print("\n[static] thirteen frame signatures")
     plate = read("js/plate.js")
     order = re.search(r"var ORDER = \[([^\]]+)\]", plate)
     got = [s.strip().strip("'\"") for s in order.group(1).split(",")] if order else []
-    check("eight frames in ORDER", len(got) == 8, str(got))
+    check("thirteen frames in ORDER", len(got) == 13, str(got))
     check("frame ids match the brief", got == [f[0] for f in FRAMES], str(got))
+    check("the eleven single-cut frames come before the two multi-cut plates",
+          got[:11] == [f[0] for f in SINGLES] and got[11:] == [f[0] for f in MULTIS], str(got))
     painters = re.search(r"var PAINTERS = \{([^}]*)\}", plate)
     registered = re.findall(r"(\w+):\s*draw\w+", painters.group(1)) if painters else []
-    for fid, label in FRAMES:
+    for fid, label, kind in FRAMES:
         check(f"frame {fid} labelled '{label}'", f"label: '{label}'" in plate)
-        check(f"frame {fid} has a painter", fid in registered, str(registered))
+        if kind == "single":
+            check(f"frame {fid} has a painter", fid in registered, str(registered))
+    check("the two multi-cut plates are declared multi",
+          re.search(r"MULTI:\s*\['contact',\s*'fyra04'\]", plate) is not None)
+    check("a multi-cut plate holds four cells",
+          re.search(r"cells:\s*4", plate) is not None)
     check("no legacy four-style ids left",
           not re.search(r"style:\s*'(classic|clean)'", read("app.js")))
     for kw in ("sprocket", "corner bracket", "strap", "grid"):
@@ -963,6 +1074,79 @@ def film_pairs(fields):
     return [("ISO", iso), ("SEC", shutter), ("F", aperture)]
 
 
+SAMPLES = [os.path.join(ROOT, "assets", "samples", f"sample-0{i}.jpg") for i in (1, 2, 3)]
+
+# Every pixel of a plate's caption band, sampled densely: the caption is small
+# type, so a sparse hash would call two different faces the same plate.
+CAPTION_HASH = """(args) => {
+  const app = window.SPApp, PL = window.SPPlate;
+  if (args && args.style) app.setStyle(args.style);
+  const L = app.currentLayout();
+  const k = 460 / L.W;
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(8, Math.round(L.W * k));
+  cv.height = Math.max(8, Math.round(L.H * k));
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = L.colors.base;
+  ctx.fillRect(0, 0, L.W, L.H);
+  PL.paint(ctx, L);
+  const top = Math.max(0, Math.round((L.photoBox.y + L.PH) * k));
+  const d = ctx.getImageData(0, top, cv.width, cv.height - top).data;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 4 * 3) sum = (sum * 131 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) % 1000000007;
+  return sum;
+}"""
+
+PAINT_ONE = """(args) => {
+  const {style, theme, width} = args;
+  const app = window.SPApp;
+  if (theme) { app.setStyle('fyra04'); app.applyFyraTheme(theme, false); }
+  else app.setStyle(style);
+  const L = app.currentLayout();
+  if (!L) return null;
+  const k = width / L.W;
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(8, Math.round(L.W * k));
+  cv.height = Math.max(8, Math.round(L.H * k));
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = L.colors.base;
+  ctx.fillRect(0, 0, L.W, L.H);
+  window.SPPlate.paint(ctx, L);
+  const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  let sum = 0, min = 255, max = 0;
+  for (let i = 0; i < d.length; i += 4 * 97) {
+    const v = d[i] + d[i + 1] + d[i + 2];
+    sum = (sum * 31 + v) % 1000000007;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return {hash: sum, spread: max - min, w: L.W, h: L.H, cells: (L.cells || []).length,
+          theme: L.theme || '', multi: !!L.multi, band: L.band, padTop: L.padTop};
+}"""
+
+
+def rect_of(page, sel):
+    return page.evaluate("""(sel) => { const e = document.querySelector(sel);
+        if (!e) return null; const r = e.getBoundingClientRect();
+        return {x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom,
+                display: getComputedStyle(e).display, hidden: e.hidden}; }""", sel)
+
+
+def overlap_of(page, sel_a, sel_b):
+    """Intersection of two elements' boxes, 0 when they never meet."""
+    return page.evaluate("""([a, b]) => {
+        const A = document.querySelector(a), B = document.querySelector(b);
+        if (!A || !B) return null;
+        const ra = A.getBoundingClientRect(), rb = B.getBoundingClientRect();
+        const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+        const oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+        return {ox: ox, oy: oy, area: (ox > 0 && oy > 0) ? ox * oy : 0,
+                a: [ra.left, ra.top, ra.right, ra.bottom], b: [rb.left, rb.top, rb.right, rb.bottom]};
+    }""", [sel_a, sel_b])
+
+
 def browser_tests(port):
     names = [f"browser: {x}" for x in ("desktop", "frames", "sheets", "export", "mobile", "small",
                                        "share", "inapp")]
@@ -1010,7 +1194,7 @@ def browser_tests(port):
               "HD2Lab" in lpage.inner_text(".home-hero"))
         check("landing: the hero states the local-EXIF promise",
               "EXIF" in lpage.inner_text(".home-hero"))
-        check("landing: eight signature cards", lpage.locator(".hf-card").count() == 8,
+        check("landing: thirteen signature cards", lpage.locator(".hf-card").count() == 13,
               str(lpage.locator(".hf-card").count()))
         spread = lpage.evaluate("""() => [...document.querySelectorAll('.hf-card canvas')].map(cv => {
           const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
@@ -1020,7 +1204,7 @@ def browser_tests(port):
           return max - min;
         })""")
         check("landing: every card paints its own plate preview",
-              len(spread) == 8 and all(v > 40 for v in spread), str(spread))
+              len(spread) == 13 and all(v > 40 for v in spread), str(spread))
         check("landing: the session card waits for a photo", not lpage.is_visible("#homeSession"))
         check("landing: the page itself does not scroll (the view does)",
               lpage.evaluate("() => document.documentElement.scrollHeight <= window.innerHeight + 1"))
@@ -1181,8 +1365,8 @@ def browser_tests(port):
              .map(c => c.getBoundingClientRect().right)""")
         check("landing mobile: the frame cards stay inside the screen",
               all(x <= 391 for x in wide), str([round(x) for x in wide]))
-        check("landing mobile: the eight cards are there",
-              lmpage.locator(".hf-card").count() == 8)
+        check("landing mobile: the thirteen cards are there",
+              lmpage.locator(".hf-card").count() == 13)
         lmpage.click("#homeSample01")
         lmpage.wait_for_function("() => window.SPApp.state.photo && window.SPApp.state.photo.w > 0",
                                  timeout=15000)
@@ -1193,7 +1377,7 @@ def browser_tests(port):
         lmctx.close()
 
         # ── desktop: empty state → upload → frames ──────────────────────────
-        print("\n[browser] boot, upload state transition & eight frames")
+        print("\n[browser] boot, upload state transition & thirteen frames")
         ctx = browser.new_context(viewport={"width": 1280, "height": 800}, accept_downloads=True)
         page = ctx.new_page()
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -1202,7 +1386,7 @@ def browser_tests(port):
         page.wait_for_timeout(300)
 
         # ── desktop: empty state → upload → frames ──────────────────────────
-        print("\n[browser] boot, upload state transition & eight frames")
+        print("\n[browser] boot, upload state transition & thirteen frames")
         ctx = browser.new_context(viewport={"width": 1280, "height": 800}, accept_downloads=True)
         page = ctx.new_page()
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -1223,9 +1407,9 @@ def browser_tests(port):
         check("empty: no page scroll", page.evaluate(
             "() => document.documentElement.scrollHeight <= window.innerHeight + 1"))
 
-        # the strip previews all eight frames before a photo exists
+        # the strip previews all thirteen frames before a photo exists
         cards = page.locator(".frame-card")
-        check("strip: eight frame cards", cards.count() == 8, str(cards.count()))
+        check("strip: thirteen frame cards", cards.count() == 13, str(cards.count()))
         empties = page.evaluate("""() => {
           const out = [];
           document.querySelectorAll('.frame-card').forEach(card => {
@@ -1334,7 +1518,7 @@ def browser_tests(port):
               repr((makers["sony"]["make"], makers["nikon"]["make"])))
         check("no make stays empty", makers["none"]["make"] == "", repr(makers["none"]["make"]))
 
-        print("\n[browser] eight frames: geometry, painting, selection")
+        print("\n[browser] thirteen frames: geometry, painting, selection")
         sig0 = canvas_sig(page)
         check("preview canvas painted", sig0["n"] > 1000 and sig0["max"] - sig0["min"] > 120,
               json.dumps(sig0))
@@ -1349,7 +1533,7 @@ def browser_tests(port):
           return out;
         }""")
         flush = {"strap"}
-        for fid, label in FRAMES:
+        for fid, label, _kind in SINGLES:
             g = geo.get(fid, {})
             check(f"geometry {label}: plate at least as wide as the photo",
                   g.get("W", 0) >= 1536 and (g["W"] > 1536 or fid in flush), json.dumps(g))
@@ -1367,7 +1551,7 @@ def browser_tests(port):
         page.wait_for_timeout(260)
         prev_hash = canvas_sig(page)["hash"]
         hashes = {}
-        for fid, label in FRAMES:
+        for fid, label, _kind in FRAMES:
             page.click(f'.frame-card[data-style="{fid}"]')
             page.wait_for_timeout(240)
             sig = canvas_sig(page)
@@ -1389,14 +1573,490 @@ def browser_tests(port):
                        min = Math.min(min,v); max = Math.max(max,v); }
                      return max - min > 40; }""", fid))
         dup = len(set(hashes.values())) != len(hashes)
-        check("all eight frames render differently", not dup, json.dumps(hashes))
+        check("all thirteen frames render differently", not dup, json.dumps(hashes))
+
+        # ── the two multi-cut plates: four cells and their model ────────────
+        print("\n[browser] multi-cut plates: four cells, the slot model, the floating control")
+        page.evaluate("() => window.SPApp.loadSampleSlots()")
+        page.wait_for_timeout(1600)
+        page.evaluate("() => window.SPApp.setStyle('fyra04')")
+        page.wait_for_timeout(300)
+        check("multi: the floating 4-cut button appears on a multi-cut frame",
+              page.is_visible("#slotToggle"))
+        check("multi: the 4-cut panel stays down until it is asked for",
+              page.is_hidden("#slotBar"))
+        check("multi: the single-photo strip is hidden on a multi-cut plate",
+              page.is_hidden("#sessionCard"))
+        check("multi: four slot tiles are drawn", page.locator("#slotTrack .slot").count() == 4)
+        check("multi: every filled cell shows its own thumbnail",
+              page.evaluate("""() => [...document.querySelectorAll('#slotTrack .slot')]
+                  .filter(t => t.dataset.filled === 'true').length""") == 4)
+        check("multi: Contact Sheet lays out four cells",
+              page.evaluate("""() => { window.SPApp.setStyle('contact');
+                  const L = window.SPApp.currentLayout(); window.SPApp.setStyle('fyra04');
+                  return (L.cells || []).length; }""") == 4)
+        check("multi: FYRA 04 lays out four cells",
+              page.evaluate("() => (window.SPApp.currentLayout().cells || []).length") == 4)
+
+        names = page.evaluate("() => window.SPApp.slotNames()")
+        check("multi: four files fill four cells", len(names) == 4 and all(names), str(names))
+        check("multi: each cell keeps its own file",
+              names[0] == "sample-01.jpg" and names[1] == "sample-02.jpg" and
+              names[2] == "sample-03.jpg", str(names))
+
+        page.evaluate("() => { window.SPApp.state.slotTarget = 1; }")
+        page.set_input_files("#slotOneInput", os.path.join(ROOT, "assets", "samples", "sample-03.jpg"))
+        page.wait_for_timeout(1300)
+        names = page.evaluate("() => window.SPApp.slotNames()")
+        check("multi: setSlotFile replaces exactly one cell",
+              names[1] == "sample-03.jpg" and names[0] == "sample-01.jpg", str(names))
+
+        swapped = page.evaluate("() => { const ok = window.SPApp.swapSlots(2, 3);"
+                                " return [ok, window.SPApp.slotNames()]; }")
+        check("multi: swapSlots exchanges two cells",
+              swapped[0] is True and swapped[1][2] == names[3] and swapped[1][3] == names[2],
+              str(swapped))
+        page.evaluate("() => window.SPApp.swapSlots(2, 3)")
+
+        seeded = page.evaluate("""() => { const app = window.SPApp;
+            app.setStyle('horizon'); app.loadSampleAt(0, {stay: true});
+            return new Promise(r => setTimeout(() => {
+              app.setStyle('fyra04');
+              r({names: app.slotNames(), filled: app.slotFilledCount(), style: app.state.style});
+            }, 700)); }""")
+        check("multi: one photo seeds all four cells of a multi-cut plate",
+              seeded["filled"] == 4 and len(set(seeded["names"])) == 1, str(seeded))
+        check("multi: choosing FYRA 04 selects it", seeded["style"] == "fyra04")
+
+        refilled = page.evaluate("""async () => { const app = window.SPApp;
+            app.setStyle('fyra04');
+            await app.loadSampleAt(1, {stay: true});
+            await new Promise(r => setTimeout(r, 400));
+            return app.slotNames(); }""")
+        check("multi: a new photo refills a multi-cut plate",
+              refilled == ["sample-02.jpg"] * 4, str(refilled))
+
+        page.evaluate("() => window.SPApp.setStyle('horizon')")
+        page.wait_for_timeout(250)
+        check("multi: the floating 4-cut button retires on a single-cut frame",
+              page.is_hidden("#slotToggle"))
+        check("multi: the panel is down on a single-cut frame", page.is_hidden("#slotBar"))
+        check("multi: the single-photo strip comes back on a single-cut frame",
+              page.is_visible("#sessionCard"))
+
+        # the control is a button on the plate, not a bar beside it
+        page.evaluate("() => window.SPApp.loadSampleSlots()")
+        page.wait_for_timeout(1500)
+        page.evaluate("() => window.SPApp.setStyle('fyra04')")
+        page.wait_for_timeout(350)
+        stage, fab = rect_of(page, "#stage"), rect_of(page, "#slotToggle")
+        check("multi: the control sits inside the stage",
+              page.evaluate("() => document.querySelector('#stage')"
+                            ".contains(document.querySelector('#slotToggle'))"))
+        check("multi: the control is anchored 12px from the stage's bottom-right",
+              abs(stage["right"] - fab["right"] - 12) <= 2 and
+              abs(stage["bottom"] - fab["bottom"] - 12) <= 3,
+              f'stage {stage["right"]},{stage["bottom"]} vs button {fab["right"]},{fab["bottom"]}')
+        check("multi: the control names itself and its open/closed state",
+              page.get_attribute("#slotToggle", "aria-expanded") == "false" and
+              "4컷" in page.get_attribute("#slotToggle", "aria-label"))
+        page.click("#slotToggle")
+        page.wait_for_timeout(350)
+        panel = rect_of(page, "#slotBar")
+        check("multi: the button opens the four cells over the plate", page.is_visible("#slotBar"))
+        check("multi: the open button reports aria-expanded",
+              page.get_attribute("#slotToggle", "aria-expanded") == "true")
+        check("multi: the panel hangs above the button, inside the stage",
+              panel["bottom"] <= fab["y"] + 1 and fab["y"] - panel["bottom"] <= 16 and
+              panel["right"] <= stage["right"] + 1 and panel["x"] >= stage["x"] - 1,
+              f'panel {panel["x"]},{panel["y"]},{panel["right"]},{panel["bottom"]} button y {fab["y"]}')
+        check("multi: the panel holds the four cells and both loaders",
+              page.locator("#slotBar #slotTrack .slot").count() == 4 and
+              page.is_visible("#slotBar #slotAddBtn") and page.is_visible("#slotBar #slotSampleBtn"))
+
+        before = page.evaluate("() => window.SPApp.slotNames()")
+        page.click('#slotTrack .slot[data-slot="0"] .slot-swap')
+        page.wait_for_timeout(400)
+        swapped = page.evaluate("() => window.SPApp.slotNames()")
+        check("multi: ⇄ in the panel swaps two cells",
+              swapped[0] == before[1] and swapped[1] == before[0], f'{before} → {swapped}')
+        check("multi: swapping keeps the panel open", page.is_visible("#slotBar"))
+        page.evaluate("() => window.SPApp.swapSlots(0, 1)")
+        page.wait_for_timeout(250)
+
+        page.click("#slotSampleBtn")
+        page.wait_for_timeout(1900)
+        sampled = page.evaluate("() => [window.SPApp.slotNames(), window.SPApp.slotFilledCount()]")
+        check("multi: 샘플 fills the four cells from the panel",
+              sampled[1] == 4 and all(n.startswith("sample-") for n in sampled[0]), str(sampled))
+
+        page.mouse.click(stage["x"] + 60, stage["y"] + stage["h"] * 0.6)
+        page.wait_for_timeout(300)
+        check("multi: a tap outside closes the panel", page.is_hidden("#slotBar"))
+        check("multi: closing the panel re-arms the button",
+              page.get_attribute("#slotToggle", "aria-expanded") == "false")
+        page.click("#slotToggle")
+        page.wait_for_timeout(300)
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(300)
+        check("multi: Escape closes the panel", page.is_hidden("#slotBar"))
+        check("multi: Escape hands focus back to the 4-cut button",
+              page.evaluate("() => document.activeElement && document.activeElement.id") == "slotToggle")
+
+        # ── the two badges on a FYRA 04 tile must never share a pixel ─────
+        print("\n[browser] FYRA 04 badges: 4-CUT top-right, re-click bottom-left")
+        for label, card in (("the studio strip", '.frame-card[data-style="fyra04"]'),
+                            ("the landing grid", '.hf-card[data-style="fyra04"]')):
+            if label == "the landing grid":
+                page.evaluate("() => window.SPApp.setView('home')")
+                page.wait_for_timeout(500)
+                page.locator(card).scroll_into_view_if_needed()
+                page.wait_for_timeout(250)
+            over = overlap_of(page, card + " .frame-reclick", card + " .frame-badge")
+            rel = page.evaluate("""(card) => {
+                const c = document.querySelector(card);
+                const thumb = c.querySelector(card.indexOf('hf-card') >= 0 ? '.hf-thumb' : '.frame-thumb')
+                    .getBoundingClientRect();
+                const hint = c.querySelector('.frame-reclick').getBoundingClientRect();
+                const badge = c.querySelector('.frame-badge').getBoundingClientRect();
+                return {thumb: [thumb.left, thumb.top, thumb.right, thumb.bottom],
+                        hintBottomLeft: [hint.left - thumb.left, thumb.bottom - hint.bottom],
+                        badgeTopRight: [thumb.right - badge.right, badge.top - thumb.top]};
+            }""", card)
+            check(f"badge: the two tags never overlap on {label}",
+                  over is not None and over["area"] == 0, json.dumps(over))
+            check(f"badge: the 4-CUT tag keeps {label}'s top-right corner",
+                  rel["badgeTopRight"][0] >= 0 and rel["badgeTopRight"][1] >= 0 and
+                  rel["badgeTopRight"][0] <= 8 and rel["badgeTopRight"][1] <= 8, str(rel))
+            check(f"badge: the re-click hint sits in {label}'s bottom-left corner",
+                  rel["hintBottomLeft"][0] >= 0 and rel["hintBottomLeft"][1] >= 0 and
+                  rel["hintBottomLeft"][0] <= 10 and rel["hintBottomLeft"][1] <= 10, str(rel))
+        page.evaluate("() => window.SPApp.setView('editor')")
+        page.wait_for_timeout(400)
+
+        # ── FYRA 04: first tap selects, the second opens the six themes ────
+        print("\n[browser] FYRA 04: first tap selects, the second opens six themes")
+        page.evaluate("() => window.SPApp.setStyle('horizon')")
+        page.wait_for_timeout(200)
+        page.click('.frame-card[data-style="fyra04"]')
+        page.wait_for_timeout(400)
+        check("fyra: the first tap selects FYRA 04",
+              page.evaluate("() => window.SPApp.state.style") == "fyra04")
+        check("fyra: the first tap does not open the theme window",
+              page.evaluate("() => window.SPApp.isFyraOpen()") is False)
+        page.click('.frame-card[data-style="fyra04"]')
+        page.wait_for_timeout(500)
+        check("fyra: the second tap opens the theme window",
+              page.evaluate("() => window.SPApp.isFyraOpen()") is True)
+        check("fyra: the window is on screen",
+              page.is_visible("#fyraModal") and
+              page.get_attribute("#fyraModal", "aria-hidden") == "false")
+        check("fyra: it lists six themes", page.locator("#fyraGrid .fyra-theme").count() == 6)
+        theme_labels = page.evaluate("""() => [...document.querySelectorAll('#fyraGrid .fyra-name')]
+            .map(n => n.textContent.trim())""")
+        check("fyra: the six themes are the approved ones",
+              theme_labels == [t[1] for t in THEMES], str(theme_labels))
+        check("fyra: the layouts are marked 1×4 / 2×2",
+              page.evaluate("""() => [...document.querySelectorAll('#fyraGrid .fyra-layout')]
+                  .map(n => n.textContent.trim())""") == [t[2] for t in THEMES])
+        check("fyra: every theme card paints its own preview",
+              page.evaluate("""() => [...document.querySelectorAll('#fyraGrid canvas')].map(cv => {
+                  const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+                  let min = 255, max = 0;
+                  for (let i = 0; i < d.length; i += 4 * 37) { const v = d[i]+d[i+1]+d[i+2];
+                    min = Math.min(min, v); max = Math.max(max, v); }
+                  return max - min; }).every(v => v > 30)"""))
+        check("fyra: the current theme is checked",
+              page.get_attribute('.fyra-theme[data-theme="classic"]', "aria-checked") == "true")
+
+        theme_geometry = {}
+        for tid, tlabel, layout in THEMES:
+            page.evaluate("(id) => window.SPApp.applyFyraTheme(id, false)", tid)
+            page.wait_for_timeout(140)
+            res = page.evaluate(PAINT_ONE, {"style": "fyra04", "theme": tid, "width": 200})
+            theme_geometry[tid] = res
+            check(f"fyra: theme “{tlabel}” renders", bool(res) and res["spread"] > 25,
+                  str(res and res["spread"]))
+            check(f"fyra: theme “{tlabel}” keeps four cells", res["cells"] == 4)
+            tall = res["h"] > res["w"] * 3
+            check(f"fyra: theme “{tlabel}” is {layout}",
+                  tall if layout == "1×4" else (not tall and res["w"] > res["h"] * 0.55),
+                  f'{res["w"]}x{res["h"]}')
+        check("fyra: the six themes render six different plates",
+              len({v["hash"] for v in theme_geometry.values()}) == 6)
+
+        page.click('.fyra-theme[data-theme="nordic"]')
+        page.wait_for_timeout(400)
+        check("fyra: picking a theme applies it",
+              page.evaluate("() => window.SPApp.state.fyraTheme") == "nordic")
+        check("fyra: picking a theme closes the window",
+              page.evaluate("() => window.SPApp.isFyraOpen()") is False)
+        check("fyra: the readout names the theme",
+              "NORDIC GRID" in page.inner_text("#styleChip"), page.inner_text("#styleChip"))
+        page.click('.frame-card[data-style="fyra04"]')
+        page.wait_for_timeout(300)
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(300)
+        check("fyra: Escape closes the theme window",
+              page.evaluate("() => window.SPApp.isFyraOpen()") is False)
+        check("fyra: Escape hands focus back to the FYRA 04 tile",
+              page.evaluate("() => document.activeElement && document.activeElement.dataset.style") == "fyra04")
+
+        # ── the four-cut plate exports at 1:1 ──────────────────────────────
+        print("\n[browser] the four-cut plate exports at 1:1")
+        plate_export = page.evaluate("""async () => {
+            const app = window.SPApp;
+            app.setStyle('fyra04');
+            app.applyFyraTheme('classic', false);
+            const L = app.currentLayout();
+            const p = await app.prepareExport();
+            return {lw: L.W, lh: L.H, cells: L.cells.length, w: p && p.w, h: p && p.h,
+                    bytes: p && p.bytes, reduced: p && p.reducedEdge};
+        }""")
+        check("export: the four-cut plate exports the whole plate at 1:1",
+              plate_export["cells"] == 4 and plate_export["w"] == plate_export["lw"] and
+              plate_export["h"] == plate_export["lh"], json.dumps(plate_export))
+        check("export: the four-cut plate carries real bytes",
+              (plate_export["bytes"] or 0) > 5000, str(plate_export["bytes"]))
+
+        # ── caption typography: 프레임 기본, then the visitor's own face ────
+        print("\n[browser] caption typography: 프레임 기본, then the visitor's own face")
+        page.evaluate("""() => { const a = window.SPApp;
+            a.setView('editor'); a.setStyle('gallery'); a.setField('caption', 'HD2Lab 서명'); }""")
+        page.wait_for_timeout(350)
+        check("caption: 프레임 기본 is the mode on load",
+              page.get_attribute('#captionModeSeg button[data-caption-mode="auto"]', "aria-pressed") == "true" and
+              page.get_attribute('#captionModeSeg button[data-caption-mode="custom"]', "aria-pressed") == "false")
+        check("caption: 프레임 기본 keeps the custom panel closed", page.is_hidden("#captionCustomPanel"))
+        auto_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+
+        page.click('#captionModeSeg button[data-caption-mode="custom"]')
+        page.wait_for_timeout(400)
+        check("caption: 커스텀 opens the panel", page.is_visible("#captionCustomPanel"))
+        check("caption: 커스텀 is now the pressed option",
+              page.get_attribute('#captionModeSeg button[data-caption-mode="custom"]', "aria-pressed") == "true" and
+              page.evaluate("() => window.SPApp.caption().mode") == "custom")
+        chips = page.evaluate("""() => [...document.querySelectorAll('#captionFontChips button')]
+            .map(b => b.textContent.trim())""")
+        check("caption: the panel offers the four faces",
+              chips == ["Sans", "Serif", "Mono", "필기체"], str(chips))
+        check("caption: the panel offers Bold and Italic",
+              page.is_visible("#captionBold") and page.is_visible("#captionItalic"))
+
+        page.click('#captionFontChips button[data-caption-font="serif"]')
+        page.check("#captionBold")
+        page.check("#captionItalic")
+        page.wait_for_timeout(450)
+        cap = page.evaluate("""() => ({caption: window.SPApp.caption(),
+            opts: (function () { const o = window.SPApp.currentLayout().opts;
+              return {mode: o.captionMode, font: o.captionFont, bold: o.captionBold,
+                      italic: o.captionItalic}; })()})""")
+        check("caption: Serif + Bold + Italic land in the plate's opts",
+              cap["opts"] == {"mode": "custom", "font": "serif", "bold": True, "italic": True},
+              json.dumps(cap))
+        check("caption: the checked chip is the chosen face",
+              page.get_attribute('#captionFontChips button[data-caption-font="serif"]', "aria-checked") == "true" and
+              page.get_attribute('#captionFontChips button[data-caption-font="sans"]', "aria-checked") == "false")
+        serif_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+        check("caption: a custom caption repaints the plate", serif_hash != auto_hash)
+
+        has_type = page.evaluate("""() => {
+            const app = window.SPApp, PL = window.SPPlate;
+            app.state.fields.caption = 'HD2Lab 서명';
+            const shot = (mode, font, bold, italic) => {
+              app.state.captionMode = mode; app.state.captionFont = font;
+              app.state.captionBold = bold; app.state.captionItalic = italic;
+              const L = app.currentLayout();
+              const k = 900 / L.W;
+              const cv = document.createElement('canvas');
+              cv.width = Math.round(L.W * k); cv.height = Math.round(L.H * k);
+              const ctx = cv.getContext('2d');
+              ctx.setTransform(k, 0, 0, k, 0, 0);
+              ctx.fillStyle = L.colors.base; ctx.fillRect(0, 0, L.W, L.H);
+              PL.paint(ctx, L);
+              const top = Math.round(L.photoBox.y + L.PH);
+              const h = Math.max(1, Math.round(L.band * 0.48 * k));
+              const d = ctx.getImageData(0, Math.round(top * k), cv.width, h).data;
+              let sum = 0;
+              for (let i = 0; i < d.length; i += 4)
+                sum = (sum * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) % 1000000007;
+              return sum;
+            };
+            const a = shot('auto', 'sans', false, false);
+            const b = shot('custom', 'serif', true, true);
+            app.state.captionMode = 'custom'; app.state.captionFont = 'serif';
+            app.state.captionBold = true; app.state.captionItalic = true;
+            return {auto: a, custom: b};
+        }""")
+        check("caption: the maker, the exposure and the date keep the frame's own type",
+              has_type["auto"] == has_type["custom"], json.dumps(has_type))
+
+        page.click('#captionFontChips button[data-caption-font="script"]')
+        page.wait_for_timeout(1700)
+        script_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+        check("caption: the signature face prints its own plate", script_hash != serif_hash)
+        caveat_declared = page.evaluate("""() => [...document.fonts]
+            .some(f => String(f.family).replace(/["']/g, '') === 'Caveat')""")
+        if not caveat_declared:
+            skip("caption: the Caveat webfont is in the browser",
+                 "the font request never arrived here")
+        else:
+            check("caption: the Caveat webfont loads for the canvas",
+                  page.evaluate("() => document.fonts.check('16px Caveat')"))
+        page.screenshot(path="/workspace/work/pkpilot0003-prod-promote/caption-script-desktop.png")
+
+        panel_fit = page.evaluate("""() => {
+            const p = document.querySelector('#captionCustomPanel').getBoundingClientRect();
+            const items = [...document.querySelectorAll('#captionFontChips button')]
+              .concat([...document.querySelectorAll('.caption-styles .check')])
+              .map(b => b.getBoundingClientRect());
+            return {panelW: p.width, inside: items.every(r => r.left >= p.left - 0.5 &&
+                    r.right <= p.right + 0.5 && r.width > 10), count: items.length,
+                    overflow: document.documentElement.scrollWidth - window.innerWidth};
+        }""")
+        check("caption: every caption control stays inside its panel",
+              panel_fit["inside"] and panel_fit["count"] == 6, json.dumps(panel_fit))
+        check("caption: the open panel does not widen the desktop page",
+              panel_fit["overflow"] <= 1, str(panel_fit["overflow"]))
+
+        page.click('#captionModeSeg button[data-caption-mode="auto"]')
+        page.wait_for_timeout(400)
+        check("caption: 프레임 기본 closes the panel again", page.is_hidden("#captionCustomPanel"))
+        back_hash = page.evaluate(CAPTION_HASH, {"style": "gallery"})
+        check("caption: 프레임 기본 restores the frame's own caption type", back_hash == auto_hash)
+        page.evaluate("() => window.SPApp.setStyle('horizon')")
+        page.wait_for_timeout(250)
+
+        # ── a 390px phone: the 4-cut control, the theme window, the header ──
+        print("\n[browser] 390px phone: the 4-cut control, the theme window, the lockup")
+        mctx = browser.new_context(viewport={"width": 390, "height": 844},
+                                   is_mobile=True, has_touch=True)
+        mpage = mctx.new_page()
+        merrors = []
+        mpage.on("pageerror", lambda e: merrors.append(str(e)))
+        mpage.on("console", lambda m: merrors.append(m.text) if m.type == "error" else None)
+        mpage.goto(studio, wait_until="networkidle")
+        mpage.wait_for_timeout(600)
+        mpage.evaluate("() => window.SPApp.loadSampleSlots()")
+        mpage.wait_for_timeout(1500)
+        mpage.evaluate("() => window.SPApp.setStyle('fyra04')")
+        mpage.wait_for_timeout(500)
+        check("multi 390: the floating 4-cut button is offered", mpage.is_visible("#slotToggle"))
+        check("multi 390: the panel stays down until asked", mpage.is_hidden("#slotBar"))
+        check("multi 390: the single-photo strip is hidden on a multi-cut plate",
+              mpage.is_hidden("#sessionCard"))
+        mfab = rect_of(mpage, "#slotToggle")
+        mstage = rect_of(mpage, "#stage")
+        check("multi 390: the control stays in the plate's bottom-right corner",
+              abs(mstage["right"] - mfab["right"] - 12) <= 3 and
+              abs(mstage["bottom"] - mfab["bottom"] - 12) <= 4,
+              f'stage {mstage["right"]},{mstage["bottom"]} vs button {mfab["right"]},{mfab["bottom"]}')
+        mpage.click("#slotToggle")
+        mpage.wait_for_timeout(400)
+        check("multi 390: one tap opens the panel", mpage.is_visible("#slotBar"))
+        check("multi 390: the panel is a 2×2 of the four cells",
+              mpage.evaluate("""() => { const t = [...document.querySelectorAll('#slotTrack .slot')]
+                  .map(n => Math.round(n.getBoundingClientRect().top));
+                  return t.length === 4 && new Set(t).size === 2 && t.filter(y => y === t[0]).length === 2; }"""))
+        check("multi 390: no horizontal overflow", mpage.evaluate(
+            "() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1"),
+            str(mpage.evaluate("() => [document.documentElement.scrollWidth,"
+                               " document.documentElement.clientWidth]")))
+        check("multi 390: the panel fits the screen", mpage.evaluate("""() => {
+            const p = document.querySelector('#slotBar').getBoundingClientRect();
+            return p.left >= 0 && p.right <= window.innerWidth + 0.5 &&
+                   p.bottom <= document.querySelector('#stage').getBoundingClientRect().bottom; }"""))
+
+        # the production header on a phone: no build badge, the product name
+        # still beside the mark, the actions pinned to the right edge
+        mh = mpage.evaluate("""() => {
+            const vw = document.documentElement.clientWidth;
+            const head = document.querySelector('.app-header').getBoundingClientRect();
+            const acts = document.querySelector('.header-actions').getBoundingClientRect();
+            const brand = document.querySelector('.brand').getBoundingClientRect();
+            const em = document.querySelector('.brand em');
+            return {rightGap: vw - acts.right, inHead: acts.right <= head.right + 0.5,
+                    brandGap: acts.left - brand.right, width: acts.width, vw: vw,
+                    emVisible: !!em && getComputedStyle(em).display !== 'none' && em.getBoundingClientRect().width > 0,
+                    height: head.height, badge: !!document.querySelector('.beta-badge'),
+                    prodLink: !!document.querySelector('.prod-link')};
+        }""")
+        check("multi 390: the header pins its actions to the right edge",
+              0 <= mh["rightGap"] <= 16 and mh["inHead"] and mh["brandGap"] > 6 and
+              mh["width"] > 100, str(mh))
+        check("multi 390: the product name stays beside the mark", mh["emVisible"], str(mh))
+        check("multi 390: the production header wears no badge or build link",
+              mh["badge"] is False and mh["prodLink"] is False, str(mh))
+        check("multi 390: the header keeps one row", mh["height"] <= 72, str(mh["height"]))
+
+        mpage.evaluate("() => window.SPApp.closeSlotPanel(false)")
+        mpage.wait_for_timeout(250)
+        mpage.evaluate("() => window.SPApp.openFyraModal()")
+        mpage.wait_for_timeout(600)
+        check("multi 390: the theme window fits a phone", mpage.evaluate("""() => {
+            const c = document.querySelector('.fyra-card').getBoundingClientRect();
+            return c.width <= window.innerWidth && c.height <= window.innerHeight + 1; }"""))
+        check("multi 390: no horizontal overflow with the window open", mpage.evaluate(
+            "() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1"))
+        mpage.screenshot(path="/workspace/work/pkpilot0003-prod-promote/mobile-390-fyra04.png")
+        check("multi 390: no console errors", not merrors, str(merrors[:3]))
+        mctx.close()
+
+        # ── the caption panel on a 390px phone ──────────────────────────────
+        cctx = browser.new_context(viewport={"width": 390, "height": 844},
+                                   is_mobile=True, has_touch=True)
+        cpage = cctx.new_page()
+        cerrs = []
+        cpage.on("pageerror", lambda e: cerrs.append(str(e)))
+        cpage.on("console", lambda m: cerrs.append(m.text) if m.type == "error" else None)
+        cpage.goto(studio, wait_until="networkidle")
+        cpage.wait_for_timeout(600)
+        cpage.evaluate("() => window.SPApp.loadSampleAt(1, {stay: true})")
+        cpage.wait_for_timeout(1100)
+        cpage.evaluate("""() => { const a = window.SPApp;
+            a.setStyle('gallery'); a.setField('caption', 'HD2Lab 서명'); a.openSheet('exif'); }""")
+        cpage.wait_for_timeout(500)
+        check("caption 390: the phone shows the caption toggle", cpage.is_visible("#captionModeSeg"))
+        check("caption 390: the panel waits for 커스텀", cpage.is_hidden("#captionCustomPanel"))
+        cpage.click('#captionModeSeg button[data-caption-mode="custom"]')
+        cpage.wait_for_timeout(450)
+        check("caption 390: one tap opens the caption panel", cpage.is_visible("#captionCustomPanel"))
+        cpage.click('#captionFontChips button[data-caption-font="script"]')
+        cpage.wait_for_timeout(1700)
+        mfit = cpage.evaluate("""() => {
+            const vw = document.documentElement.clientWidth;
+            const p = document.querySelector('#captionCustomPanel').getBoundingClientRect();
+            const items = [...document.querySelectorAll('#captionFontChips button')]
+              .concat([...document.querySelectorAll('.caption-styles .check')])
+              .map(b => b.getBoundingClientRect());
+            const seg = [...document.querySelectorAll('#captionModeSeg button')]
+              .map(b => b.getBoundingClientRect());
+            return {vw: vw, inside: items.every(r => r.left >= p.left - 0.5 && r.right <= p.right + 0.5 &&
+                    r.width > 10 && r.height >= 30),
+                    onscreen: items.every(r => r.left >= -0.5 && r.right <= vw + 0.5),
+                    overflow: document.documentElement.scrollWidth - vw,
+                    segW: seg.map(r => Math.round(r.width)), mode: window.SPApp.caption()};
+        }""")
+        check("caption 390: every caption control fits a phone's width",
+              mfit["inside"] and mfit["onscreen"], json.dumps(mfit))
+        check("caption 390: the panel does not push the page sideways",
+              mfit["overflow"] <= 1, str(mfit["overflow"]))
+        check("caption 390: the two modes share the toggle's width",
+              len(mfit["segW"]) == 2 and abs(mfit["segW"][0] - mfit["segW"][1]) <= 2, str(mfit["segW"]))
+        check("caption 390: the phone's choice is a real plate change",
+              mfit["mode"] == {"mode": "custom", "font": "script", "bold": False, "italic": False},
+              json.dumps(mfit["mode"]))
+        check("caption 390: no console errors with the panel open", not cerrs, str(cerrs[:3]))
+        cctx.close()
+        page.evaluate("() => window.SPApp.setStyle('horizon')")
+
 
         # ── fit matrix: portrait plates, long iPhone EXIF, wide emblems ────
         print("\n[browser] frame text fitting (portrait plates, long EXIF, wide emblems)")
         matrix = []
         for cname, fields, emblem in FIT_CASES:
             for sname, w, h in FIT_SIZES:
-                for fid, _label in FRAMES:
+                for fid, _label, _kind in SINGLES:
                     matrix.append({"style": fid, "case": cname, "size": sname,
                                    "fields": fields, "emblem": emblem,
                                    "w": w, "h": h, "padPct": None})
@@ -1411,7 +2071,7 @@ def browser_tests(port):
               json.dumps(fit["collide"], ensure_ascii=False))
         check("fit: Film Sprocket keeps its lowest line above the perforations",
               fit["filmSlack"] > 0, f"slack={fit['filmSlack']:.1f}px")
-        for fid, label in FRAMES:
+        for fid, label, _kind in SINGLES:
             got = (fit["byStyle"].get(fid) or {})
             check(f"fit: {label} never ellipsises on a portrait plate",
                   got.get("ellipsis") == 0, f"{got.get('ellipsis')} line(s)")
@@ -1962,12 +2622,12 @@ def browser_tests(port):
         # This paints each mark on each frame on a portrait plate and a wide
         # one, and asks the same questions: nothing off the plate, nothing on
         # top of anything else, no line collapsed to «…».
-        print("\n[browser] eleven emblems across eight frames")
+        print("\n[browser] eleven emblems across the eleven single-cut frames")
         em_matrix = []
         for eid in ("sony", "canon", "nikon", "fujifilm", "samsung", "leica",
                     "hasselblad", "apple", "lumix", "omsystem", "hd2lab"):
             for sname, w, h in (("2:3", 1200, 1800), ("3:2", 1536, 1024)):
-                for fid, _label in FRAMES:
+                for fid, _label, _kind in SINGLES:
                     em_matrix.append({"style": fid, "case": eid, "size": sname,
                                       "fields": FIT_CASES[0][1], "emblem": eid,
                                       "w": w, "h": h, "padPct": None})
@@ -2130,7 +2790,7 @@ def browser_tests(port):
         zero_matrix = []
         for cname, fields, emblem in FIT_CASES:
             for sname, w, h in FIT_SIZES:
-                for fid, _label in FRAMES:
+                for fid, _label, _kind in SINGLES:
                     zero_matrix.append({"style": fid, "case": cname, "size": sname,
                                         "fields": fields, "emblem": emblem,
                                         "w": w, "h": h, "padPct": 0})
@@ -2188,7 +2848,16 @@ def browser_tests(port):
         wheel = page.evaluate("""() => { const s = document.querySelector('#frameStrip');
             return {left: s.scrollLeft, max: s.scrollWidth - s.clientWidth}; }""")
         check("wheel scrolls the strip horizontally",
-              wheel["max"] > 0 and wheel["left"] >= wheel["max"] - 1, json.dumps(wheel))
+              wheel["max"] > 0 and 0 < wheel["left"] <= wheel["max"], json.dumps(wheel))
+        for _ in range(12):
+            if wheel["left"] >= wheel["max"] - 1:
+                break
+            page.mouse.wheel(0, 300)
+            page.wait_for_timeout(160)
+            wheel = page.evaluate("""() => { const s = document.querySelector('#frameStrip');
+                return {left: s.scrollLeft, max: s.scrollWidth - s.clientWidth}; }""")
+        check("wheel reaches the last of the thirteen frames",
+              wheel["left"] >= wheel["max"] - 1, json.dumps(wheel))
         page.evaluate("() => document.querySelector('#frameStrip').scrollLeft = 0")
         page.evaluate("() => SPApp.setStyle('horizon')")
         page.wait_for_timeout(120)
@@ -2201,7 +2870,17 @@ def browser_tests(port):
         dragged = page.evaluate("""() => { const s = document.querySelector('#frameStrip');
             return {left: s.scrollLeft, max: s.scrollWidth - s.clientWidth}; }""")
         check("drag scrolls the strip horizontally",
-              dragged["max"] > 0 and dragged["left"] >= dragged["max"] - 1, json.dumps(dragged))
+              dragged["max"] > 0 and dragged["left"] > dragged["max"] * 0.25, json.dumps(dragged))
+        for _ in range(4):
+            if dragged["left"] >= dragged["max"] - 1:
+                break
+            page.evaluate("() => { const s = document.querySelector('#frameStrip');"
+                          " s.scrollLeft = s.scrollWidth; }")
+            page.wait_for_timeout(120)
+            dragged = page.evaluate("""() => { const s = document.querySelector('#frameStrip');
+                return {left: s.scrollLeft, max: s.scrollWidth - s.clientWidth}; }""")
+        check("the strip holds all thirteen frames to the last one",
+              dragged["left"] >= dragged["max"] - 1, json.dumps(dragged))
         check("drag across cards does not change the frame",
               page.evaluate("() => SPApp.state.style") == "horizon",
               page.evaluate("() => SPApp.state.style"))

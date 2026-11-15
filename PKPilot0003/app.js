@@ -18,6 +18,9 @@
     { file: 'assets/samples/sample-03.jpg', label: 'Canon EOS R5' }
   ];
 
+  /* How many photographs a multi-cut plate holds. */
+  var SLOT_COUNT = 4;
+
   /* 제목의 "원본 1:1" 계약이 우선한다 — 내보내기는 사진의 원래 픽셀 그대로다.
      기기가 그만한 캔버스를 못 들면 아래 사다리를 한 칸씩 내려가며 재시도한다. */
   var FALLBACK_EDGES = [4096, 3072, 2048];
@@ -72,6 +75,14 @@
     geo: PL.defaults(PL.ORDER[0]),
     ratio: 0,
     font: 'sans',
+    /* The caption is the one line a visitor writes in their own voice, so it can
+       be set in a face of their choosing. 'auto' keeps the frame's signature
+       typography; 'custom' replaces it for the caption alone — the maker, the
+       exposure and the date never follow. */
+    captionMode: 'auto',    // 'auto' | 'custom'
+    captionFont: 'sans',    // 'sans' | 'serif' | 'mono' | 'script'
+    captionBold: false,
+    captionItalic: false,
     stock: 'KODAK PORTRA 400',
     frameNo: '#03',
     format: 'jpeg',
@@ -84,6 +95,13 @@
     sheet: null,
     view: '',          // 'home' — the landing, 'editor' — the studio
     pane: 'exif',        // which inspector pane is on screen (always on PC, in the sheet on mobile)
+    /* multi-cut: the photographs the four cells print. Slot 0 is also the
+       studio's photo, so every single-cut frame keeps working untouched. */
+    slots: [],
+    slotTarget: 0,
+    slotOpen: false,        // the floating 4-cut control is down (its panel is on the plate)
+    fyraTheme: PL.FYRA_DEFAULT,
+    fyraOpen: false,
     /* PC workspace: the photos opened together, or the folder a visitor picked.
        Everything stays local — handles and Files never leave this device. */
     ws: {
@@ -121,6 +139,11 @@
     ratioSelect: $('#ratioSelect'),
     stockSelect: $('#stockSelect'),
     fontSelect: $('#fontSelect'),
+    captionModeSeg: $('#captionModeSeg'),
+    captionCustomPanel: $('#captionCustomPanel'),
+    captionFontChips: $('#captionFontChips'),
+    captionBold: $('#captionBold'),
+    captionItalic: $('#captionItalic'),
     formatSeg: $('#formatSeg'),
     qualityRow: $('#qualityRow'),
     qualityRange: $('#qualityRange'),
@@ -183,6 +206,18 @@
     dockSaveBtn: $('#dockSaveBtn'),
     dockSize: $('#dockSize'),
     dockCount: $('#dockCount'),
+    slotBar: $('#slotBar'),
+    slotToggle: $('#slotToggle'),
+    slotTrack: $('#slotTrack'),
+    slotHint: $('#slotHint'),
+    slotAllInput: $('#slotAllInput'),
+    slotOneInput: $('#slotOneInput'),
+    slotAddBtn: $('#slotAddBtn'),
+    slotSampleBtn: $('#slotSampleBtn'),
+    fyraModal: $('#fyraModal'),
+    fyraGrid: $('#fyraGrid'),
+    fyraClose: $('#fyraClose'),
+    fyraThemeName: $('#fyraThemeName'),
     wsStrip: $('#wsStrip'),
     wsTrack: $('#wsTrack'),
     wsName: $('#wsName'),
@@ -487,6 +522,19 @@
     state.frameNo = frameNumber(fields.datetime);
     state.zoom = 1; state.panX = 0; state.panY = 0;
     stripSrcCache = null;
+    stripSlotsCache = null;
+    /* one photo is also the first cell of a multi-cut plate: picking Contact
+       Sheet or FYRA 04 next fills the other three from it */
+    if (!(opts && opts.keepSlots)) {
+      state.slots = [{
+        file: file, img: img, preview: state.photo.preview,
+        w: state.photo.w, h: state.photo.h,
+        name: state.photo.name, bytes: state.photo.bytes,
+        objectUrl: '', tags: count, fields: Object.assign({}, fields)
+      }];
+    }
+    /* already on a multi-cut plate? the new photo fills the cells again */
+    if (PL.isMulti(state.style)) ensureSlots();
 
     paintFields();
     syncEmblems();
@@ -504,8 +552,9 @@
 
   function resetExifFromPhoto() {
     if (!state.photo || !state.photo.file) return;
-    /* stay — the ⋮ menu can ask for this from the landing too */
-    loadFile(state.photo.file, 'EXIF 다시 읽기', { keepWorkspace: true, stay: true });
+    /* stay — the ⋮ menu can ask for this from the landing too; keepSlots —
+       re-reading EXIF must not collapse a four-photo plate into one */
+    loadFile(state.photo.file, 'EXIF 다시 읽기', { keepWorkspace: true, stay: true, keepSlots: true });
   }
 
   function frameNumber(datetime) {
@@ -530,7 +579,8 @@
       return;
     }
     el.empty.hidden = true;
-    el.sessionCard.hidden = false;
+    /* a four-cut plate hides the single-photo strip: syncSlotUI owns the rule */
+    el.sessionCard.hidden = PL.isMulti(state.style);
     el.metaName.textContent = p.name;
     el.metaSize.textContent = p.w + ' × ' + p.h;
     el.metaBytes.textContent = bytes(p.bytes);
@@ -603,11 +653,16 @@
       var S = PL.STYLES[id];
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'hf-card';
+      b.className = 'hf-card' + (S.multi ? ' hf-card--multi' : '');
       b.dataset.style = id;
       b.setAttribute('aria-label', S.label + ' — ' + S.tag + ' 프레임으로 열기');
       b.innerHTML =
-        '<span class="hf-thumb"><canvas aria-hidden="true"></canvas></span>' +
+        '<span class="hf-thumb"><canvas aria-hidden="true"></canvas>' +
+          (id === 'fyra04'
+            ? '<span class="frame-reclick" aria-hidden="true">' +
+                '<svg class="ic" viewBox="0 0 24 24"><use href="#i-sliders"/></svg>6 THEMES</span>'
+            : '') +
+        '</span>' +
         '<span class="hf-foot">' +
           '<span class="hf-name">' + S.label + '</span>' +
           '<span class="frame-badge">' + S.tag + '</span>' +
@@ -626,10 +681,17 @@
      visitor already has, or sample-01 when the plate is still empty. */
   async function pickFrame(style) {
     if (!PL.STYLES[style]) return;
-    if (!state.photo) await loadSampleAt(0, { stay: true });
+    if (!state.photo) {
+      if (PL.isMulti(style)) await loadSampleSlots();
+      else await loadSampleAt(0, { stay: true });
+    }
     setStyle(style);
     setView('editor');
-    toast(PL.STYLES[style].label + ' 프레임으로 열었습니다');
+    if (style === 'fyra04' && PL.isMulti(style)) {
+      toast(PL.STYLES[style].label + ' 프레임 · 다시 누르면 테마가 열립니다');
+    } else {
+      toast(PL.STYLES[style].label + (PL.isMulti(style) ? ' 멀티컷 프레임으로 열었습니다' : ' 프레임으로 열었습니다'));
+    }
   }
 
   function setView(name) {
@@ -649,6 +711,8 @@
       scheduleStrip();
     } else {
       closeSheet(false);
+      state.slotOpen = false;
+      syncSlotUI();
       syncHomeSession();
       if (el.homeView) el.homeView.scrollTop = 0;
       requestAnimationFrame(paintHomeFrames);
@@ -738,14 +802,515 @@
     if (state.photo && state.photo.objectUrl) URL.revokeObjectURL(state.photo.objectUrl);
     state.photo = null;
     state.exifTags = null;
+    state.slots = [];
+    state.slotOpen = false;
     state.fields = EX.templateFor(new Date());
     state.zoom = 1; state.panX = 0; state.panY = 0;
     stripSrcCache = null;
+    stripSlotsCache = null;
     wsClose();
     paintFields();
     syncPhotoUI(0);
+    syncSlotUI();
     renderAll();
     toast('캔버스를 비웠습니다');
+  }
+
+  /* ── multi-cut slots ──────────────────────────────────────────────────────
+     Contact Sheet and FYRA 04 print four photographs in one plate. A slot
+     keeps the file it came from and the bitmap the plate draws; slot 0 is
+     mirrored into state.photo, so every single-cut path (EXIF sheet, export,
+     the frame thumbnails) needs no second implementation. */
+  function isImageFile(file) {
+    return /^image\//.test(file.type || '') ||
+      /\.(jpe?g|png|webp|avif|heic|heif)$/i.test(file.name || '');
+  }
+
+  /* A small copy for the strip and the theme window — one decode per slot,
+     never one per card. */
+  function makeSwatch(img, maxEdge) {
+    var w = img.naturalWidth || img.width || 1;
+    var h = img.naturalHeight || img.height || 1;
+    var k = Math.min(1, maxEdge / Math.max(w, h));
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k));
+    c.height = Math.max(1, Math.round(h * k));
+    var ctx = c.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.__w = w;
+    c.__h = h;
+    return c;
+  }
+
+  function slotFromPhoto() {
+    var p = state.photo;
+    if (!p) return null;
+    return {
+      file: p.file || null, img: p.img, preview: p.preview || p.img,
+      w: p.w, h: p.h, name: p.name || 'photo', bytes: p.bytes || 0,
+      objectUrl: '', tags: state.exifTags ? EX.tagCount(state.exifTags) : 0,
+      fields: Object.assign({}, state.fields)
+    };
+  }
+
+  async function slotFromFile(file) {
+    var url = URL.createObjectURL(file);
+    var img = null;
+    try {
+      img = await decodeImage(url);
+    } catch (e) {
+      img = null;
+    }
+    if (!img) {
+      /* a WebView that refuses blob: still decodes the same bytes inline */
+      try {
+        img = await decodeImage(await readAsDataURL(file));
+      } catch (e2) {
+        try { URL.revokeObjectURL(url); } catch (e3) { /* noop */ }
+        return null;
+      }
+    }
+    var tags = await readTags(file);
+    var parsed = EX.fromTags(tags || {});
+    var stamp = file.lastModified ? new Date(file.lastModified) : new Date();
+    var fields = (parsed.make || parsed.model) ? EX.merge(parsed, {}) : EX.templateFor(stamp);
+    if (!fields.datetime) fields.datetime = EX.fmtDateTime(stamp);
+    return {
+      file: file, img: img, preview: previewBitmap(img),
+      w: img.naturalWidth, h: img.naturalHeight,
+      name: file.name || 'photo', bytes: file.size || 0,
+      objectUrl: url, tags: tags ? EX.tagCount(tags) : 0, fields: fields
+    };
+  }
+
+  /* Always four entries so a cell is never undefined, however many photos the
+     visitor opened. */
+  function slotsFill() {
+    var out = [];
+    for (var i = 0; i < SLOT_COUNT; i++) out.push(state.slots[i] || null);
+    return out;
+  }
+
+  function slotFilledCount() {
+    var n = 0;
+    slotsFill().forEach(function (s) { if (s) n++; });
+    return n;
+  }
+
+  function slotSources(full) {
+    return slotsFill().map(function (s) {
+      if (!s) return null;
+      return full
+        ? { img: s.img, w: s.w, h: s.h }
+        : { img: s.preview || s.img, w: s.w, h: s.h };
+    });
+  }
+
+  function slotFieldList() {
+    return slotsFill().map(function (s) { return s ? s.fields : null; });
+  }
+
+  /* The photo a slot holds becomes the studio's photo, so the EXIF sheet and
+     the single-cut frames follow the first cell. `keepFields` leaves the
+     visitor's own EXIF edits alone when a slot is merely moved. */
+  function adoptSlot(index, keepFields) {
+    var s = state.slots[index];
+    if (!s) return;
+    if (state.photo && state.photo.objectUrl) URL.revokeObjectURL(state.photo.objectUrl);
+    state.photo = {
+      file: s.file, img: s.img, preview: s.preview || s.img,
+      w: s.w, h: s.h, name: s.name, bytes: s.bytes,
+      inline: false, objectUrl: ''
+    };
+    state.exifTags = null;
+    if (!keepFields) state.fields = Object.assign({}, s.fields);
+    state.autoEmblem = EM.fromMake(state.fields.make, state.fields.model);
+    state.frameNo = frameNumber(state.fields.datetime);
+    stripSrcCache = null;
+    stripSlotsCache = null;
+    paintFields();
+    syncEmblems();
+    syncPhotoUI(s.tags || 0);
+    syncSlotUI();
+    renderAll();
+  }
+
+  function releaseSlots() {
+    state.slots.forEach(function (s) {
+      if (s && s.objectUrl) { try { URL.revokeObjectURL(s.objectUrl); } catch (e) { /* noop */ } }
+    });
+    state.slots = [];
+    stripSlotsCache = null;
+  }
+
+  /* Opening several photos at once: the first fills the studio and every cell
+     gets its own file, EXIF and label. */
+  async function loadSlots(list, note) {
+    var files = Array.prototype.slice.call(list || []).filter(isImageFile).slice(0, SLOT_COUNT);
+    if (!files.length) {
+      toast('이미지 파일이 아닙니다 — JPEG · PNG · WebP', 'error');
+      return false;
+    }
+    var loaded = [];
+    for (var i = 0; i < files.length; i++) {
+      var slot = await slotFromFile(files[i]);
+      if (slot) loaded.push(slot);
+    }
+    if (!loaded.length) {
+      toast(state.inApp
+        ? state.inApp + ' 안에서는 이 사진을 열 수 없어요 — 다른 브라우저로 열어 주세요'
+        : '이 사진들을 열지 못했습니다', 'error');
+      return false;
+    }
+    if (state.photo && state.photo.objectUrl) URL.revokeObjectURL(state.photo.objectUrl);
+    wsClose();
+    releaseSlots();
+    state.slots = loaded;
+    adoptSlot(0);
+    if (state.view !== 'editor') setView('editor');
+    if (note !== false) {
+      toast((note ? note + ' · ' : '') + loaded.length + '장을 ' + SLOT_COUNT + '칸에 열었습니다');
+    }
+    return true;
+  }
+
+  /* Empty cells borrow the photo already on the plate — picking FYRA 04 or
+     Contact Sheet with one photograph open must never leave the visitor
+     staring at three empty boxes wondering what to do. */
+  function seedSlots() {
+    var first = state.slots[0] || slotFromPhoto();
+    if (!first) return false;
+    var changed = false;
+    var filled = slotsFill().map(function (s) {
+      if (s) return s;
+      changed = true;
+      return first;
+    });
+    state.slots = filled;
+    stripSlotsCache = null;
+    return changed;
+  }
+
+  function ensureSlots() {
+    if (!PL.isMulti(state.style)) return;
+    var before = slotFilledCount();
+    if (!state.slots.length) {
+      var first = slotFromPhoto();
+      if (!first) { syncSlotUI(); return; }
+      state.slots = [first];
+    }
+    var seeded = seedSlots();
+    syncSlotUI();
+    if (seeded && before < SLOT_COUNT) {
+      toast('한 장을 ' + SLOT_COUNT + '칸에 채웠습니다 — 칸을 눌러 사진을 바꿀 수 있어요');
+    }
+  }
+
+  async function setSlotFile(index, file) {
+    if (!file) return false;
+    if (!isImageFile(file)) {
+      toast('이미지 파일이 아닙니다 — JPEG · PNG · WebP', 'error');
+      return false;
+    }
+    if (index < 0 || index >= SLOT_COUNT) return false;
+    var slot = await slotFromFile(file);
+    if (!slot) {
+      toast('이 사진을 열지 못했습니다 — ' + (file.name || ''), 'error');
+      return false;
+    }
+    var cells = slotsFill();
+    var prev = cells[index];
+    /* a slot that merely shared the first photo must not lose it for the
+       others: only that cell's own file is released */
+    if (prev && prev.objectUrl && prev.objectUrl !== slot.objectUrl &&
+        !cells.some(function (s, i) { return i !== index && s === prev; })) {
+      try { URL.revokeObjectURL(prev.objectUrl); } catch (e) { /* noop */ }
+    }
+    cells[index] = slot;
+    state.slots = cells;
+    stripSlotsCache = null;
+    if (index === 0) adoptSlot(0);
+    else { syncSlotUI(); renderAll(); }
+    toast('#' + (index + 1) + ' 칸 — ' + slot.name);
+    return true;
+  }
+
+  function swapSlots(a, b) {
+    if (a === b) return false;
+    if (a < 0 || b < 0 || a >= SLOT_COUNT || b >= SLOT_COUNT) return false;
+    var cells = slotsFill();
+    if (!cells[a] && !cells[b]) return false;
+    var t = cells[a];
+    cells[a] = cells[b];
+    cells[b] = t;
+    state.slots = cells;
+    stripSlotsCache = null;
+    if (a === 0 || b === 0) adoptSlot(0, true);   // keep the visitor's EXIF edits
+    else { syncSlotUI(); renderAll(); }
+    toast('#' + (a + 1) + ' ↔ #' + (b + 1) + ' 칸을 맞바꿨습니다');
+    return true;
+  }
+
+  /* Four photographs out of the three bundled samples — the multi-cut plates
+     get a sample mode of their own instead of four copies of one picture. */
+  async function loadSampleSlots() {
+    var loaded = [];
+    for (var i = 0; i < SAMPLES.length && loaded.length < SLOT_COUNT; i++) {
+      try {
+        var res = await fetch(SAMPLES[i].file, { cache: 'force-cache' });
+        if (!res.ok) continue;
+        var blob = await res.blob();
+        var file = new File([blob], SAMPLES[i].file.split('/').pop(), { type: blob.type || 'image/jpeg' });
+        var slot = await slotFromFile(file);
+        if (slot) loaded.push(slot);
+      } catch (e) { /* try the next sample */ }
+    }
+    if (!loaded.length) {
+      toast('샘플을 불러오지 못했습니다 — 사진을 직접 선택해 주세요', 'error');
+      return false;
+    }
+    var pool = loaded.slice(0);
+    while (loaded.length < SLOT_COUNT) loaded.push(pool[loaded.length % pool.length]);
+    if (state.photo && state.photo.objectUrl) URL.revokeObjectURL(state.photo.objectUrl);
+    releaseSlots();
+    state.slots = loaded.slice(0, SLOT_COUNT);
+    adoptSlot(0);
+    if (!PL.isMulti(state.style)) setStyle('fyra04');
+    ensureSlots();
+    setView('editor');
+    syncSlotUI();
+    renderAll();
+    toast('샘플로 ' + SLOT_COUNT + '칸을 채웠습니다');
+    return true;
+  }
+
+  /* ── slot bar ──────────────────────────────────────────────────────────── */
+  function paintSlotThumb(cv, src) {
+    if (!cv || !src) return;
+    var box = 46, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (cv.width !== Math.round(box * dpr)) {
+      cv.width = Math.round(box * dpr);
+      cv.height = Math.round(box * dpr);
+    }
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, box, box);
+    var w = src.naturalWidth || src.width || 1;
+    var h = src.naturalHeight || src.height || 1;
+    var k = Math.max(box / w, box / h);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, (box - w * k) / 2, (box - h * k) / 2, w * k, h * k);
+  }
+
+  function syncSlotUI() {
+    var multi = PL.isMulti(state.style);
+    /* a multi-cut plate prints four photographs: the single-photo strip under
+       the stage has nothing left to say, and the four cells move to the plate's
+       own floating control. A single-cut frame brings the strip straight back. */
+    if (el.sessionCard) el.sessionCard.hidden = !state.photo || multi;
+    if (!multi) state.slotOpen = false;
+    if (el.slotToggle) {
+      el.slotToggle.hidden = !multi;
+      el.slotToggle.setAttribute('aria-expanded', multi && state.slotOpen ? 'true' : 'false');
+      el.slotToggle.setAttribute('aria-label',
+        multi && state.slotOpen ? '4컷 사진 칸 닫기' : '4컷 사진 칸 열기');
+    }
+    var geoHint = $('#geoMultiHint');
+    if (geoHint) geoHint.hidden = !multi;
+    if (!el.slotBar) return;
+    var open = multi && !!state.slotOpen;
+    el.slotBar.hidden = !open;
+    el.slotBar.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (!multi) return;
+    var cells = slotsFill();
+    cells.forEach(function (s, i) {
+      var tile = $('[data-slot="' + i + '"]', el.slotTrack);
+      if (!tile) return;
+      var name = $('.slot-name', tile);
+      var cv = $('canvas', tile);
+      if (s) {
+        tile.setAttribute('data-filled', 'true');
+        if (name) name.textContent = s.name;
+        paintSlotThumb(cv, s.preview || s.img);
+        $('.slot-pick', tile).setAttribute('aria-label',
+          (i + 1) + '번 칸 — ' + s.name + ' · 눌러서 교체');
+      } else {
+        tile.removeAttribute('data-filled');
+        if (name) name.textContent = '빈 칸';
+        if (cv) cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+        $('.slot-pick', tile).setAttribute('aria-label',
+          (i + 1) + '번 칸 — 비어 있음 · 눌러서 사진 넣기');
+      }
+    });
+    if (el.slotHint) {
+      el.slotHint.textContent = PL.isMulti(state.style)
+        ? slotFilledCount() + ' / ' + SLOT_COUNT + '칸 · 칸을 눌러 교체, ⇄ 로 맞바꾸기'
+        : '';
+    }
+  }
+
+  function buildSlots() {
+    if (!el.slotTrack) return;
+    el.slotTrack.textContent = '';
+    for (var i = 0; i < SLOT_COUNT; i++) {
+      var wrap = document.createElement('div');
+      wrap.className = 'slot';
+      wrap.dataset.slot = String(i);
+      wrap.setAttribute('role', 'listitem');
+      wrap.innerHTML =
+        '<button class="slot-pick" type="button">' +
+          '<span class="slot-thumb"><canvas width="46" height="46" aria-hidden="true"></canvas></span>' +
+          '<span class="slot-meta"><b class="slot-num">#' + (i + 1) + '</b>' +
+          '<small class="slot-name">빈 칸</small></span>' +
+        '</button>' +
+        '<button class="slot-act slot-swap" type="button" title="다음 칸과 맞바꾸기" ' +
+          'aria-label="' + (i + 1) + '번 칸을 다음 칸과 맞바꾸기">' +
+          '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-swap"/></svg>' +
+        '</button>';
+      el.slotTrack.appendChild(wrap);
+      (function (index) {
+        $('.slot-pick', wrap).addEventListener('click', function () {
+          state.slotTarget = index;
+          if (el.slotOneInput) el.slotOneInput.click();
+        });
+        $('.slot-swap', wrap).addEventListener('click', function () {
+          swapSlots(index, (index + 1) % SLOT_COUNT);
+        });
+      })(i);
+    }
+  }
+
+  function pickSlotFiles() {
+    if (el.slotAllInput) el.slotAllInput.click();
+  }
+
+  /* ── the floating 4-cut control ──────────────────────────────────────────
+     Bottom-right of the plate: one tap opens the four cells over the photograph,
+     a tap outside (or the button again, or Esc) folds them away. The panel is a
+     popover — no modal backdrop, because the plate stays in view while a cell
+     is chosen. */
+  function openSlotPanel() {
+    if (!PL.isMulti(state.style)) return false;
+    state.slotOpen = true;
+    syncSlotUI();
+    return true;
+  }
+
+  function closeSlotPanel(restoreFocus) {
+    var was = !!state.slotOpen;
+    state.slotOpen = false;
+    syncSlotUI();
+    if (was && restoreFocus && el.slotToggle && !el.slotToggle.hidden) {
+      el.slotToggle.focus({ preventScroll: true });
+    }
+    return was;
+  }
+
+  function toggleSlotPanel() {
+    if (state.slotOpen) { closeSlotPanel(true); return false; }
+    return openSlotPanel();
+  }
+
+  /* ── FYRA 04 theme window ──────────────────────────────────────────────── */
+  function buildFyraThemes() {
+    if (!el.fyraGrid) return;
+    el.fyraGrid.textContent = '';
+    PL.FYRA_THEMES.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fyra-theme';
+      b.dataset.theme = t.id;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', 'false');
+      b.setAttribute('aria-label', t.label + ' — ' + t.layout + ' · ' + t.note);
+      b.innerHTML =
+        '<span class="fyra-thumb"><canvas aria-hidden="true"></canvas></span>' +
+        '<span class="fyra-foot"><span class="fyra-name">' + t.label + '</span>' +
+        '<span class="fyra-layout">' + t.layout + '</span></span>' +
+        '<span class="fyra-note">' + t.note + '</span>';
+      b.addEventListener('click', function () {
+        applyFyraTheme(t.id, true);
+      });
+      el.fyraGrid.appendChild(b);
+    });
+    syncFyraThemes();
+  }
+
+  function syncFyraThemes() {
+    if (!el.fyraGrid) return;
+    $$('.fyra-theme', el.fyraGrid).forEach(function (b) {
+      b.setAttribute('aria-checked', b.dataset.theme === state.fyraTheme ? 'true' : 'false');
+    });
+    if (el.fyraThemeName) el.fyraThemeName.textContent = PL.fyraTheme(state.fyraTheme).label;
+  }
+
+  function paintFyraThemes() {
+    if (!el.fyraGrid) return;
+    var cards = $$('.fyra-theme', el.fyraGrid);
+    if (!cards.length) return;
+    var slots = stripSlots();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cards.forEach(function (card) {
+      var cv = $('canvas', card);
+      if (!cv) return;
+      var rect = cv.getBoundingClientRect();
+      var cw = Math.round(rect.width), chh = Math.round(rect.height);
+      if (!cw || !chh || cw < 8 || chh < 8) return;
+      if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(chh * dpr)) {
+        cv.width = Math.round(cw * dpr);
+        cv.height = Math.round(chh * dpr);
+      }
+      var ctx = cv.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cw, chh);
+      var L = PL.layout({ w: 1, h: 1 }, {
+        style: 'fyra04', fyraTheme: card.dataset.theme,
+        fields: state.fields, emblem: resolveEmblem(), emblemMono: state.emblemMono,
+        font: state.font, stock: state.stock, frameNo: state.frameNo,
+        slots: slots, slotFields: slotFieldList()
+      });
+      var s = Math.min(cw / L.W, chh / L.H) * 0.94;
+      ctx.save();
+      ctx.translate((cw - L.W * s) / 2, (chh - L.H * s) / 2);
+      ctx.scale(s, s);
+      ctx.fillStyle = L.colors.base;
+      ctx.fillRect(0, 0, L.W, L.H);
+      PL.paint(ctx, L);
+      ctx.restore();
+    });
+  }
+
+  function openFyraModal() {
+    if (!el.fyraModal) return;
+    state.fyraOpen = true;
+    el.fyraModal.classList.add('is-open');
+    el.fyraModal.setAttribute('aria-hidden', 'false');
+    syncFyraThemes();
+    requestAnimationFrame(paintFyraThemes);
+    if (el.fyraClose) el.fyraClose.focus({ preventScroll: true });
+  }
+
+  function closeFyraModal(restoreFocus) {
+    if (!el.fyraModal) return;
+    state.fyraOpen = false;
+    el.fyraModal.classList.remove('is-open');
+    el.fyraModal.setAttribute('aria-hidden', 'true');
+    if (restoreFocus) {
+      var card = $('.frame-card[data-style="fyra04"]', el.strip);
+      if (card) card.focus({ preventScroll: true });
+    }
+  }
+
+  function applyFyraTheme(id, close) {
+    var theme = PL.fyraTheme(id);
+    if (!theme) return false;
+    state.fyraTheme = theme.id;
+    syncFyraThemes();
+    if (close) closeFyraModal(true);
+    renderAll();
+    toast('FYRA 04 — ' + theme.label + ' 테마');
+    return true;
   }
 
   /* ── workspace (PC) ───────────────────────────────────────────────────────
@@ -1246,7 +1811,13 @@
           style: state.style, fields: fields, emblem: emblem, emblemMono: state.emblemMono,
           padPct: state.geo.padPct, extraPct: state.geo.extraPct, radiusPct: state.geo.radiusPct,
           ratio: state.ratio, font: state.font, stock: state.stock,
-          frameNo: frameNumber(fields.datetime)
+          frameNo: frameNumber(fields.datetime),
+          /* a batch run has one file per plate, so a multi-cut frame prints
+             that file in every cell rather than half an empty sheet */
+          fyraTheme: state.fyraTheme,
+          slots: PL.isMulti(state.style) ? [0, 1, 2, 3].map(function () {
+            return { img: img, w: img.naturalWidth, h: img.naturalHeight };
+          }) : null
         });
         var png = state.format === 'png';
         /* same contract as the single save: 1:1 first, the ladder only if the
@@ -1381,6 +1952,24 @@
     return c;
   }
 
+  /* Up to four small swatches for the plate cards and the theme window: each
+     slot's own preview when there is one, the single photo (or the drawn
+     placeholder) repeated when there is not. */
+  var stripSlotsCache = null;
+  function stripSlots() {
+    if (stripSlotsCache) return stripSlotsCache;
+    var fallback = stripSource();
+    stripSlotsCache = slotsFill().map(function (s) {
+      var src = s ? (s.preview || s.img) : fallback;
+      return {
+        img: makeSwatch(src, 440),
+        w: s ? s.w : (fallback.__w || fallback.width || 1),
+        h: s ? s.h : (fallback.__h || fallback.height || 1)
+      };
+    });
+    return stripSlotsCache;
+  }
+
   var stripSrcCache = null;
   function stripSource() {
     if (stripSrcCache) return stripSrcCache;
@@ -1401,9 +1990,14 @@
   }
 
   /* ── layout / render ──────────────────────────────────────────────────── */
-  function layoutFor(img, w, h, styleId) {
+  /* One layout for the live canvas, the export and a batch job. The multi-cut
+     plates read the slots (full bitmaps for an export, previews on screen) and
+     their own theme; everything else keeps the single-photo geometry. */
+  function layoutFor(img, w, h, styleId, opts) {
+    var id = styleId || state.style;
+    var multi = PL.isMulti(id);
     return PL.layout({ w: w, h: h, img: img }, {
-      style: styleId || state.style,
+      style: id,
       fields: state.fields,
       emblem: resolveEmblem(),
       emblemMono: state.emblemMono,
@@ -1412,8 +2006,15 @@
       radiusPct: state.geo.radiusPct,
       ratio: state.ratio,
       font: state.font,
+      captionMode: state.captionMode,
+      captionFont: state.captionFont,
+      captionBold: state.captionBold,
+      captionItalic: state.captionItalic,
       stock: state.stock,
-      frameNo: state.frameNo
+      frameNo: state.frameNo,
+      fyraTheme: state.fyraTheme,
+      slots: multi ? slotSources(!!(opts && opts.full)) : null,
+      slotFields: multi ? slotFieldList() : null
     });
   }
 
@@ -1481,13 +2082,20 @@
       var S = PL.STYLES[id];
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'frame-card';
+      b.className = 'frame-card' + (S.multi ? ' frame-card--multi' : '');
       b.dataset.style = id;
       b.setAttribute('role', 'radio');
       b.setAttribute('aria-checked', 'false');
-      b.setAttribute('aria-label', S.label + ' — ' + S.tag);
+      b.setAttribute('aria-label', S.label + ' — ' + S.tag +
+        (id === 'fyra04' ? ' · 다시 누르면 6가지 테마' : ''));
       b.innerHTML =
-        '<span class="frame-thumb"><canvas aria-hidden="true"></canvas></span>' +
+        '<span class="frame-thumb"><canvas aria-hidden="true"></canvas>' +
+          (id === 'fyra04'
+            ? '<span class="frame-reclick" aria-hidden="true">' +
+                '<svg class="ic" viewBox="0 0 24 24"><use href="#i-sliders"/></svg>다시 눌러 테마' +
+              '</span>'
+            : '') +
+        '</span>' +
         '<span class="frame-foot">' +
           '<span class="frame-name">' + S.label + '</span>' +
           '<span class="frame-badge">' + S.tag + '</span>' +
@@ -1521,17 +2129,24 @@
         style: id,
         fields: state.fields,
         emblem: resolveEmblem(),
+        emblemMono: state.emblemMono,
         font: state.font,
         stock: state.stock,
-        frameNo: state.frameNo
+        frameNo: state.frameNo,
+        fyraTheme: state.fyraTheme,
+        slots: stripSlots(),
+        slotFields: slotFieldList()
       });
       var s = Math.min(cw / L.W, chh / L.H) * 0.94;
       ctx.save();
       ctx.translate((cw - L.W * s) / 2, (chh - L.H * s) / 2);
       ctx.scale(s, s);
       ctx.fillStyle = L.colors.base;
-      PL.helpers.roundRect(ctx, 0, 0, L.W, L.H, L.radius);
-      ctx.fill();
+      if (L.multi) ctx.fillRect(0, 0, L.W, L.H);
+      else {
+        PL.helpers.roundRect(ctx, 0, 0, L.W, L.H, L.radius);
+        ctx.fill();
+      }
       PL.paint(ctx, L);
       ctx.restore();
     });
@@ -1569,8 +2184,10 @@
   }
 
   function updateReadout(L) {
-    el.styleChip.textContent = PL.STYLES[state.style].label.toUpperCase();
-    el.exportStyle.textContent = PL.STYLES[state.style].label;
+    var label = PL.STYLES[state.style].label;
+    if (state.style === 'fyra04') label += ' · ' + PL.fyraTheme(state.fyraTheme).label;
+    el.styleChip.textContent = label.toUpperCase();
+    el.exportStyle.textContent = label;
     if (!L) {
       el.renderChip.textContent = '—';
       el.exportSize.textContent = '—';
@@ -1632,6 +2249,10 @@
       state.fields.make, state.fields.model, state.fields.lens, state.fields.focal,
       state.fields.aperture, state.fields.shutter, state.fields.iso,
       state.fields.datetime, state.fields.caption,
+      state.captionMode, state.captionFont,
+      state.captionBold ? 'bold' : 'book', state.captionItalic ? 'italic' : 'roman',
+      state.fyraTheme,
+      state.slots.map(function (s) { return s ? s.name + ':' + s.w + 'x' + s.h : '-'; }).join(','),
       state.photo ? state.photo.name : ''].join('|');
   }
 
@@ -1646,9 +2267,15 @@
     if (!state.photo) return Promise.resolve(null);
     var sig = exportSignature();
     if (prepared && prepared.signature === sig) return Promise.resolve(prepared);
+    /* the caption's face must be in the browser before the plate is painted,
+       or the file would be saved in the fallback hand */
+    return ensureCaptionFont().then(function () { return buildExport(sig); });
+  }
 
+  function buildExport(sig) {
     var p = state.photo;
-    var L = layoutFor(p.img, p.w, p.h);      // the photo's own bitmap, 1:1
+    if (!p) return Promise.resolve(null);
+    var L = layoutFor(p.img, p.w, p.h, state.style, { full: true });   // the photo's own bitmap, 1:1
     var format = state.format === 'png' ? 'png' : 'jpeg';
     var mime = format === 'png' ? 'image/png' : 'image/jpeg';
     var name = EX.fileName(state.fields, format === 'png' ? 'png' : 'jpg');
@@ -1861,6 +2488,56 @@
     el.ratioSelect.value = String(state.ratio);
   }
 
+  /* ── caption typography ───────────────────────────────────────────────── */
+  /* 프레임 기본 · 커스텀 and the custom face that goes with it. The panel is
+     only in the room while 커스텀 is on, so the inspector never carries an
+     extra row of controls for a setting nobody asked for. */
+  function syncCaptionUI() {
+    if (el.captionModeSeg) {
+      $$('button', el.captionModeSeg).forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.dataset.captionMode === state.captionMode));
+      });
+    }
+    if (el.captionCustomPanel) el.captionCustomPanel.hidden = state.captionMode !== 'custom';
+    if (el.captionFontChips) {
+      $$('button', el.captionFontChips).forEach(function (b) {
+        b.setAttribute('aria-checked', String(b.dataset.captionFont === state.captionFont));
+      });
+    }
+    if (el.captionBold) el.captionBold.checked = !!state.captionBold;
+    if (el.captionItalic) el.captionItalic.checked = !!state.captionItalic;
+  }
+
+  /* The one face a visitor can pick that is not already in the system: a
+     signature hand. Its family name has to be asked for on its own — a load
+     request takes a single family, not the frame's fallback stack. */
+  var CAPTION_WEBFONT = { script: '"Caveat"' };
+
+  /* A signature face is a webfont: until the browser has really loaded it the
+     canvas prints a fallback shape, and an export made in that instant would
+     keep the wrong hand. So the face is asked for, and the plate repaints when
+     it lands. Nothing is awaited for the built-in stacks, which are always
+     there. */
+  function ensureCaptionFont() {
+    if (state.captionMode !== 'custom') return Promise.resolve();
+    var face = CAPTION_WEBFONT[state.captionFont];
+    if (!face) return Promise.resolve();
+    if (typeof document === 'undefined' || !document.fonts ||
+        typeof document.fonts.load !== 'function') return Promise.resolve();
+    var size = ' 24px ' + face;
+    var spec = (state.captionItalic ? 'italic ' : '') + (state.captionBold ? 700 : 400) + size;
+    var jobs = [document.fonts.load(spec), document.fonts.load('400' + size),
+                document.fonts.load('700' + size)];
+    return Promise.all(jobs).then(function () { return true; }, function () { return false; });
+  }
+
+  /* Any change to the caption's face repaints the plate, and — when a webfont
+     is involved — repaints again once that font is available. */
+  function captionTypeChanged() {
+    renderAll();
+    ensureCaptionFont().then(function () { renderAll(); });
+  }
+
   function syncExportUI() {
     $$('button', el.formatSeg).forEach(function (b) {
       b.setAttribute('aria-pressed', b.dataset.format === state.format ? 'true' : 'false');
@@ -1888,7 +2565,24 @@
       syncGeoUI();
     }
     syncStyleUI();
+    syncSlotUI();
+    /* a multi-cut frame needs four cells: fill the empty ones from the photo
+       already on the plate so the visitor is never stuck */
+    if (PL.isMulti(style)) ensureSlots();
     renderAll();
+    if (state.fyraOpen) paintFyraThemes();
+  }
+
+  /* A tap on a frame selects it. A second tap on FYRA 04 — the only frame with
+     themes — opens its theme window instead of re-selecting what is already
+     on the plate. */
+  function chooseFrame(id) {
+    if (!PL.STYLES[id]) return;
+    if (id === 'fyra04' && state.style === 'fyra04') {
+      openFyraModal();
+      return;
+    }
+    setStyle(id);
   }
 
   /* ── sheet / inspector ────────────────────────────────────────────────── */
@@ -2082,6 +2776,51 @@
     }
     if (el.bulkBtn) el.bulkBtn.addEventListener('click', bulkExport);
 
+    /* multi-cut slots: open four photos at once, or replace one cell at a time */
+    if (el.slotAddBtn) el.slotAddBtn.addEventListener('click', pickSlotFiles);
+    if (el.slotSampleBtn) el.slotSampleBtn.addEventListener('click', function () { loadSampleSlots(); });
+    if (el.slotAllInput) {
+      el.slotAllInput.addEventListener('change', function () {
+        var files = el.slotAllInput.files;
+        if (files && files.length) loadSlots(files, files.length > 1 ? '' : '');
+        el.slotAllInput.value = '';
+      });
+    }
+    if (el.slotOneInput) {
+      el.slotOneInput.addEventListener('change', function () {
+        var file = el.slotOneInput.files && el.slotOneInput.files[0];
+        if (file) setSlotFile(state.slotTarget, file);
+        el.slotOneInput.value = '';
+      });
+    }
+    /* the floating control: the button toggles the panel, a tap elsewhere or
+       Esc folds it back into the corner */
+    if (el.slotToggle) {
+      el.slotToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleSlotPanel();
+      });
+    }
+    document.addEventListener('click', function (e) {
+      if (!state.slotOpen) return;
+      if (el.slotBar && el.slotBar.contains(e.target)) return;
+      if (el.slotToggle && el.slotToggle.contains(e.target)) return;
+      closeSlotPanel(false);
+    });
+
+    /* FYRA 04 theme window */
+    if (el.fyraClose) el.fyraClose.addEventListener('click', function () { closeFyraModal(true); });
+    if (el.fyraModal) {
+      el.fyraModal.addEventListener('click', function (e) {
+        if (e.target === el.fyraModal) closeFyraModal(true);
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !state.fyraOpen) return;
+      e.preventDefault();
+      closeFyraModal(true);
+    });
+
     // geometry
     el.padRange.addEventListener('input', function () {
       state.geo.padPct = parseFloat(el.padRange.value);
@@ -2110,6 +2849,42 @@
       state.font = el.fontSelect.value;
       renderAll();
     });
+
+    // caption typography — the frame's own face, or one the visitor picks
+    if (el.captionModeSeg) {
+      $$('button', el.captionModeSeg).forEach(function (b) {
+        b.addEventListener('click', function () {
+          var mode = b.dataset.captionMode === 'custom' ? 'custom' : 'auto';
+          if (state.captionMode === mode) return;
+          state.captionMode = mode;
+          syncCaptionUI();
+          captionTypeChanged();
+        });
+      });
+    }
+    if (el.captionFontChips) {
+      $$('button', el.captionFontChips).forEach(function (b) {
+        b.addEventListener('click', function () {
+          var font = b.dataset.captionFont || 'sans';
+          if (state.captionFont === font) return;
+          state.captionFont = font;
+          syncCaptionUI();
+          captionTypeChanged();
+        });
+      });
+    }
+    if (el.captionBold) {
+      el.captionBold.addEventListener('change', function () {
+        state.captionBold = !!el.captionBold.checked;
+        captionTypeChanged();
+      });
+    }
+    if (el.captionItalic) {
+      el.captionItalic.addEventListener('change', function () {
+        state.captionItalic = !!el.captionItalic.checked;
+        captionTypeChanged();
+      });
+    }
     $('#resetGeoBtn').addEventListener('click', function () {
       state.geo = PL.defaults(state.style);
       state.ratio = 0;
@@ -2188,6 +2963,8 @@
     });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
+      if (state.fyraOpen) { closeFyraModal(true); return; }
+      if (state.slotOpen) { closeSlotPanel(true); return; }
       if (el.previewOverlay.classList.contains('is-open')) {
         closePreviewOverlay();
         if (prepared) openExportCard(prepared);
@@ -2340,7 +3117,7 @@
     $$('.frame-card', el.strip).forEach(function (card) {
       card.addEventListener('click', function (e) {
         if (dragMoved) { e.preventDefault(); dragMoved = false; return; }
-        setStyle(card.dataset.style);
+        chooseFrame(card.dataset.style);
       });
     });
 
@@ -2472,6 +3249,8 @@
     buildEmblems();
     buildStrip();
     buildHomeFrames();
+    buildSlots();
+    buildFyraThemes();
     setPane('exif');
     /* On a wide screen the panel is not a modal dialog — it is simply there. */
     if (isPC()) {
@@ -2481,9 +3260,11 @@
     paintFields();
     syncStyleUI();
     syncGeoUI();
+    syncCaptionUI();
     syncExportUI();
     syncPhotoUI(0);
     syncWsUI();
+    syncSlotUI();
     bind();
     /* The landing is the front door; #editor is the shortcut a bookmark keeps. */
     var start = /(^|#)editor$/.test(String(location.hash || '')) ? 'editor' : 'home';
@@ -2495,6 +3276,7 @@
         render();
         paintStrip();
         paintHomeFrames();
+        if (state.fyraOpen) paintFyraThemes();
       });
     }
   }
@@ -2514,6 +3296,27 @@
     resetExifFromPhoto: resetExifFromPhoto,
     openFiles: openFiles,
     openFolder: openFolder,
+    /* multi-cut */
+    loadSlots: loadSlots,
+    loadSampleSlots: loadSampleSlots,
+    setSlotFile: setSlotFile,
+    swapSlots: swapSlots,
+    seedSlots: seedSlots,
+    ensureSlots: ensureSlots,
+    slotCount: function () { return SLOT_COUNT; },
+    slots: function () { return slotSources(false); },
+    slotNames: function () { return slotsFill().map(function (s) { return s ? s.name : ''; }); },
+    slotFilledCount: slotFilledCount,
+    openSlotPanel: openSlotPanel,
+    closeSlotPanel: closeSlotPanel,
+    toggleSlotPanel: toggleSlotPanel,
+    isSlotPanelOpen: function () { return !!(state.slotOpen && PL.isMulti(state.style)); },
+    chooseFrame: chooseFrame,
+    openFyraModal: openFyraModal,
+    closeFyraModal: closeFyraModal,
+    applyFyraTheme: applyFyraTheme,
+    fyraThemes: function () { return PL.FYRA_THEMES; },
+    isFyraOpen: function () { return !!state.fyraOpen; },
     scanAndOpen: scanAndOpen,
     selectEntry: selectEntry,
     stepEntry: stepEntry,
@@ -2544,6 +3347,10 @@
     openPreview: openPreview,
     canShareFiles: canShareFiles,
     canShareThis: canShareThis,
+    caption: function () {
+      return { mode: state.captionMode, font: state.captionFont,
+               bold: !!state.captionBold, italic: !!state.captionItalic };
+    },
     isInAppBrowser: isInAppBrowser,
     inAppName: inAppName,
     saveFile: saveFile,
