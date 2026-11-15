@@ -3,6 +3,15 @@
 `https://hyangdan2.github.io/PKPilot0003/` 를 Playwright(Chromium)로 직접 열어 캡처한 실측본입니다.
 모든 캡처 시점의 콘솔 에러는 0건입니다.
 
+## 헤더 Web-HQ 락업 · Clean Horizon 메이커 엠블럼 (2026-11-15 배포)
+
+헤더를 `[.mark 17×22] HD2Lab | Shutterplate` 락업으로 바꾸고, **Clean Horizon** 첫 줄의
+메이커 이름 자리에 메이커 엠블럼을 세워 모델명과 나란히 정렬했습니다.
+
+| 파일 | 내용 |
+| --- | --- |
+| `fix-horizon-emblem-live.png` | 배포본에서 `make: 'samsung'`(소문자) · `model: 'Galaxy S26 Ultra'`로 렌더한 Clean Horizon — 삼성 엠블럼 + 모델명 락업, 2행 스펙 · 3행 날짜/캡션 유지 (1640×1251) |
+
 ## 랜딩 · 타이틀 홈 · ⋮ 메뉴 · 프레임 원복 (2026-11-14 네 번째 배포)
 
 Film Studio식 랜딩과 타이틀→홈, 우상단 `⋮` 3섹션 메뉴를 얹은 빌드입니다. 같은 배포에서
