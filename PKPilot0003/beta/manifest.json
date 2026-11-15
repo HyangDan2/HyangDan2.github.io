@@ -1,0 +1,21 @@
+{
+  "name": "HD2Lab Shutterplate BETA",
+  "short_name": "Shutterplate β",
+  "description": "사진을 13종 시그니처 프레임의 플레이트로 — 4컷 멀티 프레임(FYRA 04 · Contact Sheet) 포함. 업로드 0 B, 100% 브라우저 로컬 처리.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101110",
+  "theme_color": "#101110",
+  "categories": ["photo", "productivity", "utilities"],
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "favicon-32x32.png", "sizes": "32x32", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
