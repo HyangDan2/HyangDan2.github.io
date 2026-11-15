@@ -1,8 +1,9 @@
 /* ============================================================================
  * HD2Lab · Shutterplate (PKPilot0003)
- * Plate engine — geometry + canvas painting for the eight signature frames.
+ * Plate engine — geometry + canvas painting for the thirteen frames: eleven
+ * single-cut signatures and the two multi-cut plates.
  *
- * The eight frames are HD2Lab originals that carry the full layout language of
+ * The first eight are HD2Lab originals that carry the full layout language of
  * the upstream EXIF-frame themes (simple / one line / two line / strap / film /
  * lightroom / custom one line / custom two line) under our own naming:
  *
@@ -11,8 +12,18 @@
  *   03 Dual Deck       ← TWO_LINE          07 Minimal Edge   ← CUSTOM_ONE_LINE
  *   04 Strap Bar       ← STRAP             08 Pro Studio     ← CUSTOM_TWO_LINE
  *
+ * Promoted from /beta/ on 2026-11-15: three single-cut frames — 09 Instant
+ * Polaroid, 10 Frosted Glass, 11 Editorial Cover — and, last in the library,
+ * the two plates that hold four photographs: 12 Contact Sheet and
+ * 13 FYRA 04 (six Nordic themes).
+ *
  * Everything is drawn in "plate space" (plate pixels) so the live preview, the
  * frame-strip thumbnails and the 1:1 export share one paint routine.
+ *
+ * Two things belong to the visitor rather than to the frame: the perforation of
+ * Film Sprocket is solved between the photograph's own left and right edges
+ * (sprocketRow), and the caption line can be set in a face of their choosing
+ * (captionOpt) while every other row keeps the frame's signature typography.
  * ==========================================================================*/
 (function (global) {
   'use strict';
@@ -22,7 +33,11 @@
   var FONTS = {
     sans: '"Helvetica Neue", Helvetica, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", Arial, sans-serif',
     mono: 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
-    serif: '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", "Nanum Myeongjo", "Noto Serif KR", serif'
+    serif: '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", "Nanum Myeongjo", "Noto Serif KR", serif',
+    /* the signature face a visitor may set for their own caption line — Caveat
+       is the webfont the page asks for, and a hand-written fallback keeps the
+       plate printable when that request never lands */
+    script: '"Caveat", "Brush Script MT", "Nanum Pen Script", cursive'
   };
 
   /* ── the eight signatures ──────────────────────────────────────────────── */
@@ -67,10 +82,46 @@
       label: 'Pro Studio', tag: 'GRID', light: true,
       base: '#f6f5f1', ink: '#15171a', muted: '#6f736e', line: 'rgba(21,23,26,0.14)',
       accent: '#ff824f', geo: { pad: 8, extra: 25, radius: 0 }
+    },
+
+    /* ── the three frames the promotion added ─────────────────────────────
+       Three more single-cut signatures, then the two multi-cut plates. The
+       multi-cut entries carry `multi: true` and a cell count: the strip, the
+       landing grid, the thumbnail painters and the export all key off it. */
+    polaroid: {
+      label: 'Instant Polaroid', tag: 'INSTANT', light: true,
+      base: '#fbfaf6', ink: '#20211e', muted: '#837f75', line: 'rgba(32,33,30,0.13)',
+      accent: '#c85a33', geo: { pad: 7.4, extra: 31, radius: 0.35 }
+    },
+    frosted: {
+      label: 'Frosted Glass', tag: 'GLASS', light: false,
+      base: '#101418', ink: '#f3f6f8', muted: '#9caab4', line: 'rgba(243,246,248,0.16)',
+      accent: '#ff824f', geo: { pad: 6.4, extra: 18, radius: 1.8 }
+    },
+    editorial: {
+      label: 'Editorial Cover', tag: 'EDITION', light: true,
+      base: '#f7f4ec', ink: '#141310', muted: '#6e6a5f', line: 'rgba(20,19,16,0.16)',
+      accent: '#b23b23', geo: { pad: 5.4, extra: 24, radius: 0 }
+    },
+    contact: {
+      label: 'Contact Sheet', tag: '4-UP · MULTI', light: false, multi: true, cells: 4,
+      base: '#141413', ink: '#ece8df', muted: '#8b877c', line: 'rgba(236,232,223,0.18)',
+      accent: '#ff824f', geo: { pad: 4, extra: 8, radius: 0 }
+    },
+    fyra04: {
+      label: 'FYRA 04', tag: 'NORDIC 4-CUT', light: true, multi: true, cells: 4,
+      base: '#f4f1e8', ink: '#1e1d1a', muted: '#6f6a5f', line: 'rgba(30,29,26,0.16)',
+      accent: '#b8452f', geo: { pad: 3, extra: 10, radius: 0.2 }
     }
   };
 
-  var ORDER = ['horizon', 'gallery', 'dual', 'strap', 'film', 'studio', 'edge', 'pro'];
+  /* Single-cut eleven first, the two multi-cut plates last — the order the
+     library and every card row paint in. */
+  var ORDER = ['horizon', 'gallery', 'dual', 'strap', 'film', 'studio', 'edge', 'pro',
+               'polaroid', 'frosted', 'editorial', 'contact', 'fyra04'];
+
+  function isMulti(id) { return !!(STYLES[id] && STYLES[id].multi); }
+  function cellCount(id) { return STYLES[id] && STYLES[id].multi ? (STYLES[id].cells || 4) : 1; }
   ORDER.forEach(function (id, i) { STYLES[id].index = (i + 1 < 10 ? '0' : '') + (i + 1); });
 
   /* ── text utilities ────────────────────────────────────────────────────── */
@@ -218,6 +269,56 @@
     return total * k;
   }
 
+  /* ── caption typography ────────────────────────────────────────────────── */
+  /* Every frame was drawn around one answer to "who took this": a serif
+     signature on the matte stocks, a mono small-caps stamp on the studio
+     plates. A visitor may replace that answer for the caption line alone — the
+     maker, the exposure and the date keep the frame's own typography, because
+     those are the frame's reporting, not the photographer's voice. */
+  function isCustomCaption(L) {
+    return !!(L.opts && L.opts.captionMode === 'custom');
+  }
+
+  function captionStyle(L, baseFont, baseWeight, baseStyle) {
+    if (!isCustomCaption(L)) {
+      return { family: baseFont || 'sans', weight: baseWeight || 400,
+               italic: !!baseStyle, script: baseFont === 'script' };
+    }
+    var key = L.opts.captionFont;
+    var fam = FONTS[key] ? key : 'sans';
+    return {
+      family: fam,
+      weight: L.opts.captionBold ? 700 : 400,
+      italic: !!L.opts.captionItalic,
+      script: fam === 'script'
+    };
+  }
+
+  /* The text options for one caption line: the frame's own defaults, then the
+     visitor's face when the caption is in custom mode. A hand-written face is
+     set the way a signature is set — no tracking, never in caps — while the
+     book faces keep the frame's tracking so the line sits in its band.
+     `keepFrame` is for the lines that only borrow the caption slot: with no
+     caption written the frames print the camera or their own brand there, and
+     that is still the frame's reporting, not the visitor's voice. */
+  function captionOpt(L, base, keepFrame) {
+    var custom = !keepFrame && isCustomCaption(L);
+    var cs = custom
+      ? captionStyle(L, base.family, base.weight, base.italic)
+      : { family: base.family, weight: base.weight, italic: !!base.italic, script: false };
+    var out = {};
+    for (var k in base) { if (Object.prototype.hasOwnProperty.call(base, k)) out[k] = base[k]; }
+    out.family = cs.family;
+    out.weight = cs.weight;
+    out.italic = cs.italic;
+    /* a custom caption is the visitor's own line, so it is set as they typed
+       it — the frame's small caps belong to its stamp, not to their words */
+    if (custom) out.upper = false;
+    /* a hand-written face is set without tracking, the way a signature is */
+    if (custom && cs.script) out.ls = 0;
+    return out;
+  }
+
   function hairline(ctx, x1, y1, x2, y2, color, w) {
     ctx.save();
     ctx.beginPath();
@@ -241,6 +342,27 @@
       ctx.arcTo(x, y, x + w, y, r);
       ctx.closePath();
     }
+  }
+
+  /* Draw an image into a box the way a window shows a photograph: the whole
+     box is covered and the surplus is cropped, never letterboxed — a multi-cut
+     cell must read edge to edge whatever shape the visitor handed over. */
+  function drawCover(ctx, img, x, y, w, h) {
+    if (!img) return false;
+    var iw = img.naturalWidth || img.width || 0;
+    var ih = img.naturalHeight || img.height || 0;
+    if (!(iw > 0) || !(ih > 0) || !(w > 0) || !(h > 0)) return false;
+    var k = Math.max(w / iw, h / ih);
+    var dw = iw * k, dh = ih * k;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    ctx.restore();
+    return true;
   }
 
   /* ── metadata helpers ---------------------------------------------------- */
@@ -274,6 +396,8 @@
 
   /* ── layout -------------------------------------------------------------- */
   function layout(photo, opts) {
+    opts = opts || {};
+    if (isMulti(opts.style)) return multiLayout(opts);
     var style = STYLES[opts.style] ? opts.style : 'gallery';
     var S = STYLES[style];
     var PW = Math.max(1, Math.round(photo.w) || 1);
@@ -288,6 +412,10 @@
        with padPct at 0 the sprocket row and the stock badge would collapse */
     if (style === 'film') padTop = Math.max(padTop, Math.round(PW * 0.05));
     if (style === 'dual') padTop = Math.max(padTop, Math.round(PW * 0.034));
+    /* the instant print's paper and the cover's masthead both live in the top
+       margin, so they get a floor to print into */
+    if (style === 'polaroid') padTop = Math.max(padTop, Math.round(PW * 0.028));
+    if (style === 'editorial') padTop = Math.max(padTop, Math.round(PW * 0.072));
     var band = Math.round(padX + PH * extraPct / 100);
     var cap = Math.round(PW * (style === 'strap' ? 0.66 : 0.58));
     if (band > cap) band = cap;
@@ -356,16 +484,72 @@
     return f.w;
   }
 
+  /* The twelve holes of a 35mm row, laid between two anchors.
+
+     A perforation row that steps on a fixed pitch leaves whatever does not
+     divide evenly as a stray gap at the end — on the plate that read as a wide
+     empty shoulder on the right of the photo. So the row is solved instead of
+     stepped: the count comes from the target pitch (a gap of 0.9 holes), and
+     the step is then stretched to swallow the remainder exactly, which puts
+     the first hole's left edge on `x0` and the last hole's right edge on `x1`
+     with no leftover margin at either end. */
+  function sprocketRow(x0, x1, h) {
+    var holeW = h * 1.42, pitch = holeW * 1.9;
+    var span = x1 - x0;
+    var out = { holeW: holeW, pitch: pitch, step: 0, holes: [] };
+    if (!(holeW > 0.5) || !(span > 0)) return out;
+    if (span < holeW) return out;                       // the stock is too narrow for one hole
+    if (span <= holeW * 1.2) {                          // one hole, centred in the run
+      out.holes.push(x0 + (span - holeW) / 2);
+      out.step = 0;
+      return out;
+    }
+    var count = Math.max(2, Math.round((span - holeW) / pitch) + 1);
+    var step = (span - holeW) / (count - 1);
+    for (var i = 0; i < count; i++) out.holes.push(x0 + i * step);
+    out.step = step;
+    return out;
+  }
+
   function sprockets(ctx, x0, x1, cy, h, fill) {
     /* the hole geometry collapses to zero on a plate with no padding — a zero
-       pitch would make the loop below run forever, so refuse it up front */
-    if (!(h > 0.5) || !(x1 > x0)) return;
-    var holeW = h * 1.42, pitch = holeW * 1.9, r = h * 0.2;
-    if (!(holeW > 0.5) || !(pitch > 0.5)) return;
+       pitch would make the row unbounded, so refuse it up front */
+    if (!(h > 0.5)) return;
+    var row = sprocketRow(x0, x1, h);
+    if (!row.holes.length) return;
+    var r = h * 0.2;
     ctx.save();
     ctx.fillStyle = fill;
-    for (var x = x0; x + holeW <= x1; x += pitch) {
-      roundRect(ctx, x, cy - h / 2, holeW, h, r);
+    row.holes.forEach(function (x) {
+      roundRect(ctx, x, cy - h / 2, row.holeW, h, r);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  /* A vertical run of perforations, for a strip of four cells: the hole sits
+     in the middle of its own margin, and the run is solved between its two
+     anchors the way the horizontal row is — the count comes from the target
+     pitch (1.9 holes end to end), the step then stretches to swallow the
+     remainder exactly. The first hole's top edge lands on `y0` and the last
+     hole's bottom edge on `y1`, so the perforation starts and ends with the
+     photograph block instead of trailing off into a leftover gap. */
+  function sprocketsCol(ctx, y0, y1, cx, w, h, fill) {
+    if (!(w > 0.5) || !(h > 0.5) || !(y1 > y0)) return;
+    var span = y1 - y0, pitch = h * 1.9, r = w * 0.2;
+    if (span < h) return;                               // the strip is too short for one hole
+    ctx.save();
+    ctx.fillStyle = fill;
+    if (span <= h * 1.2) {                              // one hole, centred in the run
+      roundRect(ctx, cx - w / 2, y0 + (span - h) / 2, w, h, r);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    var count = Math.max(2, Math.round((span - h) / pitch) + 1);
+    var step = (span - h) / (count - 1);
+    for (var i = 0; i < count; i++) {
+      roundRect(ctx, cx - w / 2, y0 + i * step, w, h, r);
       ctx.fill();
     }
     ctx.restore();
@@ -433,13 +617,27 @@
       ls: u * 1.4, align: 'center', maxW: maxW
     });
 
-    var foot = join([dateOf(f).full, f.caption], '   ·   ');
-    if (foot) {
+    var footDate = dateOf(f).full;
+    if (footDate || f.caption) {
       hairline(ctx, cx - u * 38, top + band * 0.68, cx + u * 38, top + band * 0.68, c.line, Math.max(1, u));
-      text(ctx, foot, cx, top + band * 0.84, {
-        size: Math.min(u * 11, band * 0.095), family: 'mono', color: c.muted,
-        ls: u * 1.2, align: 'center', maxW: maxW
-      });
+      var footSize = Math.min(u * 11, band * 0.095);
+      var footY = top + band * 0.84;
+      if (f.caption && isCustomCaption(L)) {
+        /* the date is the frame's record and keeps its mono; only the
+           signature changes its voice, so the two are set as two runs */
+        var fs = captionStyle(L, 'mono', 400, false);
+        compound(ctx, [
+          { s: footDate, size: footSize, family: 'mono', color: c.muted, ls: u * 1.2 },
+          { s: footDate ? '   ·   ' : '', size: footSize, family: 'mono', color: c.muted, ls: u * 1.2 },
+          { s: f.caption, size: footSize, family: fs.family, weight: fs.weight, italic: fs.italic,
+            color: c.muted, ls: fs.script ? 0 : u * 1.2 }
+        ], cx, footY, 'center', maxW);
+      } else {
+        text(ctx, join([footDate, f.caption], '   ·   '), cx, footY, {
+          size: footSize, family: 'mono', color: c.muted,
+          ls: u * 1.2, align: 'center', maxW: maxW
+        });
+      }
     }
   }
 
@@ -472,10 +670,10 @@
     if (f.caption) {
       var ruleY = top + band * 0.53;
       hairline(ctx, cx - u * 34, ruleY, cx + u * 34, ruleY, c.line, Math.max(1, u * 1.1));
-      text(ctx, f.caption, cx, top + band * 0.685, {
+      text(ctx, f.caption, cx, top + band * 0.685, captionOpt(L, {
         size: Math.min(u * 27, band * 0.13), family: 'serif', italic: true, weight: 400,
         color: c.ink, align: 'center', ls: u * 0.2, maxW: L.W - L.inset * 3
-      });
+      }));
     }
 
     text(ctx, dateOf(f).full, cx, top + band * 0.855, {
@@ -518,10 +716,10 @@
     });
 
     if (f.caption) {
-      text(ctx, f.caption, cx, top + band * 0.86, {
+      text(ctx, f.caption, cx, top + band * 0.86, captionOpt(L, {
         size: Math.min(u * 11, band * 0.09), family: 'serif', italic: true,
         color: c.muted, ls: u * 0.4, align: 'center', maxW: maxW
-      });
+      }));
     }
   }
 
@@ -583,11 +781,21 @@
       size: primary, family: L.opts.font, weight: 600, color: c.ink, ls: u * 0.8,
       maxW: leftMaxW
     });
-    text(ctx, f.caption ? 'SHOT BY © ' + f.caption : dateOf(f).full, inset, row2, {
-      size: secondary, family: 'mono', color: c.muted, ls: u * 1.4, upper: true,
-      maxW: leftMaxW
-    });
-
+    if (f.caption && isCustomCaption(L)) {
+      /* the stamp prefix is the bar's furniture; the name after it is the
+         visitor's, so the two are set as two runs on the same baseline */
+      var srow = captionStyle(L, 'mono', 400, false);
+      compound(ctx, [
+        { s: 'SHOT BY © ', size: secondary, family: 'mono', color: c.muted, ls: u * 1.4 },
+        { s: f.caption, size: secondary, family: srow.family, weight: srow.weight,
+          italic: srow.italic, color: c.muted, ls: srow.script ? 0 : u * 1.4 }
+      ], inset, row2, 'left', leftMaxW);
+    } else {
+      text(ctx, f.caption ? 'SHOT BY © ' + f.caption : dateOf(f).full, inset, row2, {
+        size: secondary, family: 'mono', color: c.muted, ls: u * 1.4, upper: true,
+        maxW: leftMaxW
+      });
+    }
     // right column — body and lens
     text(ctx, rightTop, L.W - inset, row1, {
       size: primary, family: L.opts.font, weight: 600, color: c.ink, ls: u * 0.5,
@@ -658,14 +866,18 @@
   }
 
   function drawFilmBase(ctx, L) {
-    var u = L.u, pad = L.padX;
+    var u = L.u;
     var hole = 'rgba(238,229,210,0.74)';
     var perf = filmPerf(L);
 
-    /* the same hole height, the same distance from its own edge: the two rows
-       are mirror images, so the stock reads the same way up or down */
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.topCy, perf.holeH, hole);
-    sprockets(ctx, pad * 0.32, L.W - pad * 0.32, perf.botCy, perf.holeH, hole);
+    /* the two rows are printed to the photograph's own width, not to the
+       plate's: the first hole opens exactly on the photo's left edge and the
+       last one closes exactly on its right edge, so the perforation is the
+       stock the picture is mounted on instead of a strip that starts and ends
+       somewhere in the margin */
+    var x0 = L.photoBox.x, x1 = L.photoBox.x + L.PW;
+    sprockets(ctx, x0, x1, perf.topCy, perf.holeH, hole);
+    sprockets(ctx, x0, x1, perf.botCy, perf.holeH, hole);
 
     /* each rule closes its own rail, so the two margins are one measurement */
     hairline(ctx, 0, perf.topRuleY, L.W, perf.topRuleY, L.colors.line, Math.max(1, u * 1.1));
@@ -744,10 +956,10 @@
                emH, 'left', inner * 0.42);
     }
 
-    text(ctx, f.caption || camera(f), pad, capY, {
+    text(ctx, f.caption || camera(f), pad, capY, captionOpt(L, {
       size: capSize, family: 'serif', italic: true,
       color: c.ink, ls: u * 0.3, maxW: leftMaxW
-    });
+    }, !f.caption));
 
     text(ctx, join([camera(f), f.focal], '   ·   '), pad, top + flow * 0.6, {
       size: Math.min(u * 13.5, L.band * 0.062) * g, family: 'mono', color: c.muted,
@@ -844,10 +1056,10 @@
     var footX = Math.max(pad, bInset + bLen + u * 8);
     var footY = L.H - Math.max(band * 0.14, bInset + u * 9);
     if (f.caption) {
-      text(ctx, f.caption, footX, footY, {
+      text(ctx, f.caption, footX, footY, captionOpt(L, {
         size: Math.min(u * 11.5, band * 0.058), family: 'mono', color: c.muted,
         upper: true, ls: u * 1.4, maxW: W * 0.6
-      });
+      }));
     }
     text(ctx, 'SHUTTERPLATE · 03', W - footX, footY, {
       size: Math.min(u * 11.5, band * 0.058), family: 'mono', color: c.muted,
@@ -976,15 +1188,598 @@
 
     hairline(ctx, pad, L.H - band * 0.17, W - pad, L.H - band * 0.17, c.line, Math.max(1, u));
     if (f.caption) {
-      text(ctx, f.caption, pad, L.H - band * 0.075, {
+      text(ctx, f.caption, pad, L.H - band * 0.075, captionOpt(L, {
         size: Math.min(u * 11, band * 0.04), family: 'mono', color: c.muted,
         upper: true, ls: u * 1.6, maxW: inner * 0.6
-      });
+      }));
     }
     text(ctx, 'HD2LAB · PRO STUDIO 08', W - pad, L.H - band * 0.075, {
       size: Math.min(u * 10, band * 0.036), family: 'mono', color: c.muted,
       ls: u * 1.6, align: 'right', maxW: inner * 0.4
     });
+  }
+
+  /* ── 09 Instant Polaroid ───────────────────────────────────────────────── */
+  /* An instant print: one wide, quiet chin under the picture. The caption is
+     the line the print exists for, the exposure sits under it in the small
+     mono the lab stamped on the back, and the maker's mark closes the chin the
+     way a wordmark is printed into the paper. */
+  function drawPolaroid(ctx, L) {
+    var f = L.fields, c = L.colors, u = L.u, band = L.band;
+    var top = L.photoBox.y + L.PH, cx = L.W / 2;
+    var maxW = L.W - L.inset * 2.2;
+
+    /* the picture sits in the paper, never on it — a hairline seats it */
+    ctx.save();
+    ctx.strokeStyle = 'rgba(32,33,30,0.13)';
+    ctx.lineWidth = Math.max(1, u * 1.2);
+    ctx.strokeRect(L.photoBox.x + u, L.photoBox.y + u,
+                   Math.max(1, L.photoBox.w - u * 2), Math.max(1, L.photoBox.h - u * 2));
+    ctx.restore();
+
+    var capSize = Math.max(u * 8, Math.min(u * 40, band * 0.22));
+    text(ctx, f.caption || camera(f) || 'HD2Lab Shutterplate', cx, top + band * 0.28, captionOpt(L, {
+      size: capSize, family: 'serif', italic: true, color: c.ink,
+      ls: u * 0.4, align: 'center', maxW: maxW
+    }, !f.caption));
+
+    var spec = join([f.make, f.model, f.focal, f.aperture, f.shutter, f.iso], '  ·  ');
+    text(ctx, spec, cx, top + band * 0.475, {
+      size: Math.min(u * 12, band * 0.062), family: 'mono', color: c.muted,
+      ls: u * 1.2, align: 'center', maxW: maxW
+    });
+
+    var date = dateOf(f).full;
+    if (date) {
+      text(ctx, date, cx, top + band * 0.60, {
+        size: Math.min(u * 12, band * 0.062), family: 'mono', color: c.muted,
+        ls: u * 1.6, align: 'center', maxW: maxW
+      });
+    }
+
+    if (L.emblem) {
+      var emH = Math.max(u * 8, Math.min(u * 18, band * 0.10));
+      var ef = emFit(L.emblem, emH, L.W * 0.3);
+      emblemAt(ctx, L, L.emblem, cx - ef.w / 2, top + band * 0.72, emH, 'left', L.W * 0.3);
+    }
+  }
+
+  /* ── 10 Frosted Glass ──────────────────────────────────────────────────── */
+  /* The photograph is its own light source: the same frame, blown up, blurred
+     and dimmed behind glass, so the plate glows in the colours of the picture
+     and the copy sits on a frosted panel instead of on a colour card. */
+  function drawFrostedBase(ctx, L) {
+    var W = L.W, H = L.H;
+    ctx.save();
+    if (L.img) {
+      try { ctx.filter = 'blur(' + (W * 0.035).toFixed(1) + 'px) saturate(140%) brightness(1.05)'; } catch (e) { /* no filter */ }
+      drawCover(ctx, L.img, 0, 0, W, H);
+      ctx.filter = 'none';
+    } else {
+      ctx.fillStyle = '#0d1114';
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+
+    ctx.save();
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(9,13,17,0.30)');
+    g.addColorStop(0.55, 'rgba(9,13,17,0.22)');
+    g.addColorStop(1, 'rgba(9,13,17,0.5)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  function drawFrosted(ctx, L) {
+    var f = L.fields, c = L.colors, u = L.u, band = L.band;
+    var top = L.photoBox.y + L.PH, pad = L.inset, W = L.W;
+    var inner = Math.max(1, W - pad * 2);
+
+    /* the frosted panel the caption band is read through */
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(0, top, W, L.H - top);
+    ctx.strokeStyle = 'rgba(255,255,255,0.34)';
+    ctx.lineWidth = Math.max(1, u * 1.2);
+    ctx.beginPath();
+    ctx.moveTo(0, top);
+    ctx.lineTo(W, top);
+    ctx.stroke();
+    ctx.restore();
+
+    /* a glass edge around the picture: one bright hairline */
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+    ctx.lineWidth = Math.max(1, u * 1.1);
+    ctx.strokeRect(L.photoBox.x, L.photoBox.y, Math.max(1, L.photoBox.w), Math.max(1, L.photoBox.h));
+    ctx.restore();
+
+    text(ctx, camera(f), pad, top + band * 0.30, {
+      size: Math.min(u * 22, band * 0.17), family: L.opts.font, weight: 600,
+      color: c.ink, ls: u * 0.4, maxW: inner * 0.6
+    });
+    text(ctx, dateOf(f).full, W - pad, top + band * 0.30, {
+      size: Math.min(u * 12, band * 0.08), family: 'mono', color: c.muted,
+      ls: u * 1.1, align: 'right', maxW: inner * 0.32
+    });
+
+    text(ctx, join(specParts(f), '   ·   '), pad, top + band * 0.55, {
+      size: Math.min(u * 14, band * 0.095), family: 'mono', color: c.ink,
+      ls: u * 1.2, maxW: inner * 0.64
+    });
+    if (L.emblem) {
+      var emH = Math.min(u * 26, band * 0.2);
+      var ef = emFit(L.emblem, emH, inner * 0.26);
+      emblemAt(ctx, L, L.emblem, W - pad - ef.w, top + band * 0.55 - ef.h / 2,
+               emH, 'left', inner * 0.26);
+    }
+
+    text(ctx, optics(f), pad, top + band * 0.73, {
+      size: Math.min(u * 12, band * 0.07), family: 'mono', color: c.muted,
+      ls: u * 1, maxW: inner * 0.72
+    });
+
+    if (f.caption) {
+      text(ctx, f.caption, pad, top + band * 0.90, captionOpt(L, {
+        size: Math.min(u * 15, band * 0.085), family: 'serif', italic: true,
+        color: c.ink, ls: u * 0.4, maxW: inner
+      }));
+    }
+  }
+
+  /* ── 11 Editorial Cover ────────────────────────────────────────────────── */
+  /* A magazine cover: the title is set in the top margin the way a masthead
+     is, and the foot is a colophon — who, with what, when — under a rule. */
+  function drawEditorial(ctx, L) {
+    var f = L.fields, c = L.colors, u = L.u, band = L.band, W = L.W;
+    var inset = L.inset, maxW = Math.max(1, W - inset * 2);
+    var top = L.photoBox.y + L.PH;
+    var kicker = Math.min(u * 10.5, Math.max(u * 5, L.padTop * 0.13));
+
+    text(ctx, 'HD2LAB  ·  THE PLATE', inset, L.padTop * 0.26, {
+      size: kicker, family: 'mono', color: c.accent, ls: u * 2.6, maxW: maxW * 0.62
+    });
+    text(ctx, 'VOL. 01  ·  ' + String(L.opts.frameNo || '#03'), W - inset, L.padTop * 0.26, {
+      size: kicker, family: 'mono', color: c.muted, ls: u * 1.6,
+      align: 'right', maxW: maxW * 0.34
+    });
+
+    var titleSize = Math.min(u * 56, L.padTop * 0.46);
+    text(ctx, f.caption || camera(f) || 'SHUTTERPLATE', inset, L.padTop * 0.84, captionOpt(L, {
+      size: titleSize, family: 'serif', weight: 600, color: c.ink,
+      ls: u * 0.1, maxW: maxW
+    }, !f.caption));
+
+    hairline(ctx, inset, top + band * 0.05, W - inset, top + band * 0.05, c.line, Math.max(1, u * 1.2));
+
+    var rowY = top + band * 0.30;
+    text(ctx, join([f.make, f.model], ' '), inset, rowY, {
+      size: Math.min(u * 19, band * 0.13), family: L.opts.font, weight: 600,
+      color: c.ink, ls: u * 0.3, maxW: maxW * 0.6
+    });
+    text(ctx, dateOf(f).full, W - inset, rowY, {
+      size: Math.min(u * 12, band * 0.08), family: 'mono', color: c.muted,
+      ls: u * 1.2, align: 'right', maxW: maxW * 0.34
+    });
+    text(ctx, optics(f), inset, top + band * 0.46, {
+      size: Math.min(u * 12.5, band * 0.075), family: 'mono', color: c.muted,
+      ls: u * 0.9, maxW: maxW * 0.6
+    });
+    text(ctx, join(specParts(f), '   ·   '), W - inset, top + band * 0.46, {
+      size: Math.min(u * 12.5, band * 0.075), family: 'mono', color: c.muted,
+      ls: u * 1, align: 'right', maxW: maxW * 0.36
+    });
+
+    if (L.emblem) {
+      var emH = Math.min(u * 20, band * 0.14);
+      emblemAt(ctx, L, L.emblem, inset, top + band * 0.64, emH, 'left', maxW * 0.42);
+    }
+    text(ctx, 'PHOTOGRAPHED IN ' + (String(dateOf(f).date || '').slice(0, 4) || '2026'),
+      W - inset, top + band * 0.76, {
+        size: Math.max(u * 6, Math.min(u * 9.5, band * 0.05)), family: 'mono', color: c.muted,
+        upper: true, ls: u * 1.6, align: 'right', maxW: maxW * 0.42
+      });
+  }
+
+  /* ══ multi-cut engine ════════════════════════════════════════════════════
+     Two plates hold more than one photograph. Both are drawn in design units
+     where a cell's long side is 400, and scaled once at the end so every cell
+     prints at the sharpest slot's own resolution — bounded, so a phone is
+     never asked for a 20 000px canvas. One set of numbers therefore serves the
+     strip thumbnail, the live preview and the 1:1 export alike. */
+
+  var MULTI_MAX_EDGE = 7200;
+  var FYRA_DEFAULT = 'classic';
+
+  /* The six Nordic four-cut layouts, in the order the theme window lists them. */
+  var FYRA_THEMES = [
+    { id: 'classic', label: 'Classic Strip', layout: '1×4',
+      note: '아이보리 스트립 · 하단 FYRA 04 / 날짜 / 엠블럼' },
+    { id: 'nordic', label: 'Nordic Grid', layout: '2×2',
+      note: '오프화이트 갤러리 그리드 · 넉넉한 편집 여백' },
+    { id: 'dark', label: 'Dark Studio', layout: '1×4',
+      note: '매트 다크 스트립 · 오렌지 액센트 / EXIF 요약' },
+    { id: 'film', label: 'Film Strip', layout: '1×4',
+      note: '퍼포레이션 · #01~#04 프레임 번호' },
+    { id: 'editorial', label: 'Editorial Grid', layout: '2×2',
+      note: '세리프 타이틀 · 매거진 그리드' },
+    { id: 'minimal', label: 'Minimal Twin', layout: '2×2',
+      note: '얇은 헤어라인 · 하단 엠블럼·날짜 한 줄' }
+  ];
+
+  var THEME_COLORS = {
+    classic:   { base: '#f4f1e8', ink: '#1e1d1a', muted: '#6f6a5f', line: 'rgba(30,29,26,0.18)', accent: '#b8452f', light: true },
+    nordic:    { base: '#f6f3ec', ink: '#232220', muted: '#78736a', line: 'rgba(35,34,32,0.14)', accent: '#8a6a4e', light: true },
+    dark:      { base: '#141516', ink: '#f2f0ea', muted: '#8e8c85', line: 'rgba(242,240,234,0.16)', accent: '#ff824f', light: false },
+    film:      { base: '#15140f', ink: '#efe8d8', muted: '#a89c86', line: 'rgba(239,232,216,0.22)', accent: '#e0703c', light: false },
+    editorial: { base: '#f7f4ee', ink: '#161511', muted: '#6d675c', line: 'rgba(22,21,17,0.16)', accent: '#b23b23', light: true },
+    minimal:   { base: '#fbfaf7', ink: '#1b1b19', muted: '#7b776e', line: 'rgba(27,27,25,0.14)', accent: '#b8452f', light: true }
+  };
+
+  function fyraTheme(id) {
+    for (var i = 0; i < FYRA_THEMES.length; i++) {
+      if (FYRA_THEMES[i].id === id) return FYRA_THEMES[i];
+    }
+    return FYRA_THEMES[0];
+  }
+
+  function themeColors(style, theme) {
+    if (style === 'contact') return STYLES.contact;
+    return THEME_COLORS[theme] || THEME_COLORS[FYRA_DEFAULT];
+  }
+
+  function cellsFor(cols, rows, cw, ch, x0, y0, gx, gy) {
+    var out = [];
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        out.push({ x: x0 + c * (cw + gx), y: y0 + r * (ch + gy), w: cw, h: ch });
+      }
+    }
+    return out;
+  }
+
+  /* The nominal plate, in design units. `cells` runs left→right, top→bottom,
+     which is also the slot order the studio fills them in. */
+  function multiGeometry(style, theme) {
+    var CW = 300, CH = 400;
+    if (style === 'contact') {
+      var cw = 400, ch = 400 / 1.5;                 // a 3:2 negative
+      var pad = 34, gutter = 18, head = 56, labelH = 28, foot = 48;
+      return {
+        pad: pad, side: pad, top: head, head: head, foot: foot, labelH: labelH,
+        gutter: gutter, band: 0,
+        W: pad * 2 + cw * 2 + gutter,
+        H: head + (ch + labelH) * 2 + gutter + foot,
+        cells: cellsFor(2, 2, cw, ch, pad, head, gutter, gutter + labelH)
+      };
+    }
+    var cols = fyraTheme(theme).layout === '2×2' ? 2 : 1;
+    var rows = cols === 2 ? 2 : 4;
+    var side, top, gutter, band;
+    if (theme === 'nordic')         { side = 56; top = 56;  gutter = 14; band = 96; }
+    else if (theme === 'dark')      { side = 24; top = 24;  gutter = 12; band = 132; }
+    else if (theme === 'film')      { side = 46; top = 40;  gutter = 12; band = 152; }
+    else if (theme === 'editorial') { side = 46; top = 118; gutter = 10; band = 130; }
+    else if (theme === 'minimal')   { side = 40; top = 40;  gutter = 8;  band = 62; }
+    else                            { side = 26; top = 26;  gutter = 10; band = 156; }  // classic
+    return {
+      pad: side, side: side, top: top, gutter: gutter, band: band,
+      head: 0, foot: 0, labelH: 0,
+      W: side * 2 + cols * CW + (cols - 1) * gutter,
+      H: top + rows * CH + (rows - 1) * gutter + band,
+      cells: cellsFor(cols, rows, CW, CH, side, top, gutter, gutter)
+    };
+  }
+
+  /* One scale for the whole plate. A slot printed 1:1 needs `ref / 400` px per
+     unit — the cell's long side — and the plate is never allowed past
+     MULTI_MAX_EDGE, so a 6000px photograph becomes a sane strip instead of a
+     100MP canvas the phone cannot allocate. */
+  function multiScale(geo, slots) {
+    var ref = 0;
+    for (var i = 0; i < slots.length; i++) {
+      var s = slots[i];
+      if (!s || !s.img) continue;
+      var e = Math.max(s.w || s.img.naturalWidth || 0, s.h || s.img.naturalHeight || 0);
+      if (e > ref) ref = e;
+    }
+    var k = ref > 0 ? ref / 400 : 1.6;
+    k = Math.max(0.8, Math.min(4.5, k));
+    var longEdge = Math.max(geo.W, geo.H) * k;
+    if (longEdge > MULTI_MAX_EDGE) k = k * MULTI_MAX_EDGE / longEdge;
+    return k;
+  }
+
+  function multiLayout(opts) {
+    var style = opts.style;
+    var S = STYLES[style] || STYLES.contact;
+    var theme = style === 'fyra04' ? fyraTheme(opts.fyraTheme).id : '';
+    var geo = multiGeometry(style, theme);
+    var slots = [];
+    for (var i = 0; i < 4; i++) {
+      var s = opts.slots && opts.slots[i];
+      slots.push(s && s.img ? s : null);
+    }
+    var k = multiScale(geo, slots);
+    var px = function (v) { return Math.round((v || 0) * k); };
+    var cells = geo.cells.map(function (c) {
+      return { x: px(c.x), y: px(c.y), w: px(c.w), h: px(c.h) };
+    });
+    return {
+      style: style, multi: true, theme: theme,
+      themeLabel: theme ? fyraTheme(theme).label : S.label,
+      cells: cells, images: slots,
+      W: px(geo.W), H: px(geo.H),
+      colors: themeColors(style, theme), S: S, opts: opts, fields: opts.fields || {},
+      slotFields: opts.slotFields || [],
+      side: px(geo.side), top: px(geo.top), pad: px(geo.pad),
+      gutter: px(geo.gutter), band: px(geo.band),
+      head: px(geo.head), foot: px(geo.foot), labelH: px(geo.labelH),
+      radius: 0, ratio: 0, u: k, k: k,
+      PW: cells[0] ? cells[0].w : 0, PH: cells[0] ? cells[0].h : 0,
+      photoBox: cells[0] || { x: 0, y: 0, w: 1, h: 1 },
+      emblem: opts.emblem === 'none' ? null : (opts.emblem || 'hd2lab'),
+      img: slots[0] ? slots[0].img : null
+    };
+  }
+
+  /* ── multi-cut art ─────────────────────────────────────────────────────── */
+  function slotField(L, i) {
+    var f = L.slotFields && L.slotFields[i];
+    return f && (f.make || f.model || f.focal) ? f : L.fields;
+  }
+
+  function slotImage(ctx, L, cell, i, border) {
+    var img = L.images[i] && L.images[i].img;
+    if (!drawCover(ctx, img, cell.x, cell.y, cell.w, cell.h)) {
+      /* an empty cell is a place to put a photograph, and says so */
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = Math.max(1, L.u * 1.2);
+      ctx.strokeRect(cell.x + 0.5, cell.y + 0.5, Math.max(1, cell.w - 1), Math.max(1, cell.h - 1));
+      ctx.fillStyle = 'rgba(255,255,255,0.44)';
+      ctx.font = '600 ' + (L.u * 14).toFixed(1) + 'px ' + FONTS.mono;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('SLOT ' + (i + 1), cell.x + cell.w / 2, cell.y + cell.h / 2);
+      ctx.restore();
+    }
+    if (border) {
+      ctx.save();
+      ctx.strokeStyle = L.colors.line;
+      ctx.lineWidth = Math.max(1, L.u * 1.1);
+      ctx.strokeRect(cell.x, cell.y, cell.w, cell.h);
+      ctx.restore();
+    }
+  }
+
+  /* ── 12 Contact Sheet ──────────────────────────────────────────────────── */
+  function drawContactSheet(ctx, L) {
+    var c = L.colors, u = L.u, f = L.fields, W = L.W, H = L.H;
+    var pad = L.pad, head = L.head, foot = L.foot, labelH = L.labelH;
+
+    text(ctx, 'HD2LAB  ·  CONTACT SHEET', pad, head * 0.46, {
+      size: u * 11, family: 'mono', color: c.ink, ls: u * 2.4, maxW: W * 0.58
+    });
+    text(ctx, 'SHEET 01  ·  4-UP', W - pad, head * 0.46, {
+      size: u * 10, family: 'mono', color: c.muted, ls: u * 1.8,
+      align: 'right', maxW: W * 0.3
+    });
+    text(ctx, join([camera(f), dateOf(f).full], '   ·   '), pad, head * 0.82, {
+      size: u * 9.5, family: 'mono', color: c.muted, ls: u * 1.4, maxW: W * 0.72
+    });
+    hairline(ctx, pad, head * 0.94, W - pad, head * 0.94, c.line, Math.max(1, u * 1.2));
+
+    L.cells.forEach(function (cell, i) {
+      slotImage(ctx, L, cell, i, true);
+      var sf = slotField(L, i);
+      var rowY = cell.y + cell.h + labelH * 0.7;
+      text(ctx, '#' + (i + 1 < 10 ? '0' : '') + (i + 1), cell.x, rowY, {
+        size: u * 10, family: 'mono', color: c.accent, ls: u * 1.6, maxW: cell.w * 0.28
+      });
+      text(ctx, join([sf.make, sf.model], ' '), cell.x + u * 34, rowY, {
+        size: u * 10, family: 'mono', color: c.ink, ls: u * 0.8, maxW: cell.w * 0.56
+      });
+      text(ctx, join([sf.aperture, sf.shutter, sf.iso], ' · '), cell.x + cell.w, rowY, {
+        size: u * 9, family: 'mono', color: c.muted, ls: u * 0.6,
+        align: 'right', maxW: cell.w * 0.44
+      });
+    });
+
+    hairline(ctx, pad, H - foot * 0.8, W - pad, H - foot * 0.8, c.line, Math.max(1, u));
+    var footY = H - foot * 0.4;
+    text(ctx, f.caption || 'HD2Lab Shutterplate', pad, footY, captionOpt(L, {
+      size: u * 10, family: L.opts.font, weight: 500, color: c.ink,
+      ls: u * 1.2, maxW: W * 0.6
+    }, !f.caption));
+    var filled = 0;
+    for (var i = 0; i < L.images.length; i++) { if (L.images[i]) filled++; }
+    text(ctx, 'CONTACT 01  ·  ' + filled + ' / 4', W - pad, footY, {
+      size: u * 9, family: 'mono', color: c.muted, ls: u * 1.4,
+      align: 'right', maxW: W * 0.32
+    });
+  }
+
+  /* ── 13 FYRA 04 (six Nordic four-cut themes) ───────────────────────────── */
+  function drawFyra(ctx, L) {
+    var th = L.theme || FYRA_DEFAULT;
+    var c = L.colors, u = L.u, f = L.fields, W = L.W;
+    var cells = L.cells;
+    var last = cells[cells.length - 1];
+    var footTop = last.y + last.h;
+    var band = L.band;
+    var date = dateOf(f).full;
+
+    cells.forEach(function (cell, i) {
+      slotImage(ctx, L, cell, i, th === 'classic' || th === 'film' || th === 'minimal');
+      if (th === 'film') {
+        var n = '#' + (i + 1 < 10 ? '0' : '') + (i + 1);
+        var chipH = u * 17, chipW = u * 30;
+        ctx.save();
+        ctx.fillStyle = 'rgba(10,10,8,0.66)';
+        roundRect(ctx, cell.x + u * 6, cell.y + cell.h - chipH - u * 6, chipW, chipH, u * 2);
+        ctx.fill();
+        ctx.restore();
+        text(ctx, n, cell.x + u * 10, cell.y + cell.h - u * 11.5, {
+          size: u * 10, family: 'mono', color: c.accent, ls: u * 1.2
+        });
+      }
+    });
+
+    if (th === 'classic') {
+      hairline(ctx, L.side, footTop + u * 8, W - L.side, footTop + u * 8, c.line, Math.max(1, u * 1.2));
+      text(ctx, 'FYRA 04', W / 2, footTop + band * 0.36, {
+        size: u * 24, family: L.opts.font, weight: 700, color: c.ink,
+        ls: u * 3.4, align: 'center', maxW: W - L.side * 2
+      });
+      text(ctx, date, W / 2, footTop + band * 0.58, {
+        size: u * 11, family: 'mono', color: c.muted, ls: u * 1.6, align: 'center', maxW: W - L.side * 2
+      });
+      if (L.emblem) {
+        var emH = Math.max(u * 8, Math.min(u * 16, band * 0.12));
+        var ef = emFit(L.emblem, emH, W * 0.26);
+        emblemAt(ctx, L, L.emblem, W / 2 - ef.w / 2, footTop + band * 0.70, emH, 'left', W * 0.26);
+      }
+
+    } else if (th === 'nordic') {
+      text(ctx, 'FYRA 04', L.side, L.top * 0.62, {
+        size: u * 16, family: L.opts.font, weight: 700, color: c.ink,
+        ls: u * 2.6, maxW: W * 0.5
+      });
+      text(ctx, 'NORDIC 4-CUT', W - L.side, L.top * 0.62, {
+        size: u * 9, family: 'mono', color: c.muted, ls: u * 1.8,
+        align: 'right', maxW: W * 0.4
+      });
+      hairline(ctx, L.side, footTop + band * 0.16, W - L.side, footTop + band * 0.16, c.line, Math.max(1, u));
+      if (f.caption) {
+        text(ctx, f.caption, W / 2, footTop + band * 0.44, captionOpt(L, {
+          size: Math.min(u * 18, band * 0.26), family: 'serif', italic: true,
+          color: c.ink, ls: u * 0.4, align: 'center', maxW: W - L.side * 2
+        }));
+      }
+      if (L.emblem) {
+        var emH2 = Math.max(u * 7, Math.min(u * 13, band * 0.14));
+        emblemAt(ctx, L, L.emblem, L.side, footTop + band * 0.78 - emH2 / 2, emH2, 'left', W * 0.3);
+      }
+      text(ctx, date, W - L.side, footTop + band * 0.80, {
+        size: u * 10, family: 'mono', color: c.muted, ls: u * 1.4,
+        align: 'right', maxW: W * 0.4
+      });
+
+    } else if (th === 'dark') {
+      ctx.save();
+      ctx.fillStyle = c.accent;
+      ctx.fillRect(L.side, footTop + band * 0.11, u * 64, Math.max(2, u * 2.6));
+      ctx.restore();
+      /* the right column is measured first, so the exposure line owns exactly
+         what is left of the row instead of running into the date */
+      var camStr = camera(f);
+      var specStr = join(specParts(f), '  ·  ');
+      var specSize = u * 11, camSize = u * 10.5, dateSize = u * 10;
+      var colW = Math.min(W * 0.42, Math.max(
+        measure(ctx, camStr, { size: camSize, family: 'mono', ls: u * 0.8 }),
+        measure(ctx, date, { size: dateSize, family: 'mono', ls: u })
+      ));
+      var leftW = Math.max(u * 70, W - L.side * 2 - colW - u * 26);
+      text(ctx, 'FYRA 04', L.side, footTop + band * 0.42, {
+        size: u * 20, family: L.opts.font, weight: 600, color: c.ink,
+        ls: u * 2.8, maxW: leftW
+      });
+      text(ctx, specStr, L.side, footTop + band * 0.66, {
+        size: specSize, family: 'mono', color: c.muted, ls: u * 1.2, maxW: leftW
+      });
+      text(ctx, camStr, W - L.side, footTop + band * 0.42, {
+        size: camSize, family: 'mono', color: c.ink, ls: u * 0.8,
+        align: 'right', maxW: colW
+      });
+      text(ctx, date, W - L.side, footTop + band * 0.66, {
+        size: dateSize, family: 'mono', color: c.muted, ls: u * 1,
+        align: 'right', maxW: colW
+      });
+
+    } else if (th === 'film') {
+      var fill = 'rgba(238,229,210,0.72)';
+      /* a 35mm hole runs across the travel: wider than it is tall */
+      var holeW = u * 15, holeH = u * 10.5;
+      /* the two runs are exactly as tall as the four cells: the first hole
+         starts on the first photo's top edge, the last ends on the fourth's
+         bottom edge, so the perforation never runs past the photographs */
+      var sp0 = cells[0].y;
+      var sp1 = cells[cells.length - 1].y + cells[cells.length - 1].h;
+      sprocketsCol(ctx, sp0, sp1, L.side * 0.5, holeW, holeH, fill);
+      sprocketsCol(ctx, sp0, sp1, W - L.side * 0.5, holeW, holeH, fill);
+      var fCam = join([camera(f), date], '   ·   ');
+      var fSpec = join(specParts(f), '  ·  ');
+      var fColW = Math.min(W * 0.44, Math.max(
+        measure(ctx, fCam, { size: u * 10, family: 'mono', ls: u * 1 }),
+        measure(ctx, fSpec, { size: u * 10, family: 'mono', ls: u * 1 })
+      ));
+      var fLeftW = Math.max(u * 80, W - L.side * 2 - fColW - u * 24);
+      text(ctx, '35MM  ·  FYRA 04', L.side, footTop + band * 0.30, {
+        size: u * 11, family: 'mono', color: c.accent, ls: u * 2, maxW: fLeftW
+      });
+      if (f.caption) {
+        text(ctx, f.caption, L.side, footTop + band * 0.56, captionOpt(L, {
+          size: Math.min(u * 18, band * 0.15), family: 'serif', italic: true,
+          color: c.ink, ls: u * 0.4, maxW: fLeftW
+        }));
+      }
+      text(ctx, fCam, W - L.side, footTop + band * 0.56, {
+        size: u * 10, family: 'mono', color: c.muted, ls: u * 1,
+        align: 'right', maxW: fColW
+      });
+      text(ctx, fSpec, W - L.side, footTop + band * 0.30, {
+        size: u * 10, family: 'mono', color: c.muted, ls: u * 1,
+        align: 'right', maxW: fColW
+      });
+
+    } else if (th === 'editorial') {
+      text(ctx, 'FYRA 04', L.side, L.top * 0.60, {
+        size: u * 44, family: 'serif', weight: 700, color: c.ink,
+        ls: u * 0.6, maxW: W * 0.6
+      });
+      text(ctx, 'VOL. 04  ·  HD2LAB', W - L.side, L.top * 0.34, {
+        size: u * 10, family: 'mono', color: c.muted, ls: u * 1.6,
+        align: 'right', maxW: W * 0.42
+      });
+      text(ctx, 'NORDIC FOUR-CUT', L.side, L.top * 0.90, {
+        size: u * 9, family: 'mono', color: c.accent, ls: u * 2.4, maxW: W * 0.5
+      });
+      hairline(ctx, L.side, footTop + band * 0.12, W - L.side, footTop + band * 0.12, c.line, Math.max(1, u * 1.2));
+      if (f.caption) {
+        text(ctx, f.caption, L.side, footTop + band * 0.44, captionOpt(L, {
+          size: Math.min(u * 19, band * 0.18), family: 'serif', italic: true,
+          color: c.ink, ls: u * 0.3, maxW: W * 0.62
+        }));
+      }
+      text(ctx, join([camera(f), optics(f)], '   ·   '), L.side, footTop + band * 0.68, {
+        size: u * 10.5, family: 'mono', color: c.muted, ls: u * 1, maxW: W * 0.6
+      });
+      text(ctx, date, W - L.side, footTop + band * 0.44, {
+        size: u * 10.5, family: 'mono', color: c.muted, ls: u * 1.2,
+        align: 'right', maxW: W * 0.32
+      });
+      text(ctx, 'PLATE 04', W - L.side, footTop + band * 0.68, {
+        size: u * 9.5, family: 'mono', color: c.accent, ls: u * 1.8,
+        align: 'right', maxW: W * 0.32
+      });
+
+    } else {  /* minimal */
+      hairline(ctx, L.side, footTop + band * 0.14, W - L.side, footTop + band * 0.14, c.line, Math.max(1, u));
+      var rowY = footTop + band * 0.62;
+      var emH3 = Math.max(u * 6, Math.min(u * 12, band * 0.22));
+      var emW3 = L.emblem ? emblemAt(ctx, L, L.emblem, L.side, rowY - emH3 * 0.75, emH3, 'left', W * 0.3) : 0;
+      text(ctx, 'FYRA 04', L.side + (L.emblem ? emW3 + u * 12 : 0), rowY, {
+        size: u * 12, family: 'mono', color: c.ink, ls: u * 2, maxW: W * 0.4
+      });
+      text(ctx, date, W - L.side, rowY, {
+        size: u * 10, family: 'mono', color: c.muted, ls: u * 1.4,
+        align: 'right', maxW: W * 0.4
+      });
+    }
   }
 
   /* ── paint --------------------------------------------------------------- */
@@ -996,11 +1791,29 @@
     film: drawFilm,
     studio: drawStudio,
     edge: drawEdge,
-    pro: drawPro
+    pro: drawPro,
+    polaroid: drawPolaroid,
+    frosted: drawFrosted,
+    editorial: drawEditorial
   };
 
   function paint(ctx, L) {
     var W = L.W, H = L.H;
+
+    /* the two multi-cut plates own their whole surface: cells, margins,
+       rails and copy are all placed by their own geometry */
+    if (L.multi) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      ctx.clip();
+      ctx.fillStyle = L.colors.base;
+      ctx.fillRect(0, 0, W, H);
+      if (L.style === 'contact') drawContactSheet(ctx, L);
+      else drawFyra(ctx, L);
+      ctx.restore();
+      return;
+    }
 
     ctx.save();
     roundRect(ctx, 0, 0, W, H, L.radius);
@@ -1011,6 +1824,7 @@
 
     if (L.style === 'film') drawFilmBase(ctx, L);
     if (L.style === 'strap') drawStrapBase(ctx, L);
+    if (L.style === 'frosted') drawFrostedBase(ctx, L);
 
     if (L.img) {
       ctx.imageSmoothingEnabled = true;
@@ -1038,10 +1852,24 @@
     layout: layout,
     paint: paint,
     defaults: defaults,
+    /* multi-cut: the two plates that hold four photographs */
+    MULTI: ['contact', 'fyra04'],
+    FYRA_THEMES: FYRA_THEMES,
+    FYRA_DEFAULT: FYRA_DEFAULT,
+    MULTI_MAX_EDGE: MULTI_MAX_EDGE,
+    isMulti: isMulti,
+    cellCount: cellCount,
+    fyraTheme: fyraTheme,
+    multiLayout: multiLayout,
+    multiGeometry: multiGeometry,
+    themeColors: themeColors,
     helpers: {
       text: text, compound: compound, measure: measure, roundRect: roundRect,
       hairline: hairline, camera: camera, optics: optics, specParts: specParts,
-      dateOf: dateOf, join: join, filmPerf: filmPerf, strapBand: strapBand
+      dateOf: dateOf, join: join, filmPerf: filmPerf, strapBand: strapBand,
+      drawCover: drawCover, sprockets: sprockets, sprocketsCol: sprocketsCol,
+      sprocketRow: sprocketRow,
+      captionStyle: captionStyle, captionOpt: captionOpt, isCustomCaption: isCustomCaption
     }
   };
 })(window);

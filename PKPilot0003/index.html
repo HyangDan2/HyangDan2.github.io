@@ -5,8 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#101110" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="HD2Lab Shutterplate — 사진 한 장을 8종 시그니처 프레임의 플레이트로. EXIF를 읽어 보더·노출 스펙·서명을 얹고 원본 1:1 해상도로 내려받습니다. 업로드 0 B, 100% 브라우저 로컬 처리." />
+  <meta name="description" content="HD2Lab Shutterplate — 사진을 13종 시그니처 프레임의 플레이트로. EXIF를 읽어 보더·노출 스펙·서명을 얹고 원본 1:1 해상도로 내려받습니다. 4컷 멀티 프레임(FYRA 04 6테마 · Contact Sheet) 포함. 업로드 0 B, 100% 브라우저 로컬 처리." />
   <title>Shutterplate — HD2Lab Photo Frame Studio</title>
+  <link rel="canonical" href="https://hyangdan2.github.io/PKPilot0003/" />
+
+  <!-- Signature face for a custom caption (필기체). Loaded up front so the
+       canvas can print it the moment a visitor picks it. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" />
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -26,22 +33,22 @@
   <meta property="og:site_name" content="HD2Lab" />
   <meta property="og:locale" content="ko_KR" />
   <meta property="og:title" content="Shutterplate — HD2Lab Photo Frame Studio" />
-  <meta property="og:description" content="사진 한 장을, 8종 시그니처 프레임의 플레이트로. EXIF 노출 스펙·서명을 얹어 원본 1:1 해상도로. 업로드 0 B, 100% 브라우저 로컬 처리." />
+  <meta property="og:description" content="사진을 13종 시그니처 프레임의 플레이트로 — 4컷 멀티 프레임(FYRA 04 6테마 · Contact Sheet) 포함. EXIF 노출 스펙·서명을 얹어 원본 1:1 해상도로. 업로드 0 B, 100% 브라우저 로컬 처리." />
   <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0003/" />
   <meta property="og:image" content="https://hyangdan2.github.io/PKPilot0003/og-image.png?v=20261115-mark" />
   <meta property="og:image:secure_url" content="https://hyangdan2.github.io/PKPilot0003/og-image.png?v=20261115-mark" />
   <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="HD2Lab Shutterplate — 8 frame signatures, EXIF photo plate studio" />
+  <meta property="og:image:alt" content="HD2Lab Shutterplate — 13 frame signatures, EXIF photo plate studio" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Shutterplate — HD2Lab Photo Frame Studio" />
-  <meta name="twitter:description" content="사진 한 장을, 8종 시그니처 프레임의 플레이트로." />
+  <meta name="twitter:description" content="사진을 13종 시그니처 프레임의 플레이트로 — 4컷 멀티 프레임(FYRA 04 · Contact Sheet) 포함." />
   <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0003/og-image.png?v=20261115-mark" />
 
-  <link rel="stylesheet" href="style.css?v=20261115-lockup" />
+  <link rel="stylesheet" href="style.css?v=20261115-prod-v2" />
 </head>
 <body>
   <!-- ── 자체 제작 SVG 아이콘 스프라이트 ─────────────────────────────── -->
@@ -198,8 +205,8 @@
           <h1>Shutterplate</h1>
           <span class="brand-badge hero-badge">HD2Lab</span>
         </div>
-        <p class="hero-sub">사진 한 장을, 8종 시그니처 프레임의 플레이트로.</p>
-        <p class="hero-note">100% 브라우저 로컬 EXIF 스튜디오 — 사진에서 노출 스펙과 서명을 읽어 원본 1:1 해상도로 내려받습니다. 업로드 0 B, 서버로 가는 파일은 없습니다.</p>
+        <p class="hero-sub">사진을, 13종 시그니처 프레임의 플레이트로.</p>
+        <p class="hero-note">100% 브라우저 로컬 EXIF 스튜디오 — 사진에서 노출 스펙과 서명을 읽어 원본 1:1 해상도로 내려받습니다. 프레임 13종에는 4컷 멀티 프레임(FYRA 04 6테마 · Contact Sheet)과 단일 프레임 3종이 더해졌습니다. 업로드 0 B, 서버로 가는 파일은 없습니다.</p>
       </header>
 
       <section class="home-session" id="homeSession" aria-label="진행 중인 세션" hidden>
@@ -252,8 +259,8 @@
 
       <section class="home-frames" aria-labelledby="homeFramesTitle">
         <div class="hf-head">
-          <h2 id="homeFramesTitle"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-frame"/></svg>8 SIGNATURE FRAMES</h2>
-          <p>프레임을 고르면 그 서명이 선택된 채로 편집기가 열립니다.</p>
+          <h2 id="homeFramesTitle"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-frame"/></svg>13 SIGNATURE FRAMES</h2>
+          <p>앞의 11종은 한 장, 마지막 2종은 네 장으로 한 플레이트를 만듭니다. 프레임을 고르면 그 서명이 선택된 채로 편집기가 열립니다.</p>
         </div>
         <div class="hf-grid" id="homeFrameGrid" role="group" aria-label="시그니처 프레임 선택"></div>
       </section>
@@ -261,7 +268,7 @@
       <ul class="home-badges">
         <li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>100% 로컬 처리 · 업로드 0 B</li>
         <li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ratio"/></svg>원본 1:1 해상도 출력</li>
-        <li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>PWA · 오프라인 동작</li>
+        <li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>4컷 멀티 프레임 · FYRA 04</li>
       </ul>
     </div>
   </section>
@@ -319,6 +326,30 @@
           <p class="empty-note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>업로드 0 B · 사진은 이 기기에서만 처리됩니다</p>
         </div>
       </div>
+
+      <!-- ── 4컷 사진 칸 — 플로팅 제어 (멀티컷 프레임에서만) ────────── -->
+      <button class="slot-fab" id="slotToggle" type="button" aria-label="4컷 사진 칸 열기" aria-controls="slotBar" aria-expanded="false" aria-haspopup="true" title="4컷 사진 칸 — #1~#4 교체 · 맞바꾸기 · 샘플 · 사진 4장" hidden>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>
+        <b class="slot-fab-n" aria-hidden="true">4</b>
+      </button>
+
+      <section class="slots slots--float" id="slotBar" role="group" aria-label="멀티컷 사진 칸" aria-hidden="true" hidden>
+        <div class="slots-head">
+          <span class="slots-title">MULTI-CUT SLOTS</span>
+          <span class="slots-hint" id="slotHint">4 / 4칸 · 칸을 눌러 교체, ⇄ 로 맞바꾸기</span>
+        </div>
+        <div class="slot-track" id="slotTrack" role="list" aria-label="멀티컷 사진 칸"></div>
+        <div class="slots-actions">
+          <button class="slots-btn" id="slotSampleBtn" type="button" title="샘플 사진으로 4칸 채우기">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg><span>샘플</span>
+          </button>
+          <button class="slots-btn slots-btn--accent" id="slotAddBtn" type="button" title="사진 4장을 한 번에 열기">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg><span>사진 4장</span>
+          </button>
+        </div>
+        <input id="slotAllInput" type="file" accept="image/*" multiple hidden />
+        <input id="slotOneInput" type="file" accept="image/*" hidden />
+      </section>
     </section>
 
     <!-- ── 선택된 사진 (컴팩트 활성 세션 카드) ─────────────────────── -->
@@ -345,8 +376,8 @@
     <section class="strip" aria-label="프레임 갤러리">
       <div class="strip-head">
         <span class="strip-title">FRAME LIBRARY</span>
-        <span class="strip-count"><b id="frameCount">8</b> SIGNATURES</span>
-        <span class="strip-hint">휠 · 드래그 · 스와이프</span>
+        <span class="strip-count"><b id="frameCount">13</b> SIGNATURES</span>
+        <span class="strip-hint">휠 · 드래그 · 스와이프 · FYRA 04는 다시 눌러 테마</span>
       </div>
       <div class="strip-track" id="frameStrip" role="radiogroup" aria-label="프레임 스타일 선택"></div>
     </section>
@@ -455,6 +486,28 @@
         <div class="field">
           <span class="field-label"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-caption"/></svg>Caption / Photographer</span>
           <input class="inp" id="fCaption" placeholder="서명 또는 작가명" autocomplete="off" spellcheck="false" aria-label="캡션 또는 작가명" />
+          <div class="seg caption-mode" id="captionModeSeg" role="group" aria-label="캡션 글자체 모드">
+            <button type="button" data-caption-mode="auto" aria-pressed="true">프레임 기본</button>
+            <button type="button" data-caption-mode="custom" aria-pressed="false">커스텀</button>
+          </div>
+          <div class="caption-custom" id="captionCustomPanel" hidden>
+            <div class="caption-line">
+              <span class="caption-label">글자체</span>
+              <div class="font-chips" id="captionFontChips" role="radiogroup" aria-label="캡션 글자체">
+                <button type="button" class="font-chip" data-caption-font="sans" role="radio" aria-checked="true">Sans</button>
+                <button type="button" class="font-chip" data-caption-font="serif" role="radio" aria-checked="false">Serif</button>
+                <button type="button" class="font-chip" data-caption-font="mono" role="radio" aria-checked="false">Mono</button>
+                <button type="button" class="font-chip font-chip--script" data-caption-font="script" role="radio" aria-checked="false">필기체</button>
+              </div>
+            </div>
+            <div class="caption-line">
+              <span class="caption-label">스타일</span>
+              <div class="caption-styles">
+                <label class="check"><input type="checkbox" id="captionBold" /><span>볼드</span></label>
+                <label class="check"><input type="checkbox" id="captionItalic" /><span>이탤릭</span></label>
+              </div>
+            </div>
+          </div>
         </div>
         <button class="btn btn-quiet btn-block" id="resetMetaBtn" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-refresh"/></svg><span>EXIF 값으로 되돌리기</span></button>
         <p class="hint">값을 고치면 캔버스가 즉시 다시 그려집니다. 비어 있는 항목은 프레임에서 생략됩니다.</p>
@@ -502,6 +555,7 @@
           </select>
         </div>
         <button class="btn btn-quiet btn-block" id="resetGeoBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg><span>프레임 기본값으로</span></button>
+        <p class="hint" id="geoMultiHint" hidden>멀티컷 플레이트(FYRA 04 · Contact Sheet)는 칸 배치가 고정입니다 — 여백·비율·필름 스톡 슬라이더는 단일 프레임에 적용됩니다.</p>
       </div>
 
       <div class="pane" data-pane="emblem" id="paneEmblem" role="tabpanel" aria-label="메이커 엠블럼">
@@ -598,12 +652,29 @@
     <p class="preview-tip" id="previewTip">사진을 길게 눌러 ‘사진 앱에 저장’을 고르면 앨범에 들어갑니다</p>
   </div>
 
+  <!-- ── FYRA 04 테마 창 (프레임을 다시 누르면 열립니다) ──────────── -->
+  <div class="fyra-modal" id="fyraModal" role="dialog" aria-modal="true" aria-labelledby="fyraTitle" aria-hidden="true">
+    <div class="fyra-card">
+      <header class="fyra-head">
+        <div class="fyra-heading">
+          <p class="sheet-kicker">NORDIC 4-CUT · 6 THEMES</p>
+          <h2 id="fyraTitle">FYRA 04 — 테마</h2>
+          <p class="fyra-sub">지금은 <b id="fyraThemeName">Classic Strip</b>. 테마를 고르면 플레이트에 바로 적용됩니다. 프레임 목록에서 <b>FYRA 04</b>를 다시 누르면 이 창이 열립니다.</p>
+        </div>
+        <button class="icon-btn" id="fyraClose" type="button" aria-label="테마 창 닫기">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+      </header>
+      <div class="fyra-grid" id="fyraGrid" role="radiogroup" aria-label="FYRA 04 테마 선택"></div>
+    </div>
+  </div>
+
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
   <script src="js/vendor/exifr.full.umd.js" defer></script>
-  <script src="js/emblems.js?v=20261115-lockup" defer></script>
-  <script src="js/exif-core.js?v=20261114-2" defer></script>
-  <script src="js/plate.js?v=20261115-align" defer></script>
-  <script src="app.js?v=20261114-5" defer></script>
+  <script src="js/emblems.js?v=20261115-prod-v2" defer></script>
+  <script src="js/exif-core.js?v=20261115-prod-v2" defer></script>
+  <script src="js/plate.js?v=20261115-prod-v2" defer></script>
+  <script src="app.js?v=20261115-prod-v2" defer></script>
 </body>
 </html>
