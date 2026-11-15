@@ -211,6 +211,17 @@ def static_tests():
           "Math.max(2, Math.round((span - holeW) / pitch) + 1)" in plate and
           "(span - holeW) / (count - 1)" in plate and
           "if (span < holeW) return out;" in plate)
+    check("static: the vertical sprocket run is solved between its two anchors too",
+          "function sprocketsCol(" in plate and
+          "var span = y1 - y0, pitch = h * 1.9" in plate and
+          "Math.max(2, Math.round((span - h) / pitch) + 1)" in plate and
+          "(span - h) / (count - 1)" in plate and
+          "if (span < h) return;" in plate)
+    check("static: FYRA 04's film perforation spans exactly the four cells",
+          "var sp0 = cells[0].y;" in plate and
+          "var sp1 = cells[cells.length - 1].y + cells[cells.length - 1].h;" in plate and
+          "sprocketsCol(ctx, sp0, sp1, L.side * 0.5" in plate and
+          "sprocketsCol(ctx, sp0, sp1, W - L.side * 0.5" in plate)
     check("static: the rail hairlines still run the plate's full width",
           "hairline(ctx, 0, perf.topRuleY, L.W, perf.topRuleY" in plate and
           "hairline(ctx, 0, perf.botRuleY, L.W, perf.botRuleY" in plate)
@@ -546,6 +557,76 @@ def browser_tests(port):
               holes_px["inLast"] > holes_px["afterLast"] + 200, json.dumps(holes_px))
         check("browser: the margin before the first hole is bare film base",
               holes_px["beforeFirst"] < holes_px["inGap"] + 90, json.dumps(holes_px))
+
+        # ── FYRA 04 · Film Strip: the two vertical runs hug the four cells ──
+        print("\n[browser] FYRA 04 Film Strip: the vertical perforation ends with the photographs")
+        film_col = page.evaluate("""() => {
+            const app = window.SPApp, PL = window.SPPlate;
+            app.setStyle('fyra04'); app.applyFyraTheme('film', false);
+            const L = app.currentLayout();
+            const cells = L.cells || [];
+            const u = L.u;
+            const k = 900 / L.W;
+            const cv = document.createElement('canvas');
+            cv.width = Math.round(L.W * k); cv.height = Math.round(L.H * k);
+            const ctx = cv.getContext('2d');
+            ctx.setTransform(k, 0, 0, k, 0, 0);
+            ctx.fillStyle = L.colors.base; ctx.fillRect(0, 0, L.W, L.H);
+            PL.paint(ctx, L);
+            const scan = (cx) => {
+              const x = Math.max(0, Math.min(cv.width - 1, Math.round(cx * k)));
+              const d = ctx.getImageData(x, 0, 1, cv.height).data;
+              let first = -1, last = -1;
+              for (let y = 0; y < cv.height; y++) {
+                const v = d[y * 4] + d[y * 4 + 1] + d[y * 4 + 2];
+                if (v > 300) { if (first < 0) first = y; last = y; }
+              }
+              return {first: first < 0 ? -1 : first / k, last: (last + 1) / k};
+            };
+            const lx = L.side * 0.5, rx = L.W - L.side * 0.5;
+            const left = scan(lx), right = scan(rx);
+            const top = cells[0].y;
+            const bottom = cells[cells.length - 1].y + cells[cells.length - 1].h;
+            const holeH = u * 10.5, span = bottom - top, pitch = holeH * 1.9;
+            const count = Math.max(2, Math.round((span - holeH) / pitch) + 1);
+            const step = (span - holeH) / (count - 1);
+            const at = (x, y) => { const d = ctx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data;
+              return d[0] + d[1] + d[2]; };
+            const gapY = top + holeH + (step - holeH) / 2;
+            const out = {cells: cells.length, top: top, bottom: bottom, k: k,
+                    holeH: holeH, count: count, step: step, pitch: pitch,
+                    left: left, right: right,
+                    inTop: at(lx, top + holeH / 2), aboveTop: at(lx, top - u * 4),
+                    inBottom: at(lx, bottom - holeH / 2), belowBottom: at(lx, bottom + u * 4),
+                    inGap: at(lx, gapY), bandTop: at(lx, bottom + u * 8), base: L.colors.base};
+            app.applyFyraTheme('classic', false);   // hand the studio back as we found it
+            return out;
+        }""")
+        check("browser: FYRA 04 Film Strip draws a four-cell strip", film_col["cells"] == 4)
+        for side in ("left", "right"):
+            run = film_col[side]
+            check(f"browser: the {side} run starts on the first photo's top edge",
+                  abs(run["first"] - film_col["top"]) <= 1,
+                  f'{run["first"]:.2f} vs {film_col["top"]}')
+            check(f"browser: the {side} run ends on the fourth photo's bottom edge",
+                  abs(run["last"] - film_col["bottom"]) <= 1,
+                  f'{run["last"]:.2f} vs {film_col["bottom"]}')
+        check("browser: the run is a run of perforations, not one hole",
+              film_col["left"]["last"] - film_col["left"]["first"] > film_col["holeH"] * 4,
+              json.dumps(film_col))
+        check("browser: the solved step stays on the target pitch (no leftover margin)",
+              abs(film_col["step"] - film_col["pitch"]) <= film_col["holeH"] * 0.35,
+              f'step {film_col["step"]:.2f} vs pitch {film_col["pitch"]:.2f}')
+        check("browser: a hole is printed on the first photo's top edge",
+              film_col["inTop"] > film_col["aboveTop"] + 200, json.dumps(film_col))
+        check("browser: a hole is printed on the fourth photo's bottom edge",
+              film_col["inBottom"] > film_col["belowBottom"] + 200, json.dumps(film_col))
+        check("browser: nothing perforates the padding above the photos",
+              film_col["aboveTop"] < film_col["inGap"] + 90, json.dumps(film_col))
+        check("browser: nothing perforates the caption band below the photos",
+              film_col["belowBottom"] < film_col["inGap"] + 90, json.dumps(film_col))
+        check("browser: the gaps between holes are bare film base",
+              film_col["inGap"] < film_col["inTop"] - 120, json.dumps(film_col))
 
         # ── caption typography ─────────────────────────────────────────────
         print("\n[browser] caption typography: 프레임 기본, then the visitor's own face")

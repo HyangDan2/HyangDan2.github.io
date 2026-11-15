@@ -526,16 +526,29 @@
     ctx.restore();
   }
 
-  /* A vertical run of perforations, for a 35mm strip laid on its side: the
-     hole sits in the middle of its own margin, the pitch is the same as the
-     horizontal row's, and a zero height can never loop forever. */
+  /* A vertical run of perforations, for a strip of four cells: the hole sits
+     in the middle of its own margin, and the run is solved between its two
+     anchors the way the horizontal row is — the count comes from the target
+     pitch (1.9 holes end to end), the step then stretches to swallow the
+     remainder exactly. The first hole's top edge lands on `y0` and the last
+     hole's bottom edge on `y1`, so the perforation starts and ends with the
+     photograph block instead of trailing off into a leftover gap. */
   function sprocketsCol(ctx, y0, y1, cx, w, h, fill) {
     if (!(w > 0.5) || !(h > 0.5) || !(y1 > y0)) return;
-    var pitch = h * 1.9, r = w * 0.2;
+    var span = y1 - y0, pitch = h * 1.9, r = w * 0.2;
+    if (span < h) return;                               // the strip is too short for one hole
     ctx.save();
     ctx.fillStyle = fill;
-    for (var y = y0; y + h <= y1; y += pitch) {
-      roundRect(ctx, cx - w / 2, y, w, h, r);
+    if (span <= h * 1.2) {                              // one hole, centred in the run
+      roundRect(ctx, cx - w / 2, y0 + (span - h) / 2, w, h, r);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    var count = Math.max(2, Math.round((span - h) / pitch) + 1);
+    var step = (span - h) / (count - 1);
+    for (var i = 0; i < count; i++) {
+      roundRect(ctx, cx - w / 2, y0 + i * step, w, h, r);
       ctx.fill();
     }
     ctx.restore();
@@ -1592,7 +1605,7 @@
   /* ── 13 FYRA 04 (six Nordic four-cut themes) ───────────────────────────── */
   function drawFyra(ctx, L) {
     var th = L.theme || FYRA_DEFAULT;
-    var c = L.colors, u = L.u, f = L.fields, W = L.W, H = L.H;
+    var c = L.colors, u = L.u, f = L.fields, W = L.W;
     var cells = L.cells;
     var last = cells[cells.length - 1];
     var footTop = last.y + last.h;
@@ -1690,8 +1703,13 @@
       var fill = 'rgba(238,229,210,0.72)';
       /* a 35mm hole runs across the travel: wider than it is tall */
       var holeW = u * 15, holeH = u * 10.5;
-      sprocketsCol(ctx, L.top * 0.4, H - band - u * 4, L.side * 0.5, holeW, holeH, fill);
-      sprocketsCol(ctx, L.top * 0.4, H - band - u * 4, W - L.side * 0.5, holeW, holeH, fill);
+      /* the two runs are exactly as tall as the four cells: the first hole
+         starts on the first photo's top edge, the last ends on the fourth's
+         bottom edge, so the perforation never runs past the photographs */
+      var sp0 = cells[0].y;
+      var sp1 = cells[cells.length - 1].y + cells[cells.length - 1].h;
+      sprocketsCol(ctx, sp0, sp1, L.side * 0.5, holeW, holeH, fill);
+      sprocketsCol(ctx, sp0, sp1, W - L.side * 0.5, holeW, holeH, fill);
       var fCam = join([camera(f), date], '   ·   ');
       var fSpec = join(specParts(f), '  ·  ');
       var fColW = Math.min(W * 0.44, Math.max(
