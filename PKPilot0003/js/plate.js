@@ -729,13 +729,23 @@
     });
     var leftMaxW = Math.max(u * 140, inner - stackW - u * 24);
 
+    /* The mark owns the pocket between the photo's frame line and the caption
+       and is centred in it: sized against the flow (28u, never more than a
+       fifth of it) it reads as the top of the print block instead of a stray
+       17u glyph up in the corner, and it can no longer reach the caption on a
+       slim band because the caption's own cap height is taken out first. */
+    var capSize = Math.min(u * 22, L.band * 0.1) * g;
+    var capY = top + flow * 0.41;
+    var pocketTop = top + flow * 0.05;
+    var pocket = Math.max(u * 8, capY - capSize * 0.9 - pocketTop);
+    var emH = Math.min(Math.max(u * 20, Math.min(u * 28, flow * 0.17)), pocket);
     if (L.emblem) {
-      var emH = Math.min(u * 26, L.band * 0.16) * g;
-      emblemAt(ctx, L, L.emblem, pad, top + flow * 0.14, emH, 'left', inner * 0.42);
+      emblemAt(ctx, L, L.emblem, pad, pocketTop + (pocket - emFit(L.emblem, emH, inner * 0.42).h) / 2,
+               emH, 'left', inner * 0.42);
     }
 
-    text(ctx, f.caption || camera(f), pad, top + flow * 0.41, {
-      size: Math.min(u * 22, L.band * 0.1) * g, family: 'serif', italic: true,
+    text(ctx, f.caption || camera(f), pad, capY, {
+      size: capSize, family: 'serif', italic: true,
       color: c.ink, ls: u * 0.3, maxW: leftMaxW
     });
 
@@ -798,12 +808,17 @@
       emH = Math.max(u * 14, Math.min(emH, emMaxW / (E.widthFor(L.emblem, 1) || 1)));
     }
     var rowY = top + band * 0.44;
-    var emW = emblemAt(ctx, L, L.emblem, pad, rowY - emH / 2, emH, 'left', Math.max(u * 90, emMaxW));
+    /* centred on the type's optical middle, not on its baseline: the mark and
+       the model name are one lockup and the name's ink sits above rowY */
+    var emFitS = L.emblem ? emFit(L.emblem, emH, Math.max(u * 90, emMaxW)).h : emH;
+    var headSize = Math.min(u * 22, band * 0.105);
+    var emW = emblemAt(ctx, L, L.emblem, pad, rowY - headSize * 0.36 - emFitS / 2, emH,
+                       'left', Math.max(u * 90, emMaxW));
     var tx = pad + (L.emblem ? emW + u * 30 : 0);
     var leftMaxW = Math.max(u * 120, inner - (tx - pad) - gutter - rightW);
 
     text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, rowY, {
-      size: Math.min(u * 22, band * 0.105), family: L.opts.font, weight: 600,
+      size: headSize, family: L.opts.font, weight: 600,
       color: c.ink, ls: u * 0.4, maxW: leftMaxW
     });
     text(ctx, optics(f), tx, top + band * 0.63, {
@@ -903,8 +918,15 @@
     var top = L.photoBox.y + L.PH, pad = L.inset, W = L.W;
     var inner = W - pad * 2;
 
+    /* the mark rides on the headline's optical middle rather than on a fixed
+       height in the band: pinned to band*0.12 a 28u apple read a full 11u
+       above the model name it belongs to. Same principle as horizonLockup. */
+    var headSize = Math.min(u * 22, band * 0.085);
+    var headY = top + band * 0.21;
     var emH = Math.min(u * 28, band * 0.14);
-    var emW = emblemAt(ctx, L, L.emblem, pad, top + band * 0.12, emH, 'left', inner * 0.4);
+    var emMaxW = inner * 0.4;
+    var emTop = headY - headSize * 0.36 - (L.emblem ? emFit(L.emblem, emH, emMaxW).h : emH) / 2;
+    var emW = emblemAt(ctx, L, L.emblem, pad, emTop, emH, 'left', emMaxW);
     var tx = pad + (L.emblem ? emW + u * 24 : 0);
     /* the date owns its own column on the headline row; the model and lens are
        measured against what is left after the emblem */
@@ -915,11 +937,11 @@
     var usedX = tx - pad;
     var headMaxW = Math.max(u * 120, inner - usedX - dateW - u * 24);
 
-    text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, top + band * 0.21, {
-      size: Math.min(u * 22, band * 0.085), family: L.opts.font, weight: 600,
+    text(ctx, L.emblem ? (f.model || f.make || '') : camera(f), tx, headY, {
+      size: headSize, family: L.opts.font, weight: 600,
       color: c.ink, ls: u * 0.3, maxW: headMaxW
     });
-    text(ctx, dateStr, W - pad, top + band * 0.21, {
+    text(ctx, dateStr, W - pad, headY, {
       size: dateSize, family: 'mono', color: c.muted,
       ls: u * 1.1, align: 'right', maxW: dateW
     });

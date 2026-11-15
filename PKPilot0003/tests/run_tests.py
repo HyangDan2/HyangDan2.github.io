@@ -878,7 +878,7 @@ LINES_JS = """(matrix) => {
         const desc = m.actualBoundingBoxDescent || 0;
         const wd = m.width, al = this.textAlign;
         const x0 = al === 'center' ? x - wd / 2 : al === 'right' ? x - wd : x;
-        recs.push({s: String(s), x0: x0, x1: x0 + wd, y: y, y0: y - asc, y1: y + desc});
+        recs.push({s: String(s), x0: x0, x1: x0 + wd, y: y, y0: y - asc, y1: y + desc, px: px});
       }
       return origFT(s, x, y);
     };
@@ -902,6 +902,7 @@ LINES_JS = """(matrix) => {
       const xs = parts.map((p) => r1(p.x0)), xe = parts.map((p) => r1(p.x1));
       return {
         s: parts.map((p) => p.s).join(''), y: r1(l.y), parts: parts.length,
+        px: r1(parts[0].px),
         x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xe),
         y0: r1(Math.min.apply(null, parts.map((p) => p.y0))),
         y1: r1(Math.max.apply(null, parts.map((p) => p.y1))),
@@ -1858,6 +1859,94 @@ def browser_tests(port):
             check(f"{tag}: the footer caption sits under the rule",
                   len(foot_line) == 1 and foot_line[0]["y0"] > rule,
                   json.dumps([(l["s"], l["y0"]) for l in item["lines"]])[:200])
+
+        # ── the maker mark rides its headline — pro / film / studio ─────────
+        # Three frames print a maker mark next to or above a line of copy, and
+        # on all three it had drifted from that line by its own older rule: Pro
+        # Studio pinned the mark to band*0.12, a full 11u above the model name
+        # it labels; Studio Dark centred it on the text baseline, hanging it a
+        # third of a cap height low; Film Sprocket sized it at 17-20u in the
+        # corner, stranded far over a caption it had nothing to do with. This
+        # reads the painted boxes back and asks each frame its own question:
+        # the two lockups measure the mark's centre against the type's optical
+        # middle, the film frame measures the mark's size against the flow and
+        # its place in the pocket it owns above the caption.
+        print("\n[browser] maker mark alignment — pro / film / studio")
+        ALIGN_FIELDS = {
+            "make": "Apple", "model": "iPhone 17 Pro Max",
+            "lens": "iPhone 17 Pro Max back triple camera 6.765mm f/1.78",
+            "focal": "24mm", "aperture": "ƒ/1.78", "shutter": "1/1200s",
+            "iso": "ISO 400", "datetime": "2026.11.15 08:40", "caption": "창원 아침",
+        }
+        align_matrix = []
+        for style in ("pro", "studio", "film"):
+            for sname, w, h in (("3:4", 1200, 1600), ("4:3", 1600, 1200), ("2:3", 1024, 1536)):
+                for pad in (None, 0.0, 9.0):
+                    align_matrix.append({
+                        "style": style, "case": "apple17",
+                        "size": f"{sname}/pad{pad}",
+                        "fields": ALIGN_FIELDS, "emblem": "apple",
+                        "w": w, "h": h, "padPct": pad})
+        align = page.evaluate(LINES_JS, align_matrix)
+        check(f"mark align: {len(align_matrix)} plates measured",
+              len(align) == len(align_matrix), f"measured {len(align)}")
+        for item in align:
+            style, _cname, size = item["label"].split("/", 2)
+            tag = f"mark {style} {size}"
+            u = item["W"] / 1000.0
+            em = item["emblems"][0] if item["emblems"] else None
+            if not check(f"{tag}: the maker mark is painted", bool(em),
+                         json.dumps(item["emblems"])):
+                continue
+            check(f"{tag}: the mark keeps the frame's left inset",
+                  abs(em["x"] - item["inset"]) <= 0.6,
+                  f"x={em['x']} inset={item['inset']}")
+            check(f"{tag}: the mark stays off the photo and inside the plate",
+                  em["y"] >= item["photoBottom"] - 0.5 and em["y1"] <= item["H"] + 0.5,
+                  json.dumps(em) + f" photoBottom={item['photoBottom']:.1f} H={item['H']}")
+            em_h = em["y1"] - em["y"]
+            em_cy = em["y"] + em_h / 2
+            # the line the mark belongs to: the headline of the two lockups,
+            # the caption on the film frame (the largest type on that row)
+            want = "창원 아침" if style == "film" else "iPhone 17 Pro Max"
+            cands = [l for l in item["lines"] if want in l["s"]]
+            if not check(f"{tag}: the line the mark labels is painted", bool(cands),
+                         json.dumps([l["s"] for l in item["lines"]], ensure_ascii=False)[:300]):
+                continue
+            head = max(cands, key=lambda l: l["px"])
+
+            if style == "film":
+                flow = item["flow"]
+                pocket_top = item["photoBottom"] + flow * 0.05
+                pocket_bot = head["y"] - head["px"] * 0.9
+                pocket = pocket_bot - pocket_top
+                nominal = min(max(u * 20, min(u * 28, flow * 0.17)), pocket)
+                check(f"{tag}: the mark is sized to the flow, not to the band",
+                      abs(em_h - nominal) <= 1.0 and em_h >= u * 20 - 0.5,
+                      f"h={em_h:.2f}, want={nominal:.2f}, 20u={u * 20:.2f}, 28u={u * 28:.2f}, flow={flow:.1f}")
+                gap_above = em["y"] - pocket_top
+                gap_below = pocket_bot - em["y1"]
+                check(f"{tag}: the mark is centred in the pocket over the caption",
+                      gap_above >= -0.5 and gap_below >= -0.5 and abs(gap_above - gap_below) <= 1.5,
+                      f"above={gap_above:.2f}, below={gap_below:.2f}, pocket={pocket:.1f}")
+                check(f"{tag}: the mark never reaches the caption it sits over",
+                      em["y1"] <= head["y0"] - 0.5,
+                      f"mark bottom={em['y1']:.2f}, caption ink top={head['y0']:.2f}")
+                check(f"{tag}: the mark reads at the caption's weight, not under it",
+                      em_h >= head["px"] * 1.1,
+                      f"mark {em_h:.2f} vs caption {head['px']:.2f}")
+            else:
+                optical = head["y"] - head["px"] * 0.36
+                check(f"{tag}: the mark's centre rides the model's optical middle",
+                      abs(em_cy - optical) <= max(1.0, head["px"] * 0.10),
+                      f"mark centre={em_cy:.2f}, optical={optical:.2f}, px={head['px']:.2f}")
+                below = [l for l in item["lines"] if l["y"] > head["y"] + 0.5]
+                check(f"{tag}: the mark clears the rows under it",
+                      em["y1"] <= min(l["y0"] for l in below) - 0.5,
+                      f"mark bottom={em['y1']:.2f}, next row top={min(l['y0'] for l in below):.2f}")
+                check(f"{tag}: the mark is still the type's own height range",
+                      em_h <= u * 32 + 0.5 and em_h >= u * 12,
+                      f"h={em_h:.2f}, 32u={u * 32:.2f}")
 
         studio_cut = [e for e in fit["ellipsis"] if e[0].startswith("studio/")]
         check("fit: Studio Dark keeps the full exposure row (ISO 400 / 1600)",
