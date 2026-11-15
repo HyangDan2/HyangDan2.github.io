@@ -515,7 +515,7 @@
         file: file, img: img, preview: state.photo.preview,
         w: state.photo.w, h: state.photo.h,
         name: state.photo.name, bytes: state.photo.bytes,
-        objectUrl: '', fields: Object.assign({}, fields)
+        objectUrl: '', tags: count, fields: Object.assign({}, fields)
       }];
     }
     /* already on a multi-cut plate? the new photo fills the cells again */
@@ -829,7 +829,8 @@
     return {
       file: p.file || null, img: p.img, preview: p.preview || p.img,
       w: p.w, h: p.h, name: p.name || 'photo', bytes: p.bytes || 0,
-      objectUrl: '', fields: Object.assign({}, state.fields)
+      objectUrl: '', tags: state.exifTags ? EX.tagCount(state.exifTags) : 0,
+      fields: Object.assign({}, state.fields)
     };
   }
 
@@ -859,7 +860,7 @@
       file: file, img: img, preview: previewBitmap(img),
       w: img.naturalWidth, h: img.naturalHeight,
       name: file.name || 'photo', bytes: file.size || 0,
-      objectUrl: url, fields: fields
+      objectUrl: url, tags: tags ? EX.tagCount(tags) : 0, fields: fields
     };
   }
 
@@ -910,7 +911,7 @@
     stripSlotsCache = null;
     paintFields();
     syncEmblems();
-    syncPhotoUI(0);
+    syncPhotoUI(s.tags || 0);
     syncSlotUI();
     renderAll();
   }
