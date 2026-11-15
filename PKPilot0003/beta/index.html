@@ -42,7 +42,7 @@
   <meta name="twitter:description" content="사진을 13종 시그니처 프레임의 플레이트로 — 4컷 멀티 프레임 포함." />
   <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0003/og-image.png?v=20261115-mark" />
 
-  <link rel="stylesheet" href="style.css?v=20261115-beta-1" />
+  <link rel="stylesheet" href="style.css?v=20261115-beta-2" />
 </head>
 <body>
   <!-- ── 자체 제작 SVG 아이콘 스프라이트 ─────────────────────────────── -->
@@ -329,6 +329,30 @@
           <p class="empty-note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>업로드 0 B · 사진은 이 기기에서만 처리됩니다</p>
         </div>
       </div>
+
+      <!-- ── 4컷 사진 칸 — 플로팅 제어 (멀티컷 프레임에서만) ────────── -->
+      <button class="slot-fab" id="slotToggle" type="button" aria-label="4컷 사진 칸 열기" aria-controls="slotBar" aria-expanded="false" aria-haspopup="true" title="4컷 사진 칸 — #1~#4 교체 · 맞바꾸기 · 샘플 · 사진 4장" hidden>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>
+        <b class="slot-fab-n" aria-hidden="true">4</b>
+      </button>
+
+      <section class="slots slots--float" id="slotBar" role="group" aria-label="멀티컷 사진 칸" aria-hidden="true" hidden>
+        <div class="slots-head">
+          <span class="slots-title">MULTI-CUT SLOTS</span>
+          <span class="slots-hint" id="slotHint">4 / 4칸 · 칸을 눌러 교체, ⇄ 로 맞바꾸기</span>
+        </div>
+        <div class="slot-track" id="slotTrack" role="list" aria-label="멀티컷 사진 칸"></div>
+        <div class="slots-actions">
+          <button class="slots-btn" id="slotSampleBtn" type="button" title="샘플 사진으로 4칸 채우기">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg><span>샘플</span>
+          </button>
+          <button class="slots-btn slots-btn--accent" id="slotAddBtn" type="button" title="사진 4장을 한 번에 열기">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg><span>사진 4장</span>
+          </button>
+        </div>
+        <input id="slotAllInput" type="file" accept="image/*" multiple hidden />
+        <input id="slotOneInput" type="file" accept="image/*" hidden />
+      </section>
     </section>
 
     <!-- ── 선택된 사진 (컴팩트 활성 세션 카드) ─────────────────────── -->
@@ -349,25 +373,6 @@
         <button class="btn btn-ghost" id="changeBtn" type="button" title="사진 변경"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-swap"/></svg><span>변경</span></button>
         <button class="btn btn-ghost" id="clearBtn" type="button" title="비우기" aria-label="캔버스 비우기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg><span class="hide-xs">비우기</span></button>
       </div>
-    </section>
-
-    <!-- ── 멀티컷 사진 칸 (Contact Sheet · FYRA 04) ────────────────── -->
-    <section class="slots" id="slotBar" aria-label="멀티컷 사진 칸" hidden>
-      <div class="slots-head">
-        <span class="slots-title">MULTI-CUT SLOTS</span>
-        <span class="slots-hint" id="slotHint">4 / 4칸 · 칸을 눌러 교체, ⇄ 로 맞바꾸기</span>
-        <div class="slots-actions">
-          <button class="slots-btn" id="slotSampleBtn" type="button" title="샘플 사진으로 4칸 채우기">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-camera"/></svg><span>샘플</span>
-          </button>
-          <button class="slots-btn slots-btn--accent" id="slotAddBtn" type="button" title="사진 4장을 한 번에 열기">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg><span>사진 4장</span>
-          </button>
-        </div>
-      </div>
-      <div class="slot-track" id="slotTrack" role="list" aria-label="멀티컷 사진 칸"></div>
-      <input id="slotAllInput" type="file" accept="image/*" multiple hidden />
-      <input id="slotOneInput" type="file" accept="image/*" hidden />
     </section>
 
     <!-- ── 하단 가로 프레임 슬라이더 ───────────────────────────────── -->
@@ -651,6 +656,6 @@
   <script src="js/emblems.js?v=20261115-beta-1" defer></script>
   <script src="js/exif-core.js?v=20261115-beta-1" defer></script>
   <script src="js/plate.js?v=20261115-beta-1" defer></script>
-  <script src="app.js?v=20261115-beta-2" defer></script>
+  <script src="app.js?v=20261115-beta-3" defer></script>
 </body>
 </html>

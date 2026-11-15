@@ -35,15 +35,33 @@ the file it came from, its own bitmap, EXIF and label; **slot 0 is mirrored into
 `state.photo`**, so the EXIF sheet, the single-cut frames and the export need no
 second implementation.
 
-- `loadSlots(fileList)` — open up to four photos at once (`사진 4장` in the slot bar)
+- `loadSlots(fileList)` — open up to four photos at once (`사진 4장` in the floating 4-cut control)
 - `setSlotFile(index, file)` — replace one cell (tap a cell)
 - `swapSlots(a, b)` — exchange two cells (`⇄` on a cell swaps with the next one)
 - `seedSlots()` — fill empty cells from the photo already on the plate, so opening
   one photo and picking FYRA 04 never leaves three empty boxes
 - `loadSampleSlots()` — the three bundled samples fill the four cells for testing
 
-The slot bar appears only while a multi-cut frame is selected; the geometry
-sliders are single-cut controls and say so.
+### The floating 4-cut control
+
+The four cells are a control on the plate, not a bar beside it. While a
+multi-cut frame is selected a compact `▦ 4` button sits in the stage's
+bottom-right corner (`bottom: 12px; right: 12px;`); one tap opens the
+**4-cut slot panel** just above it (`bottom: 66px; right: 12px;`, a full-width
+sheet above the button under 640px) with the `#1~#4` cells, their `⇄` swap
+buttons, `샘플` and `사진 4장`. A tap outside, a second tap on the button, or
+`Escape` folds it away. The permanent slot bar is gone, so the stage keeps its
+height on a phone.
+
+On a multi-cut plate the single-photo `.session` strip under the stage is hidden
+entirely — the four cells already say which photographs are on the plate — and
+it comes back the moment a single-cut frame is selected.
+
+### Badges on a frame tile
+
+The `NORDIC 4-CUT` tag keeps the thumbnail's top-right corner; the FYRA 04
+re-click hint (`다시 눌러 테마` in the strip, `6 THEMES` on the landing) sits in
+its bottom-left corner. The two can never overlap, however narrow the tile.
 
 ### FYRA 04 and its six themes
 
@@ -75,8 +93,9 @@ whole plate stays under 7200px on its long edge.
 python3 tests/run_tests.py        # -v for every check, -s to fail on skips
 ```
 
-199 checks: a static layer (self-contained assets, 13-frame order, theme names,
-slot/modal markup, production untouched) and a Chromium layer (all 13 frames
-paint distinct plates, slot load/replace/swap/seed, the second-tap theme window,
-all six themes, 1:1 export dimensions, 1440 / 390 / 320px with zero console errors
-and zero horizontal overflow). Browser checks skip when Playwright is missing.
+246 checks across the static and Chromium layers, including the floating 4-cut
+control (button placement, panel open/close, cells still loading/replacing/
+swapping from the panel), the hidden single-photo strip on multi-cut plates, zero
+badge overlap on FYRA 04 in both the strip and the landing grid, and the mobile
+header's right-aligned actions at 390 / 320px. Browser checks skip when
+Playwright is missing.

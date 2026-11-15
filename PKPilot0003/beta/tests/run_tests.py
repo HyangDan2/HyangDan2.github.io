@@ -6,16 +6,19 @@ Two layers:
 
   [static]   The beta is a self-contained build: every asset is relative, the
              frame library is the 13 signatures in the approved order, the
-             production folder is still the eight-frame build, and the theme
-             window / slot bar / beta header are present in the markup.
+             production folder is still the eight-frame build, and the 4-cut
+             control / theme window / beta header are present in the markup.
 
   [browser]  A real Chromium run against a local server: every one of the 13
              frames paints its own plate, Contact Sheet and FYRA 04 lay out
              four cells, the slot model loads/replaces/swaps, a single photo
-             seeds four cells, the FYRA 04 tile opens its theme window on the
-             second tap (and only then), all six themes render and switch,
-             1:1 export keeps the plate's own pixels, and desktop 1440px plus
-             mobile 390px stay at zero console errors and zero overflow.
+             seeds four cells, the floating 4-cut control opens/closes its
+             panel on the plate, the single-photo strip hides on multi-cut
+             frames, the FYRA 04 badges never overlap, the FYRA 04 tile opens
+             its theme window on the second tap (and only then), all six themes
+             render and switch, 1:1 export keeps the plate's own pixels, the
+             mobile header stays right-aligned, and desktop 1440px plus mobile
+             390 / 320px stay at zero console errors and zero overflow.
 
 Usage:
     python3 tests/run_tests.py [-v] [-s]
@@ -164,8 +167,27 @@ def static_tests():
     check("static: the strip head counts 13", '<b id="frameCount">13</b>' in html)
 
     for eid in ("slotBar", "slotTrack", "slotHint", "slotAllInput", "slotOneInput",
-                "slotAddBtn", "slotSampleBtn"):
+                "slotAddBtn", "slotSampleBtn", "slotToggle"):
         check(f"static: the slot bar has #{eid}", f'id="{eid}"' in html)
+    check("static: the 4-cut control floats inside the stage",
+          html.index('id="slotBar"') < html.index('aria-label="프레임 갤러리"') and
+          html.index('id="slotToggle"') < html.index('aria-label="프레임 갤러리"'),
+          "the panel must come before the frame library")
+    check("static: the 4-cut control is a toggle for the panel",
+          'id="slotToggle"' in html and 'aria-controls="slotBar"' in html and
+          'aria-expanded="false"' in html)
+    check("static: the panel starts hidden",
+          re.search(r'id="slotBar"[^>]*hidden', html) is not None)
+    check("static: the 4-cut control has its own styles",
+          ".slot-fab" in css and ".slots--float" in css)
+    check("static: the re-click hint sits at the thumbnail's bottom-left",
+          re.search(r"\.frame-reclick \{[^}]*top: auto;[^}]*bottom: 6px;[^}]*left: 6px;", css) is not None)
+    check("static: the landing card keeps its badge at the thumbnail's top-right",
+          re.search(r"\.hf-foot \.frame-badge \{[^}]*position: absolute;[^}]*top: 9px;[^}]*right: 9px;", css)
+          is not None)
+    check("static: the header actions carry the auto margin on a phone",
+          re.search(r"\.header-actions \{[^}]*margin-left: auto;", css) is not None,
+          "no rule pins .header-actions to the right edge")
     for eid in ("fyraModal", "fyraGrid", "fyraClose", "fyraTitle", "fyraThemeName"):
         check(f"static: the theme window has #{eid}", f'id="{eid}"' in html)
     check("static: the theme window is a dialog with a radio group",
@@ -205,6 +227,26 @@ def serve():
 
 
 SAMPLES = [os.path.join(BETA, "assets", "samples", f"sample-0{i}.jpg") for i in (1, 2, 3)]
+
+
+def rect_of(page, sel):
+    return page.evaluate("""(sel) => { const e = document.querySelector(sel);
+        if (!e) return null; const r = e.getBoundingClientRect();
+        return {x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom,
+                display: getComputedStyle(e).display, hidden: e.hidden}; }""", sel)
+
+
+def overlap_of(page, sel_a, sel_b):
+    """Intersection of two elements' boxes, 0 when they never meet."""
+    return page.evaluate("""([a, b]) => {
+        const A = document.querySelector(a), B = document.querySelector(b);
+        if (!A || !B) return null;
+        const ra = A.getBoundingClientRect(), rb = B.getBoundingClientRect();
+        const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+        const oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+        return {ox: ox, oy: oy, area: (ox > 0 && oy > 0) ? ox * oy : 0,
+                a: [ra.left, ra.top, ra.right, ra.bottom], b: [rb.left, rb.top, rb.right, rb.bottom]};
+    }""", [sel_a, sel_b])
 
 PAINT_ONE = """(args) => {
   const {style, theme, width} = args;
@@ -375,8 +417,12 @@ def browser_tests(port):
         check("browser: each slot keeps its own file",
               names[0] == "sample-01.jpg" and names[1] == "sample-02.jpg" and names[2] == "sample-03.jpg",
               str(names))
-        check("browser: the slot bar is visible on a multi-cut frame",
-              page.is_visible("#slotBar"))
+        check("browser: the floating 4-cut button appears on a multi-cut frame",
+              page.is_visible("#slotToggle"))
+        check("browser: the 4-cut panel stays down until it is asked for",
+              page.is_hidden("#slotBar"))
+        check("browser: the single-photo strip is hidden on a multi-cut plate",
+              page.is_hidden("#sessionCard"))
         check("browser: the session card keeps the slot's EXIF count",
               page.inner_text("#metaExif").strip() != "0 tags",
               page.inner_text("#metaExif").strip())
@@ -445,7 +491,133 @@ def browser_tests(port):
 
         page.evaluate("() => window.SPApp.setStyle('horizon')")
         page.wait_for_timeout(200)
-        check("browser: the slot bar retires on a single-cut frame", page.is_hidden("#slotBar"))
+        check("browser: the floating 4-cut button retires on a single-cut frame",
+              page.is_hidden("#slotToggle"))
+        check("browser: the panel is down on a single-cut frame", page.is_hidden("#slotBar"))
+        check("browser: the single-photo strip comes back on a single-cut frame",
+              page.is_visible("#sessionCard"))
+
+        # ── the floating 4-cut control ─────────────────────────────────────
+        print("\n[browser] the 4-cut control: bottom-right of the plate, panel above it")
+        page.evaluate("() => window.SPApp.setStyle('fyra04')")
+        page.wait_for_timeout(300)
+        stage, fab = rect_of(page, "#stage"), rect_of(page, "#slotToggle")
+        check("browser: the control sits on the plate, not in a bar",
+              page.evaluate("() => document.querySelector('#stage').contains(document.querySelector('#slotToggle'))"))
+        check("browser: the control is anchored 12px from the stage's bottom-right",
+              abs(stage["right"] - fab["right"] - 12) <= 2 and abs(stage["bottom"] - fab["bottom"] - 12) <= 3,
+              f'stage {stage["right"]},{stage["bottom"]} vs button {fab["right"]},{fab["bottom"]}')
+        check("browser: the control names itself and its panel open/closed state",
+              page.get_attribute("#slotToggle", "aria-expanded") == "false" and
+              "4컷" in page.get_attribute("#slotToggle", "aria-label"))
+
+        page.click("#slotToggle")
+        page.wait_for_timeout(350)
+        panel = rect_of(page, "#slotBar")
+        check("browser: the button opens the four cells over the plate", page.is_visible("#slotBar"))
+        check("browser: the open button reports aria-expanded",
+              page.get_attribute("#slotToggle", "aria-expanded") == "true")
+        check("browser: the panel hangs above the button, inside the stage",
+              panel["bottom"] <= fab["y"] + 1 and fab["y"] - panel["bottom"] <= 16 and
+              panel["right"] <= stage["right"] + 1 and panel["x"] >= stage["x"] - 1,
+              f'panel {panel["x"]},{panel["y"]},{panel["right"]},{panel["bottom"]} button y {fab["y"]}')
+        check("browser: the panel holds the four cells and both loaders",
+              page.locator("#slotBar #slotTrack .slot").count() == 4 and
+              page.is_visible("#slotBar #slotAddBtn") and page.is_visible("#slotBar #slotSampleBtn"))
+        check("browser: every cell is on screen and tappable",
+              page.evaluate("""() => { const p = document.querySelector('#slotBar').getBoundingClientRect();
+                  return [...document.querySelectorAll('#slotTrack .slot')].every(t => {
+                    const r = t.getBoundingClientRect();
+                    return r.width >= 90 && r.height >= 40 && r.top >= p.top - 1 && r.bottom <= p.bottom + 1 &&
+                           Math.abs(r.left) + r.right > 0 && r.right <= p.right + 1 && r.left >= p.left - 1; }); }"""))
+
+        # the cells still do their work from the panel
+        before = page.evaluate("() => window.SPApp.slotNames()")
+        page.click('#slotTrack .slot[data-slot="0"] .slot-swap')
+        page.wait_for_timeout(400)
+        swapped = page.evaluate("() => window.SPApp.slotNames()")
+        check("browser: ⇄ in the panel swaps two cells",
+              swapped[0] == before[1] and swapped[1] == before[0], f'{before} → {swapped}')
+        check("browser: swapping keeps the panel open", page.is_visible("#slotBar"))
+        page.evaluate("() => window.SPApp.swapSlots(0, 1)")
+        page.wait_for_timeout(300)
+
+        with page.expect_file_chooser() as chooser:
+            page.click('#slotTrack .slot[data-slot="1"] .slot-pick')
+        chooser.value.set_files([SAMPLES[2]])
+        page.wait_for_timeout(1200)
+        replaced = page.evaluate("() => window.SPApp.slotNames()")
+        check("browser: tapping a cell in the panel replaces that photo",
+              replaced[1] == "sample-03.jpg" and replaced[0] == before[0], str(replaced))
+        if not page.is_visible("#slotBar"):
+            page.click("#slotToggle")
+            page.wait_for_timeout(300)
+
+        page.click("#slotSampleBtn")
+        page.wait_for_timeout(1800)
+        sampled = page.evaluate("() => [window.SPApp.slotNames(), window.SPApp.slotFilledCount()]")
+        check("browser: 샘플 fills the four cells from the panel",
+              sampled[1] == 4 and all(n.startswith("sample-") for n in sampled[0]), str(sampled))
+        check("browser: the panel stays put after the sample loads", page.is_visible("#slotBar"))
+
+        with page.expect_file_chooser() as chooser:
+            page.click("#slotAddBtn")
+        chooser.value.set_files(SAMPLES + [SAMPLES[0]])
+        page.wait_for_timeout(1700)
+        bulk = page.evaluate("() => [window.SPApp.slotNames(), window.SPApp.slotFilledCount()]")
+        check("browser: 사진 4장 opens four files into the cells",
+              bulk[1] == 4 and bulk[0][0] == "sample-01.jpg" and bulk[0][2] == "sample-03.jpg", str(bulk))
+
+        # a tap outside folds the panel away, so does Esc
+        page.mouse.click(stage["x"] + 60, stage["y"] + stage["h"] * 0.6)
+        page.wait_for_timeout(300)
+        check("browser: a tap outside closes the panel", page.is_hidden("#slotBar"))
+        check("browser: closing the panel re-arms the button",
+              page.get_attribute("#slotToggle", "aria-expanded") == "false")
+        page.click("#slotToggle")
+        page.wait_for_timeout(300)
+        check("browser: the button reopens the panel", page.is_visible("#slotBar"))
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(300)
+        check("browser: Escape closes the panel", page.is_hidden("#slotBar"))
+        check("browser: Escape hands focus back to the 4-cut button",
+              page.evaluate("() => document.activeElement && document.activeElement.id") == "slotToggle")
+        page.click("#slotToggle")
+        page.wait_for_timeout(250)
+        page.click("#slotToggle")
+        page.wait_for_timeout(250)
+        check("browser: the button itself closes the panel again", page.is_hidden("#slotBar"))
+
+        # the two badges on FYRA 04 must never share a pixel
+        print("\n[browser] the FYRA 04 badges: 4-CUT top-right, re-click bottom-left")
+        for label, card in (("the studio strip", '.frame-card[data-style="fyra04"]'),
+                            ("the landing grid", '.hf-card[data-style="fyra04"]')):
+            if label == "the landing grid":
+                page.evaluate("() => window.SPApp.setView('home')")
+                page.wait_for_timeout(500)
+                page.locator(card).scroll_into_view_if_needed()
+                page.wait_for_timeout(250)
+            over = overlap_of(page, card + " .frame-reclick", card + " .frame-badge")
+            rel = page.evaluate("""(card) => {
+                const c = document.querySelector(card);
+                const thumb = c.querySelector(card.indexOf('hf-card') >= 0 ? '.hf-thumb' : '.frame-thumb')
+                    .getBoundingClientRect();
+                const hint = c.querySelector('.frame-reclick').getBoundingClientRect();
+                const badge = c.querySelector('.frame-badge').getBoundingClientRect();
+                return {thumb: [thumb.left, thumb.top, thumb.right, thumb.bottom],
+                        hintBottomLeft: [hint.left - thumb.left, thumb.bottom - hint.bottom],
+                        badgeTopRight: [thumb.right - badge.right, badge.top - thumb.top]};
+            }""", card)
+            check(f"browser: the two badges never overlap on {label}",
+                  over is not None and over["area"] == 0, json.dumps(over))
+            check(f"browser: the 4-CUT tag keeps {label}'s top-right corner",
+                  rel["badgeTopRight"][0] >= 0 and rel["badgeTopRight"][1] >= 0 and
+                  rel["badgeTopRight"][0] <= 8 and rel["badgeTopRight"][1] <= 8, str(rel))
+            check(f"browser: the re-click hint sits in {label}'s bottom-left corner",
+                  rel["hintBottomLeft"][0] >= 0 and rel["hintBottomLeft"][1] >= 0 and
+                  rel["hintBottomLeft"][0] <= 10 and rel["hintBottomLeft"][1] <= 10, str(rel))
+        page.evaluate("() => window.SPApp.setView('editor')")
+        page.wait_for_timeout(400)
 
         # ── FYRA 04 theme window ───────────────────────────────────────────
         print("\n[browser] FYRA 04: first tap selects, second tap opens the six themes")
@@ -570,7 +742,7 @@ def browser_tests(port):
               "KAKAOTALK" in read("app.js") and "다른 브라우저로 열기" in read("app.js"))
 
         # ── mobile ─────────────────────────────────────────────────────────
-        print("\n[browser] mobile 390px: the slot bar, the theme window, no overflow")
+        print("\n[browser] mobile 390px: the floating 4-cut panel, the theme window, no overflow")
         mctx = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
         mpage = mctx.new_page()
         merrors = []
@@ -582,17 +754,50 @@ def browser_tests(port):
         mpage.wait_for_timeout(1400)
         mpage.evaluate("() => window.SPApp.setStyle('fyra04')")
         mpage.wait_for_timeout(500)
-        check("browser: mobile shows the slot bar", mpage.is_visible("#slotBar"))
-        check("browser: mobile fits four slots in one row",
-              mpage.evaluate("""() => { const t = document.querySelectorAll('#slotTrack .slot');
-                  const ys = [...t].map(n => Math.round(n.getBoundingClientRect().top));
-                  return new Set(ys).size === 1; }"""))
+        check("browser: mobile offers the floating 4-cut button", mpage.is_visible("#slotToggle"))
+        check("browser: mobile keeps the 4-cut panel down until asked", mpage.is_hidden("#slotBar"))
+        check("browser: mobile hides the single-photo strip on a multi-cut plate",
+              mpage.is_hidden("#sessionCard"))
+        mfab = rect_of(mpage, "#slotToggle")
+        mstage = rect_of(mpage, "#stage")
+        check("browser: the mobile control stays in the plate's bottom-right corner",
+              abs(mstage["right"] - mfab["right"] - 12) <= 3 and abs(mstage["bottom"] - mfab["bottom"] - 12) <= 4,
+              f'stage {mstage["right"]},{mstage["bottom"]} vs button {mfab["right"]},{mfab["bottom"]}')
+        mpage.click("#slotToggle")
+        mpage.wait_for_timeout(400)
+        check("browser: mobile opens the panel with one tap", mpage.is_visible("#slotBar"))
+        check("browser: the mobile panel is a 2×2 of the four cells",
+              mpage.evaluate("""() => { const t = [...document.querySelectorAll('#slotTrack .slot')]
+                  .map(n => Math.round(n.getBoundingClientRect().top));
+                  return t.length === 4 && new Set(t).size === 2 && t.filter(y => y === t[0]).length === 2; }"""))
         check("browser: mobile has no horizontal overflow",
               mpage.evaluate("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1"),
               str(mpage.evaluate("() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]")))
-        check("browser: mobile slot tiles stay tappable",
-              mpage.evaluate("""() => [...document.querySelectorAll('#slotTrack button')]
-                  .every(b => { const r = b.getBoundingClientRect(); return r.height >= 30 && r.width >= 24; })"""))
+        check("browser: mobile slot tiles stay tappable inside the panel",
+              mpage.evaluate("""() => { const p = document.querySelector('#slotBar').getBoundingClientRect();
+                  const t = [...document.querySelectorAll('#slotTrack button')];
+                  return t.length === 8 && t.every(b => { const r = b.getBoundingClientRect();
+                    return r.height >= 30 && r.width >= 24 && r.left >= p.left - 1 && r.right <= p.right + 1; }); }"""))
+        check("browser: the mobile panel fits the screen",
+              mpage.evaluate("""() => { const p = document.querySelector('#slotBar').getBoundingClientRect();
+                  return p.left >= 0 && p.right <= window.innerWidth + 0.5 &&
+                         p.bottom <= document.querySelector('#stage').getBoundingClientRect().bottom; }"""))
+        mh = mpage.evaluate("""() => {
+            const vw = document.documentElement.clientWidth;
+            const head = document.querySelector('.app-header').getBoundingClientRect();
+            const acts = document.querySelector('.header-actions').getBoundingClientRect();
+            const brand = document.querySelector('.brand').getBoundingClientRect();
+            const cs = getComputedStyle(document.querySelector('.app-header'));
+            const pad = parseFloat(cs.paddingRight) || 0;
+            return {rightGap: vw - acts.right, inHead: acts.right <= head.right + 0.5,
+                    brandGap: acts.left - brand.right, pad: pad, width: acts.width, vw: vw};
+        }""")
+        check("browser: the mobile header pins its actions to the right edge",
+              0 <= mh["rightGap"] <= 16 and mh["inHead"] and mh["brandGap"] > 10 and mh["width"] > 100, str(mh))
+        check("browser: the actions no longer crowd the BETA badge",
+              mh["brandGap"] > 10, f'gap {mh["brandGap"]}px')
+        mpage.evaluate("() => window.SPApp.closeSlotPanel(false)")
+        mpage.wait_for_timeout(250)
         mpage.evaluate("() => window.SPApp.openFyraModal()")
         mpage.wait_for_timeout(600)
         check("browser: the theme window fits a phone",
@@ -618,13 +823,24 @@ def browser_tests(port):
         spage.wait_for_timeout(900)
         spage.evaluate("() => window.SPApp.setStyle('fyra04')")
         spage.wait_for_timeout(400)
-        check("browser: 320px keeps the slot bar inside the screen",
+        check("browser: 320px keeps the plate inside the screen",
               spage.evaluate("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1"),
               str(spage.evaluate("() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]")))
-        check("browser: 320px keeps all four slots on one row",
-              spage.evaluate("""() => { const t = document.querySelectorAll('#slotTrack .slot');
-                  const ys = [...t].map(n => Math.round(n.getBoundingClientRect().top));
-                  return t.length === 4 && new Set(ys).size === 1; }"""))
+        spage.evaluate("() => window.SPApp.openSlotPanel()")
+        spage.wait_for_timeout(350)
+        check("browser: 320px keeps the 4-cut panel inside the screen",
+              spage.evaluate("""() => { const p = document.querySelector('#slotBar').getBoundingClientRect();
+                  const tiles = [...document.querySelectorAll('#slotTrack .slot')].map(t => t.getBoundingClientRect());
+                  return p.left >= 0 && p.right <= window.innerWidth + 0.5 && tiles.length === 4 &&
+                         tiles.every(r => r.left >= p.left - 1 && r.right <= p.right + 1 && r.height >= 40) &&
+                         document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1; }"""))
+        check("browser: the 320px header still pins its actions right",
+              spage.evaluate("""() => { const vw = document.documentElement.clientWidth;
+                  const acts = document.querySelector('.header-actions').getBoundingClientRect();
+                  const brand = document.querySelector('.brand').getBoundingClientRect();
+                  return vw - acts.right <= 16 && acts.left - brand.right > 10; }"""))
+        spage.evaluate("() => window.SPApp.closeSlotPanel(false)")
+        spage.wait_for_timeout(200)
         spage.evaluate("() => window.SPApp.openFyraModal()")
         spage.wait_for_timeout(500)
         check("browser: 320px fits the theme window",

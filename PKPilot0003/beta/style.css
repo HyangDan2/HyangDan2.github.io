@@ -459,6 +459,7 @@ button.portal-item:disabled:hover { background: transparent; }
 .hf-card:active { transform: scale(0.995); }
 .hf-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hf-thumb {
+  position: relative;
   display: block;
   aspect-ratio: 4 / 3;
   border-radius: 6px;
@@ -468,10 +469,11 @@ button.portal-item:disabled:hover { background: transparent; }
 .hf-thumb canvas { width: 100%; height: 100%; display: block; }
 .hf-foot { display: flex; align-items: center; gap: 6px; padding: 7px 2px 1px; min-width: 0; }
 .hf-name { font-size: 12px; font-weight: 650; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the tag stays on the thumbnail's top-right corner on the landing too, so it
+   can never share a corner with the FYRA 04 re-click hint */
 .hf-foot .frame-badge {
-  position: static; top: auto; right: auto;
-  margin-left: auto; flex: none;
-  background: transparent; border-color: var(--line); color: var(--dim);
+  position: absolute; top: 9px; right: 9px;
+  margin-left: 0; flex: none;
 }
 
 .home-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
@@ -498,6 +500,7 @@ button.portal-item:disabled:hover { background: transparent; }
 
 /* ── stage ──────────────────────────────────────────────────────────────── */
 .stage {
+  position: relative;          /* the 4-cut control floats on the plate, not in a bar */
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -834,6 +837,7 @@ button.portal-item:disabled:hover { background: transparent; }
   box-shadow: 0 0 0 1px var(--accent), 0 6px 18px rgba(255, 130, 79, 0.14);
 }
 .frame-thumb {
+  position: relative;
   display: block;
   width: 100%;
   height: var(--thumb-h);
@@ -1742,11 +1746,14 @@ input[type="range"]::-moz-range-thumb {
 .prod-link:hover { color: var(--accent); border-color: var(--accent-dim); }
 .prod-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* the re-click hint on the FYRA 04 tile (and its landing card) */
+/* the re-click hint on the FYRA 04 tile (and its landing card). It sits in the
+   thumbnail's bottom-left corner: the 4-CUT tag owns the top-right one, so the
+   two badges cannot overlap however narrow the tile gets. */
 .frame-reclick {
   position: absolute;
-  top: 9px;
-  left: 9px;
+  top: auto;
+  bottom: 6px;
+  left: 6px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -1765,31 +1772,87 @@ input[type="range"]::-moz-range-thumb {
 .frame-card[aria-checked="true"] .frame-reclick {
   color: #1a120d; background: var(--accent); border-color: var(--accent);
 }
-.hf-card .frame-reclick { top: 8px; left: 8px; }
+.hf-card .frame-reclick { top: auto; bottom: 6px; left: 6px; }
 
 /* the two multi-cut plates are marked in the library so 4-up is no surprise */
 .frame-card--multi .frame-thumb { box-shadow: inset 0 0 0 1px rgba(255, 130, 79, 0.3); }
 .hf-card--multi .hf-thumb { box-shadow: inset 0 0 0 1px rgba(255, 130, 79, 0.28); }
 
 /* ── multi-cut slots ────────────────────────────────────────────────────── */
+/* The four cells are a floating control on the plate's bottom-right corner:
+   no permanent bar, so the stage keeps its height on a phone. */
+.slot-fab {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 7;
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  border: 1px solid rgba(255, 130, 79, 0.45);
+  border-radius: 13px;
+  background: rgba(20, 23, 20, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+.slot-fab .ic { width: 18px; height: 18px; }
+.slot-fab-n { font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 0; }
+.slot-fab:hover { border-color: var(--accent); background: rgba(255, 130, 79, 0.16); }
+.slot-fab:active { transform: scale(0.96); }
+.slot-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slot-fab[aria-expanded="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a120d;
+}
+.stage[data-bg="light"] .slot-fab {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 130, 79, 0.55);
+  color: #b2451a;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
 .slots {
   flex: none;
   padding: 6px 14px 8px;
   border-bottom: 1px solid var(--line-soft);
   background: linear-gradient(180deg, #141714, #101210);
 }
+.slots--float {
+  position: absolute;
+  right: 12px;
+  bottom: 66px;               /* just above the 46px button */
+  z-index: 8;
+  width: min(392px, calc(100% - 24px));
+  padding: 9px 10px 10px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: linear-gradient(180deg, #181b18, #101210);
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.62);
+  animation: slots-in 0.16s ease-out;
+}
+@keyframes slots-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 .slots[hidden] { display: none; }
 .slots-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-bottom: 5px;
+  padding-bottom: 6px;
   font-family: var(--mono);
   font-size: 9.5px;
   letter-spacing: 0.12em;
   color: var(--dim);
 }
-.slots-title { color: var(--accent); letter-spacing: 0.14em; }
+.slots-title { color: var(--accent); letter-spacing: 0.14em; white-space: nowrap; flex: none; }
 .slots-hint {
   min-width: 0;
   letter-spacing: 0.02em;
@@ -1799,6 +1862,8 @@ input[type="range"]::-moz-range-thumb {
   white-space: nowrap;
 }
 .slots-actions { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.slots--float .slots-actions { margin: 8px 0 0; }
+.slots--float .slots-btn { flex: 1 1 0; justify-content: center; min-height: 36px; }
 .slots-btn {
   display: inline-flex;
   align-items: center;
@@ -1826,8 +1891,8 @@ input[type="range"]::-moz-range-thumb {
 }
 .slot-track {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
 }
 .slot {
   position: relative;
@@ -1982,19 +2047,23 @@ input[type="range"]::-moz-range-thumb {
   .fyra-thumb { height: 118px; }
   .fyra-card { padding: 13px; gap: 10px; }
   .prod-link { display: none; }
+  /* the Production link was the auto margin holding the row apart: once it is
+     gone the actions carry that margin themselves, so 샘플·저장·⋮ stay pinned
+     to the header's right edge instead of drifting in beside BETA */
+  .header-actions { margin-left: auto; }
   /* the beta badge costs the lockup a word: on a phone the studio name gives
      way so the status row keeps one line and the header keeps its width */
   .brand em { display: none; }
   .slots { padding: 5px 10px 7px; }
+  .slots--float { left: 8px; right: 8px; width: auto; padding: 8px 9px 9px; bottom: 64px; }
   .slot-num { font-size: 8.5px; }
 }
 @media (max-width: 430px) {
-  .slot-name { display: none; }
-  .slot-pick { gap: 0; justify-content: center; padding: 4px; }
-  .slot-act { width: 26px; }
+  /* the cells are two per row in the floating panel now, so the name and the
+     button labels keep their room on a phone */
+  .slot-act { width: 28px; }
   .slots-hint { display: none; }
-  .slots-btn span { display: none; }
-  .slots-btn { padding: 0 8px; }
+  .slots--float .slot-pick { padding: 5px 6px; }
   .fyra-thumb { height: 104px; }
   .fyra-note { display: none; }
 }
