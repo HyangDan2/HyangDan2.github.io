@@ -91,6 +91,7 @@
        studio's photo, so every single-cut frame keeps working untouched. */
     slots: [],
     slotTarget: 0,
+    slotOpen: false,        // the floating 4-cut control is down (its panel is on the plate)
     fyraTheme: PL.FYRA_DEFAULT,
     fyraOpen: false,
     /* PC workspace: the photos opened together, or the folder a visitor picked.
@@ -193,6 +194,7 @@
     dockSize: $('#dockSize'),
     dockCount: $('#dockCount'),
     slotBar: $('#slotBar'),
+    slotToggle: $('#slotToggle'),
     slotTrack: $('#slotTrack'),
     slotHint: $('#slotHint'),
     slotAllInput: $('#slotAllInput'),
@@ -564,7 +566,8 @@
       return;
     }
     el.empty.hidden = true;
-    el.sessionCard.hidden = false;
+    /* a four-cut plate hides the single-photo strip: syncSlotUI owns the rule */
+    el.sessionCard.hidden = PL.isMulti(state.style);
     el.metaName.textContent = p.name;
     el.metaSize.textContent = p.w + ' × ' + p.h;
     el.metaBytes.textContent = bytes(p.bytes);
@@ -641,11 +644,12 @@
       b.dataset.style = id;
       b.setAttribute('aria-label', S.label + ' — ' + S.tag + ' 프레임으로 열기');
       b.innerHTML =
-        '<span class="hf-thumb"><canvas aria-hidden="true"></canvas></span>' +
-        (id === 'fyra04'
-          ? '<span class="frame-reclick" aria-hidden="true">' +
-              '<svg class="ic" viewBox="0 0 24 24"><use href="#i-sliders"/></svg>6 THEMES</span>'
-          : '') +
+        '<span class="hf-thumb"><canvas aria-hidden="true"></canvas>' +
+          (id === 'fyra04'
+            ? '<span class="frame-reclick" aria-hidden="true">' +
+                '<svg class="ic" viewBox="0 0 24 24"><use href="#i-sliders"/></svg>6 THEMES</span>'
+            : '') +
+        '</span>' +
         '<span class="hf-foot">' +
           '<span class="hf-name">' + S.label + '</span>' +
           '<span class="frame-badge">' + S.tag + '</span>' +
@@ -694,6 +698,8 @@
       scheduleStrip();
     } else {
       closeSheet(false);
+      state.slotOpen = false;
+      syncSlotUI();
       syncHomeSession();
       if (el.homeView) el.homeView.scrollTop = 0;
       requestAnimationFrame(paintHomeFrames);
@@ -784,6 +790,7 @@
     state.photo = null;
     state.exifTags = null;
     state.slots = [];
+    state.slotOpen = false;
     state.fields = EX.templateFor(new Date());
     state.zoom = 1; state.panX = 0; state.panY = 0;
     stripSrcCache = null;
@@ -1084,11 +1091,24 @@
   }
 
   function syncSlotUI() {
-    if (!el.slotBar) return;
     var multi = PL.isMulti(state.style);
-    el.slotBar.hidden = !multi;
+    /* a multi-cut plate prints four photographs: the single-photo strip under
+       the stage has nothing left to say, and the four cells move to the plate's
+       own floating control. A single-cut frame brings the strip straight back. */
+    if (el.sessionCard) el.sessionCard.hidden = !state.photo || multi;
+    if (!multi) state.slotOpen = false;
+    if (el.slotToggle) {
+      el.slotToggle.hidden = !multi;
+      el.slotToggle.setAttribute('aria-expanded', multi && state.slotOpen ? 'true' : 'false');
+      el.slotToggle.setAttribute('aria-label',
+        multi && state.slotOpen ? '4컷 사진 칸 닫기' : '4컷 사진 칸 열기');
+    }
     var geoHint = $('#geoMultiHint');
     if (geoHint) geoHint.hidden = !multi;
+    if (!el.slotBar) return;
+    var open = multi && !!state.slotOpen;
+    el.slotBar.hidden = !open;
+    el.slotBar.setAttribute('aria-hidden', open ? 'false' : 'true');
     if (!multi) return;
     var cells = slotsFill();
     cells.forEach(function (s, i) {
@@ -1150,6 +1170,33 @@
 
   function pickSlotFiles() {
     if (el.slotAllInput) el.slotAllInput.click();
+  }
+
+  /* ── the floating 4-cut control ──────────────────────────────────────────
+     Bottom-right of the plate: one tap opens the four cells over the photograph,
+     a tap outside (or the button again, or Esc) folds them away. The panel is a
+     popover — no modal backdrop, because the plate stays in view while a cell
+     is chosen. */
+  function openSlotPanel() {
+    if (!PL.isMulti(state.style)) return false;
+    state.slotOpen = true;
+    syncSlotUI();
+    return true;
+  }
+
+  function closeSlotPanel(restoreFocus) {
+    var was = !!state.slotOpen;
+    state.slotOpen = false;
+    syncSlotUI();
+    if (was && restoreFocus && el.slotToggle && !el.slotToggle.hidden) {
+      el.slotToggle.focus({ preventScroll: true });
+    }
+    return was;
+  }
+
+  function toggleSlotPanel() {
+    if (state.slotOpen) { closeSlotPanel(true); return false; }
+    return openSlotPanel();
   }
 
   /* ── FYRA 04 theme window ──────────────────────────────────────────────── */
@@ -2025,12 +2072,13 @@
       b.setAttribute('aria-label', S.label + ' — ' + S.tag +
         (id === 'fyra04' ? ' · 다시 누르면 6가지 테마' : ''));
       b.innerHTML =
-        '<span class="frame-thumb"><canvas aria-hidden="true"></canvas></span>' +
-        (id === 'fyra04'
-          ? '<span class="frame-reclick" aria-hidden="true">' +
-              '<svg class="ic" viewBox="0 0 24 24"><use href="#i-sliders"/></svg>다시 눌러 테마' +
-            '</span>'
-          : '') +
+        '<span class="frame-thumb"><canvas aria-hidden="true"></canvas>' +
+          (id === 'fyra04'
+            ? '<span class="frame-reclick" aria-hidden="true">' +
+                '<svg class="ic" viewBox="0 0 24 24"><use href="#i-sliders"/></svg>다시 눌러 테마' +
+              '</span>'
+            : '') +
+        '</span>' +
         '<span class="frame-foot">' +
           '<span class="frame-name">' + S.label + '</span>' +
           '<span class="frame-badge">' + S.tag + '</span>' +
@@ -2670,6 +2718,20 @@
         el.slotOneInput.value = '';
       });
     }
+    /* the floating control: the button toggles the panel, a tap elsewhere or
+       Esc folds it back into the corner */
+    if (el.slotToggle) {
+      el.slotToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleSlotPanel();
+      });
+    }
+    document.addEventListener('click', function (e) {
+      if (!state.slotOpen) return;
+      if (el.slotBar && el.slotBar.contains(e.target)) return;
+      if (el.slotToggle && el.slotToggle.contains(e.target)) return;
+      closeSlotPanel(false);
+    });
 
     /* FYRA 04 theme window */
     if (el.fyraClose) el.fyraClose.addEventListener('click', function () { closeFyraModal(true); });
@@ -2791,6 +2853,7 @@
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if (state.fyraOpen) { closeFyraModal(true); return; }
+      if (state.slotOpen) { closeSlotPanel(true); return; }
       if (el.previewOverlay.classList.contains('is-open')) {
         closePreviewOverlay();
         if (prepared) openExportCard(prepared);
@@ -3132,6 +3195,10 @@
     slots: function () { return slotSources(false); },
     slotNames: function () { return slotsFill().map(function (s) { return s ? s.name : ''; }); },
     slotFilledCount: slotFilledCount,
+    openSlotPanel: openSlotPanel,
+    closeSlotPanel: closeSlotPanel,
+    toggleSlotPanel: toggleSlotPanel,
+    isSlotPanelOpen: function () { return !!(state.slotOpen && PL.isMulti(state.style)); },
     chooseFrame: chooseFrame,
     openFyraModal: openFyraModal,
     closeFyraModal: closeFyraModal,
