@@ -3259,6 +3259,11 @@ body.is-dragging-pin .pin-person {
     -webkit-overflow-scrolling: touch;
   }
 
+  /* 하프 시트에서도 자동완성 목록이 시트 아래로 잘리지 않게 */
+  .panel[data-sheet='half'] .search-results {
+    max-height: min(30vh, 250px);
+  }
+
   .search-results li {
     min-height: 46px;
     padding: 10px;
