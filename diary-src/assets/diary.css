@@ -19,6 +19,7 @@
     --accent: #8B6CE8;
     --accent-hover: #6B4CD6;
     --accent-soft: #F1ECFE;
+    --line-strong: #D4CCE8;
     --radius: 5px;
     font-family: var(--sans);
     background: var(--background);
@@ -348,4 +349,78 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     .button, .category-card, .post-row-link, .pager-item, .switch-item, .write-button { transition: none; }
     .button-primary:hover, .category-card:hover { transform: none; }
     .t-cursor { animation: none; }
+}
+
+/* ---------- Navy & Lavender dark mode ([data-theme="dark"]) ---------- */
+[data-theme="dark"] {
+    color-scheme: dark;
+    --background: #0B1020;
+    --surface: #12192E;
+    --surface-2: #1A2340;
+    --panel-raised: #1A2340;
+    --border: #253154;
+    --border-soft: #1E2947;
+    --line-soft: #1E2947;
+    --line-strong: #344472;
+    --text: #EEF2FF;
+    --text-body: #C6D0E9;
+    --muted: #94A3C4;
+    --text-secondary: #8494B6;
+    --accent: #A78BFA;
+    --accent-hover: #C4B5FD;
+    --accent-soft: rgba(167, 139, 250, 0.14);
+}
+[data-theme="dark"] .site-header { background: rgb(11 16 32 / 90%); }
+[data-theme="dark"] .brand em { border-left-color: #344472; }
+/* the accent is a pale lavender in this palette, so ink sits on it, not paper */
+[data-theme="dark"] .skip-link,
+[data-theme="dark"] .button-primary,
+[data-theme="dark"] .write-button:hover { color: #0B1020; }
+[data-theme="dark"] .terminal-bar i { background: #344472; }
+[data-theme="dark"] .pane-head,
+[data-theme="dark"] .frontmatter-file,
+[data-theme="dark"] .frontmatter-code { background: #1A2340; }
+[data-theme="dark"] #field-body::placeholder { color: #8494B6; }
+[data-theme="dark"] .md-body .code-block code { color: #C6D0E9; }
+[data-theme="dark"] .md-body .code-block::after { box-shadow: 12px 0 0 #344472, 24px 0 0 #344472; }
+[data-theme="dark"] .action-note.is-warn { color: #FBBF24; }
+[data-theme="dark"] .action-note.is-ok { color: #4ADE9B; }
+/* highlight.js — retuned for a navy ground */
+[data-theme="dark"] .hljs-comment,
+[data-theme="dark"] .hljs-quote,
+[data-theme="dark"] .hljs-built_in,
+[data-theme="dark"] .hljs-meta,
+[data-theme="dark"] .hljs-link { color: #8494B6; }
+[data-theme="dark"] .hljs-keyword,
+[data-theme="dark"] .hljs-selector-tag,
+[data-theme="dark"] .hljs-literal,
+[data-theme="dark"] .hljs-type { color: #C4B5FD; }
+[data-theme="dark"] .hljs-string,
+[data-theme="dark"] .hljs-regexp,
+[data-theme="dark"] .hljs-addition { color: #6EE7A8; }
+[data-theme="dark"] .hljs-number,
+[data-theme="dark"] .hljs-symbol,
+[data-theme="dark"] .hljs-bullet { color: #FBBF24; }
+[data-theme="dark"] .hljs-title,
+[data-theme="dark"] .hljs-section,
+[data-theme="dark"] .hljs-name { color: #A78BFA; }
+[data-theme="dark"] .hljs-attr,
+[data-theme="dark"] .hljs-attribute,
+[data-theme="dark"] .hljs-variable,
+[data-theme="dark"] .hljs-template-variable { color: #93C5FD; }
+[data-theme="dark"] .hljs-deletion { color: #F87171; }
+
+/* ---------- floating Light/Dark toggle ---------- */
+.hd2-theme-toggle {
+    --hd2-toggle-bg: var(--surface);
+    --hd2-toggle-fg: var(--text);
+    --hd2-toggle-border: var(--border);
+    --hd2-toggle-shadow: 0 10px 26px rgb(29 25 43 / 16%);
+    --hd2-toggle-hover: var(--accent);
+    --hd2-toggle-z: 60;
+}
+[data-theme="dark"] .hd2-theme-toggle {
+    --hd2-toggle-bg: rgb(18 25 46 / 92%);
+    --hd2-toggle-border: #344472;
+    --hd2-toggle-shadow: 0 12px 30px rgb(0 0 0 / 52%);
 }
