@@ -4,8 +4,11 @@
 
    - verified public bundles boot with one click (no autoplay block)
    - a local .jsdos / .zip file is opened with URL.createObjectURL
-   - native fullscreen, mute, restart, and a touch gamepad that forwards
-     real KeyboardEvents into the emulator
+   - native fullscreen, mute, restart
+   - input goes through the js-dos v8 CommandInterface (ci.sendKeyEvent) so the
+     emulator receives keys no matter where focus sits
+   - touch gamepad (+ DOOM run / strafe / weapon keys) with pointer capture, and
+     an optional PC WASD binding
    ========================================================================== */
 (() => {
   'use strict';
@@ -13,6 +16,7 @@
   const JSDOS_SRC = 'https://v8.js-dos.com/latest/js-dos.js';
   const JSDOS_CSS = 'https://v8.js-dos.com/latest/js-dos.css';
   const STORE_KEY = 'pkpilot0006:last';
+  const WASD_KEY = 'pkpilot0006:wasd';
 
   /* -------------------------------------------------------------- library -- */
   const GAMES = [
@@ -37,8 +41,9 @@
       genre: 'FPS',
       size: '5.3 MB',
       license: 'Shareware',
+      pad: 'doom',
       url: 'https://v8.js-dos.com/bundles/doom.jsdos',
-      blurb: '셰어웨어 에피소드 1 “Knee-Deep in the Dead”. 방향키 이동, Ctrl 사격, Space 문 열기.',
+      blurb: '셰어웨어 에피소드 1 “Knee-Deep in the Dead”. WASD 이동·옆걸음, ←→ 회전, Ctrl 사격, Space 문 열기.',
     },
     {
       id: 'dhrystone',
@@ -54,6 +59,42 @@
     },
   ];
 
+  /* js-dos v8 key codes — taken from the `KBD_` table inside
+     https://v8.js-dos.com/latest/js-dos.js (function ya(keyCode, location)
+     maps a DOM event onto it). ci.sendKeyEvent takes these numbers. */
+  const KBD = {
+    ArrowUp: 265,
+    ArrowDown: 264,
+    ArrowLeft: 263,
+    ArrowRight: 262,
+    Enter: 257,
+    Space: 32,
+    Escape: 256,
+    Tab: 258,
+    Backspace: 259,
+    ControlLeft: 341,
+    ControlRight: 345,
+    ShiftLeft: 340,
+    ShiftRight: 344,
+    AltLeft: 342,
+    AltRight: 346,
+    KeyY: 89,
+    KeyN: 78,
+    KeyW: 87,
+    KeyA: 65,
+    KeyS: 83,
+    KeyD: 68,
+    Digit1: 49,
+    Digit2: 50,
+    Digit3: 51,
+    Digit4: 52,
+    Digit5: 53,
+    Digit6: 54,
+    Digit7: 55,
+  };
+
+  /* used only as a fallback when the CommandInterface is not up yet: js-dos
+     listens for keydown/keyup on window and maps keyCode + location itself */
   const KEYMAP = {
     ArrowUp: { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 },
     ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 },
@@ -61,10 +102,84 @@
     ArrowRight: { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
     Enter: { key: 'Enter', code: 'Enter', keyCode: 13 },
     Space: { key: ' ', code: 'Space', keyCode: 32 },
-    ControlLeft: { key: 'Control', code: 'ControlLeft', keyCode: 17 },
     Escape: { key: 'Escape', code: 'Escape', keyCode: 27 },
+    ControlLeft: { key: 'Control', code: 'ControlLeft', keyCode: 17, location: 1 },
+    ShiftLeft: { key: 'Shift', code: 'ShiftLeft', keyCode: 16, location: 1 },
+    AltLeft: { key: 'Alt', code: 'AltLeft', keyCode: 18, location: 1 },
     KeyY: { key: 'y', code: 'KeyY', keyCode: 89 },
     KeyN: { key: 'n', code: 'KeyN', keyCode: 78 },
+    KeyW: { key: 'w', code: 'KeyW', keyCode: 87 },
+    KeyA: { key: 'a', code: 'KeyA', keyCode: 65 },
+    KeyS: { key: 's', code: 'KeyS', keyCode: 83 },
+    KeyD: { key: 'd', code: 'KeyD', keyCode: 68 },
+    Digit1: { key: '1', code: 'Digit1', keyCode: 49 },
+    Digit2: { key: '2', code: 'Digit2', keyCode: 50 },
+    Digit3: { key: '3', code: 'Digit3', keyCode: 51 },
+    Digit4: { key: '4', code: 'Digit4', keyCode: 52 },
+  };
+
+  /* What the arrow keys mean depends on the game. This DOOM shareware bundle
+     ships its own DEFAULT.CFG:
+       key_up = W (sc 17)   key_down = S (sc 31)
+       key_strafeleft = A (sc 30)   key_straferight = D (sc 32)
+       key_left/right = left/right arrow, key_fire = Ctrl, key_use = Space,
+       key_speed = Shift, key_strafe = Alt
+     so in DOOM a plain up arrow does nothing at all — the d-pad has to send
+     what the game listens for, or touch players cannot walk. */
+  const PROFILES = {
+    arrows: {
+      pad: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' },
+      wasd: { KeyW: 'ArrowUp', KeyA: 'ArrowLeft', KeyS: 'ArrowDown', KeyD: 'ArrowRight' },
+    },
+    doom: {
+      // DOOM walks on W/S but its menus (Esc) move on the real arrow keys, so
+      // the d-pad sends both: gameplay goes to W/S, menus to up/down
+      pad: {
+        up: ['KeyW', 'ArrowUp'],
+        down: ['KeyS', 'ArrowDown'],
+        left: ['ArrowLeft'],
+        right: ['ArrowRight'],
+      },
+      // the bundle is already WASD native, so the letters stay letters
+      wasd: { KeyW: 'KeyW', KeyA: 'KeyA', KeyS: 'KeyS', KeyD: 'KeyD' },
+    },
+  };
+  const ACTION_MAP = {
+    KeyJ: 'ControlLeft',
+    KeyZ: 'ControlLeft',
+    KeyK: 'Space',
+    KeyX: 'Space',
+    KeyL: 'Enter',
+    KeyC: 'Enter',
+  };
+  const DIRECTION = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+
+  /* DOS keys we forward ourselves (single path: js-dos' own window listener is
+     stopped for these so one physical press never reaches the emulator twice) */
+  const NATIVE_KEYS = {
+    ArrowUp: 'ArrowUp',
+    ArrowDown: 'ArrowDown',
+    ArrowLeft: 'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    Enter: 'Enter',
+    NumpadEnter: 'Enter',
+    Space: 'Space',
+    Escape: 'Escape',
+    ControlLeft: 'ControlLeft',
+    ControlRight: 'ControlRight',
+    ShiftLeft: 'ShiftLeft',
+    ShiftRight: 'ShiftRight',
+    AltLeft: 'AltLeft',
+    AltRight: 'AltRight',
+    KeyY: 'KeyY',
+    KeyN: 'KeyN',
+    Digit1: 'Digit1',
+    Digit2: 'Digit2',
+    Digit3: 'Digit3',
+    Digit4: 'Digit4',
+    Digit5: 'Digit5',
+    Digit6: 'Digit6',
+    Digit7: 'Digit7',
   };
 
   /* ------------------------------------------------------------------ dom -- */
@@ -98,13 +213,19 @@
   const portalMenuBtn = $('portalMenuBtn');
   const portalMenuDropdown = $('portalMenuDropdown');
 
+  const wasdBtn = $('wasdBtn');
+  const wasdState = $('wasdState');
+
   const state = {
     current: null,
     dos: null,
+    ci: null,
     objectUrl: null,
     muted: false,
     running: false,
     booting: false,
+    wasd: true,
+    profile: 'arrows',
     enginePromise: null,
   };
 
@@ -145,6 +266,12 @@
     const target = state.current;
     nowTitle.textContent = target ? target.name : '게임을 선택하세요';
     nowMeta.textContent = target ? describe(target) : '아래 ‘바로실행용’에서 한 번만 누르면 부팅됩니다';
+    const padHintEl = $('padHint');
+    if (padHintEl) {
+      padHintEl.textContent = state.profile === 'doom'
+        ? '가상 게임패드 · ▲▼ 이동 / ◀▶ 회전 · Alt 옆걸음'
+        : '가상 게임패드 · 터치로 조작';
+    }
     if (!state.running && !state.booting) {
       veil.hidden = false;
       veil.dataset.state = 'idle';
@@ -206,6 +333,8 @@
   }
 
   function teardown() {
+    releaseAll();
+    state.ci = null;
     if (state.dos) {
       try { state.dos.stop(); } catch (_) { /* already stopped */ }
       state.dos = null;
@@ -255,6 +384,8 @@
 
     teardown();
     state.current = target;
+    state.profile = PROFILES[target.pad] ? target.pad : 'arrows';
+    refreshLabels();
     for (const btn of gameList.querySelectorAll('.game-tile')) {
       btn.setAttribute('aria-pressed', String(btn.dataset.game === target.id));
     }
@@ -272,6 +403,14 @@
         thinSidebar: true,
         mouseCapture: false,
         countDownStart: 0,
+        onEvent: (event, ci) => {
+          // js-dos reports "ci-ready" with the live CommandInterface; every key
+          // we send goes through it, so the emulator needs no focused element
+          if (event === 'ci-ready' && ci) {
+            state.ci = ci;
+            releaseAll();
+          }
+        },
       });
       state.dos = props;
       if (state.muted) {
@@ -465,7 +604,11 @@
     fileNote.textContent = '드롭한 파일은 브라우저 안에서만 열립니다 — 서버로 업로드되지 않습니다.';
   });
 
-  /* ------------------------------------------------------------- gamepad -- */
+  /* --------------------------------------------------------------- input -- */
+  /* every key the player presses (pad, WASD, native) ends up in `held` so a
+     blur, a hidden tab or a stopped emulator can never leave a key stuck down */
+  const held = new Set();
+
   function keyTarget() {
     return stage.querySelector('canvas') || document;
   }
@@ -473,9 +616,16 @@
   function sendKey(code, down) {
     const map = KEYMAP[code];
     if (!map) return;
+    if (state.ci && typeof state.ci.sendKeyEvent === 'function') {
+      try {
+        state.ci.sendKeyEvent(KBD[code], down);
+        return;
+      } catch (_) { /* CI went away mid-press: fall through to the event path */ }
+    }
     const event = new KeyboardEvent(down ? 'keydown' : 'keyup', {
       key: map.key,
       code: map.code,
+      location: map.location || 0,
       bubbles: true,
       cancelable: true,
       view: window,
@@ -483,50 +633,172 @@
     for (const prop of ['keyCode', 'which']) {
       Object.defineProperty(event, prop, { get: () => map.keyCode });
     }
+    event.__pkpilot = true;
     keyTarget().dispatchEvent(event);
   }
 
-  function tap(code) {
-    sendKey(code, true);
-    setTimeout(() => sendKey(code, false), 90);
+  function press(codes, repeat) {
+    for (const code of Array.isArray(codes) ? codes : [codes]) {
+      if (!repeat && held.has(code)) continue;
+      held.add(code);
+      sendKey(code, true);
+    }
   }
 
+  function release(codes) {
+    for (const code of Array.isArray(codes) ? codes : [codes]) {
+      if (!held.delete(code)) continue;
+      sendKey(code, false);
+    }
+  }
+
+  function releaseAll() {
+    for (const code of Array.from(held)) release(code);
+    held.clear();
+    for (const btn of pad.querySelectorAll('.pad-key.is-down')) {
+      btn.classList.remove('is-down');
+    }
+  }
+
+  function flashPad(code, on) {
+    for (const btn of pad.querySelectorAll('.pad-key')) {
+      if (padCodes(btn).includes(code)) btn.classList.toggle('is-down', !!on);
+    }
+  }
+
+  /* the d-pad buttons are semantic (up/down/left/right); the DOS key(s) behind
+     them come from the running game's profile */
+  function padCodes(btn) {
+    const dir = DIRECTION[btn.dataset.code];
+    if (!dir) return [btn.dataset.code];
+    const codes = PROFILES[state.profile].pad[dir];
+    return Array.isArray(codes) ? codes : [codes];
+  }
+
+  /* a key must never escape while the page itself is losing focus */
+  window.addEventListener('blur', releaseAll);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
+  window.addEventListener('pagehide', releaseAll);
+
+  /* ---- touch / pointer gamepad ---- */
   for (const btn of pad.querySelectorAll('.pad-key')) {
-    const code = btn.dataset.code;
-    let holding = false;
-    const press = (event) => {
+    let pointerId = null;
+    let activeCodes = [];
+
+    const down = (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
       event.preventDefault();
-      if (holding) return;
-      holding = true;
-      btn.classList.add('is-down');
+      if (pointerId !== null) return;
       if (!state.running) {
-        holding = false;
-        btn.classList.remove('is-down');
         toast('먼저 게임을 실행하세요');
         return;
       }
-      sendKey(code, true);
+      pointerId = event.pointerId;
+      btn.classList.add('is-down');
+      // capture keeps the hold alive when the finger slides off the button —
+      // previously pointerleave released it and the d-pad dropped mid-move
       if (btn.setPointerCapture && event.pointerId !== undefined) {
         try { btn.setPointerCapture(event.pointerId); } catch (_) { /* ignore */ }
       }
+      activeCodes = padCodes(btn);
+      press(activeCodes, false);
     };
-    const release = () => {
-      if (!holding) return;
-      holding = false;
+
+    const up = (event) => {
+      if (pointerId === null) return;
+      if (event.pointerId !== undefined && event.pointerId !== pointerId) return;
+      pointerId = null;
       btn.classList.remove('is-down');
-      sendKey(code, false);
+      for (const code of activeCodes) release(code);
+      activeCodes = [];
     };
-    btn.addEventListener('pointerdown', press);
-    btn.addEventListener('pointerup', release);
-    btn.addEventListener('pointercancel', release);
-    btn.addEventListener('pointerleave', release);
+
+    btn.addEventListener('pointerdown', down);
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointercancel', up);
+    btn.addEventListener('lostpointercapture', up);
+    btn.addEventListener('contextmenu', (event) => event.preventDefault());
     btn.addEventListener('keydown', (event) => {
       if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); }
     });
     btn.addEventListener('click', (event) => {
-      if (event.detail === 0 && state.running) tap(code);
+      // keyboard activation (detail 0) lands here; pointer taps already fired
+      if (event.detail === 0 && state.running) {
+        const codes = padCodes(btn);
+        press(codes, false);
+        setTimeout(() => codes.forEach(release), 90);
+      }
     });
   }
+
+  /* ---- PC keyboard ---- */
+  function isTyping(target) {
+    return !!(target && target.closest
+      && target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]'));
+  }
+
+  function keysBlocked() {
+    return !state.running || !state.ci || !portalMenuDropdown.hidden;
+  }
+
+  function dosCode(event) {
+    if (state.wasd && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      const mapped = PROFILES[state.profile].wasd[event.code] || ACTION_MAP[event.code];
+      if (mapped) return mapped;
+    }
+    return NATIVE_KEYS[event.code] || null;
+  }
+
+  window.addEventListener('keydown', (event) => {
+    if (event.__pkpilot || keysBlocked() || isTyping(event.target)) return;
+    const code = dosCode(event);
+    if (!code) return;
+    // the page must not scroll on arrows/space, and js-dos' own window listener
+    // (bubble phase) must not deliver the same press a second time
+    event.preventDefault();
+    event.stopPropagation();
+    press(code, event.repeat);
+    flashPad(code, true);
+  }, true);
+
+  window.addEventListener('keyup', (event) => {
+    if (event.__pkpilot || keysBlocked() || isTyping(event.target)) return;
+    const code = dosCode(event);
+    if (!code) return;
+    event.preventDefault();
+    event.stopPropagation();
+    release(code);
+    flashPad(code, false);
+  }, true);
+
+  /* ---- PC keyboard binding (WASD) ---- */
+  function applyWasd() {
+    if (!wasdBtn) return;
+    wasdBtn.setAttribute('aria-pressed', String(state.wasd));
+    wasdBtn.title = state.wasd
+      ? 'PC 키보드 WASD 바인딩 · 켜짐 (누르면 끕니다)'
+      : 'PC 키보드 WASD 바인딩 · 꺼짐 (누르면 켭니다)';
+    if (wasdState) wasdState.textContent = state.wasd ? '켜짐' : '꺼짐';
+    const strip = $('keybind');
+    if (strip) strip.dataset.wasd = state.wasd ? 'on' : 'off';
+  }
+
+  try {
+    const saved = localStorage.getItem(WASD_KEY);
+    if (saved === '0') state.wasd = false;
+    else if (saved === '1') state.wasd = true;
+  } catch (_) { /* private mode */ }
+
+  if (wasdBtn) {
+    wasdBtn.addEventListener('click', () => {
+      state.wasd = !state.wasd;
+      try { localStorage.setItem(WASD_KEY, state.wasd ? '1' : '0'); } catch (_) { /* ignore */ }
+      applyWasd();
+      releaseAll();
+      toast(state.wasd ? 'WASD 모드 켜짐 — W/A/S/D로 이동합니다' : 'WASD 모드 꺼짐 — W/A/S/D는 글자로 전달됩니다');
+    });
+  }
+  applyWasd();
 
   /* ------------------------------------------------------------- chrome -- */
   portalMenuBtn.addEventListener('click', () => {
@@ -575,7 +847,10 @@
     games: GAMES,
     state,
     boot,
-    tap,
+    press,
+    release,
+    releaseAll,
     sendKey,
+    KBD,
   };
 })();

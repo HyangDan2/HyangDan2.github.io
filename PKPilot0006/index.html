@@ -43,7 +43,7 @@
   <meta name="twitter:image:alt" content="HD2Lab | DOS Player — 고전 DOS 게임을, 설치 없이 바로" />
 
   <link rel="preconnect" href="https://v8.js-dos.com" crossorigin />
-  <link rel="stylesheet" href="style.css?v=20261116" />
+  <link rel="stylesheet" href="style.css?v=20261116b" />
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로</a>
@@ -143,13 +143,28 @@
             <button class="bar-btn" id="fsBtn" type="button" title="전체화면" aria-label="전체화면" aria-pressed="false">
               <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-expand"/></svg><span>전체화면</span>
             </button>
+            <button class="bar-btn wasd-toggle" id="wasdBtn" type="button" title="PC 키보드 WASD 바인딩" aria-label="PC 키보드 WASD 바인딩" aria-pressed="true">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-keys"/></svg><span>WASD <b id="wasdState">켜짐</b></span>
+            </button>
           </div>
+        </div>
+
+        <div class="keybind" id="keybind" data-wasd="on" aria-label="PC 키보드 조작 안내">
+          <span class="keybind-label">PC 키보드</span>
+          <span class="kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동</span>
+          <span class="kb"><kbd>←</kbd><kbd>→</kbd> 회전</span>
+          <span class="kb"><kbd>J</kbd><i>/</i><kbd>Z</kbd> 사격</span>
+          <span class="kb"><kbd>K</kbd><i>/</i><kbd>X</kbd> 문 열기</span>
+          <span class="kb"><kbd>L</kbd><i>/</i><kbd>C</kbd> Enter</span>
+          <span class="kb"><kbd>Shift</kbd> 달리기</span>
+          <span class="kb"><kbd>Alt</kbd> 스트레이프</span>
+          <span class="kb"><kbd>1</kbd>–<kbd>4</kbd> 무기</span>
         </div>
 
         <div class="pad" id="pad" aria-label="가상 게임패드">
           <div class="pad-head">
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pad"/></svg>
-            <span>가상 게임패드 · 터치로 조작</span>
+            <span id="padHint">가상 게임패드 · 터치로 조작</span>
           </div>
           <div class="pad-body">
             <div class="dpad">
@@ -161,11 +176,19 @@
             <div class="pad-keys">
               <button class="pad-key act" type="button" data-code="Enter" aria-label="엔터">A<span>Enter</span></button>
               <button class="pad-key act" type="button" data-code="Space" aria-label="스페이스">B<span>Space</span></button>
-              <button class="pad-key act" type="button" data-code="ControlLeft" aria-label="컨트롤">C<span>Ctrl</span></button>
+              <button class="pad-key act" type="button" data-code="ControlLeft" aria-label="컨트롤 사격">C<span>Ctrl</span></button>
               <button class="pad-key act" type="button" data-code="Escape" aria-label="이스케이프">D<span>Esc</span></button>
               <button class="pad-key act" type="button" data-code="KeyY" aria-label="와이">E<span>Y</span></button>
               <button class="pad-key act" type="button" data-code="KeyN" aria-label="엔">F<span>N</span></button>
             </div>
+          </div>
+          <div class="pad-extra" aria-label="DOOM 보조 키">
+            <button class="pad-key" type="button" data-code="ShiftLeft" aria-label="시프트 달리기">⇧<span>달리기</span></button>
+            <button class="pad-key" type="button" data-code="AltLeft" aria-label="알트 옆걸음">⌥<span>옆걸음</span></button>
+            <button class="pad-key" type="button" data-code="Digit1" aria-label="무기 1">1<span>무기 1</span></button>
+            <button class="pad-key" type="button" data-code="Digit2" aria-label="무기 2">2<span>무기 2</span></button>
+            <button class="pad-key" type="button" data-code="Digit3" aria-label="무기 3">3<span>무기 3</span></button>
+            <button class="pad-key" type="button" data-code="Digit4" aria-label="무기 4">4<span>무기 4</span></button>
           </div>
         </div>
       </section>
@@ -200,14 +223,18 @@
             <span class="panel-meta">04 / KEYS</span>
           </div>
           <dl class="key-rows">
-            <div><dt><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></dt><dd>이동·선택</dd></div>
+            <div><dt><kbd>W</kbd><kbd>S</kbd></dt><dd>앞·뒤 (DOOM)</dd></div>
+            <div><dt><kbd>A</kbd><kbd>D</kbd></dt><dd>옆걸음 (DOOM)</dd></div>
+            <div><dt><kbd>←</kbd><kbd>→</kbd></dt><dd>회전·메뉴 선택</dd></div>
+            <div><dt><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></dt><dd>이동 (Digger 등)</dd></div>
             <div><dt><kbd>Enter</kbd></dt><dd>확인·시작</dd></div>
-            <div><dt><kbd>Space</kbd></dt><dd>발사·열기</dd></div>
-            <div><dt><kbd>Ctrl</kbd></dt><dd>공격 (DOOM)</dd></div>
+            <div><dt><kbd>Space</kbd></dt><dd>문 열기·발사</dd></div>
+            <div><dt><kbd>Ctrl</kbd></dt><dd>사격 (DOOM)</dd></div>
+            <div><dt><kbd>Shift</kbd><kbd>Alt</kbd></dt><dd>달리기 / 옆걸음</dd></div>
+            <div><dt><kbd>1</kbd>–<kbd>4</kbd></dt><dd>무기 바꾸기 (DOOM)</dd></div>
             <div><dt><kbd>Esc</kbd></dt><dd>메뉴·취소</dd></div>
-            <div><dt><kbd>Y</kbd><kbd>N</kbd></dt><dd>예 / 아니오</dd></div>
           </dl>
-          <p class="panel-foot">화면을 한 번 클릭하면 키보드·마우스가 DOS로 전달됩니다. 모바일에서는 아래 <b>가상 게임패드</b>를 쓰세요.</p>
+          <p class="panel-foot">게임마다 키 배치가 달라서 화면의 게임에 맞춰 자동으로 바뀝니다 — DOOM은 <kbd>W</kbd><kbd>S</kbd> 이동·<kbd>A</kbd><kbd>D</kbd> 옆걸음·<kbd>←</kbd><kbd>→</kbd> 회전, Digger는 방향키. <b>WASD 모드</b>를 켜면 <kbd>J</kbd>·<kbd>Z</kbd>가 사격(<kbd>Ctrl</kbd>), <kbd>K</kbd>·<kbd>X</kbd>가 <kbd>Space</kbd>, <kbd>L</kbd>·<kbd>C</kbd>가 <kbd>Enter</kbd>도 됩니다. 키는 화면을 클릭하지 않아도 전달되고, 모바일에서는 아래 <b>가상 게임패드</b>를 쓰세요.</p>
         </section>
       </aside>
     </div>
@@ -220,6 +247,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=20261116" defer></script>
+  <script src="app.js?v=20261116b" defer></script>
 </body>
 </html>
