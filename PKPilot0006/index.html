@@ -43,7 +43,7 @@
   <meta name="twitter:image:alt" content="HD2Lab | DOS Player — 고전 DOS 게임을, 설치 없이 바로" />
 
   <link rel="preconnect" href="https://v8.js-dos.com" crossorigin />
-  <link rel="stylesheet" href="style.css?v=20261116b" />
+  <link rel="stylesheet" href="style.css?v=20261116c" />
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로</a>
@@ -83,6 +83,9 @@
             <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/ApplicationHub/" target="_blank" rel="noopener noreferrer">ApplicationHub</a>
             <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/GameHub/" target="_blank" rel="noopener noreferrer">GameHub</a>
             <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/PKPilot0003/" target="_blank" rel="noopener noreferrer">Shutterplate</a>
+            <button class="portal-item portal-toggle" id="padForceBtn" type="button" role="menuitemcheckbox" aria-checked="false">
+              <span>가상 게임패드 강제 표시</span><span class="portal-check" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
       </div>
@@ -146,6 +149,10 @@
             <button class="bar-btn wasd-toggle" id="wasdBtn" type="button" title="PC 키보드 WASD 바인딩" aria-label="PC 키보드 WASD 바인딩" aria-pressed="true">
               <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-keys"/></svg><span>WASD <b id="wasdState">켜짐</b></span>
             </button>
+            <button class="bar-btn keymap-toggle" id="keymapBtn" type="button" title="PC 키 설정" aria-label="PC 키 설정" aria-haspopup="dialog" aria-controls="keymapModal" aria-expanded="false">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-keys"/></svg><span>키 설정</span>
+            </button>
+            <button class="bar-btn softkb-toggle" id="softKbBtn" type="button" title="휴대폰 키보드로 입력" aria-label="가상 키보드 열기"><span>⌨️ 키보드</span></button>
           </div>
         </div>
 
@@ -182,7 +189,8 @@
               <button class="pad-key act" type="button" data-code="KeyN" aria-label="엔">F<span>N</span></button>
             </div>
           </div>
-          <div class="pad-extra" aria-label="DOOM 보조 키">
+          <button class="pad-more" id="padMoreBtn" type="button" aria-expanded="false" aria-controls="padExtra">＋ Shift · Alt · 1–4</button>
+          <div class="pad-extra" id="padExtra" aria-label="DOOM 보조 키">
             <button class="pad-key" type="button" data-code="ShiftLeft" aria-label="시프트 달리기">⇧<span>달리기</span></button>
             <button class="pad-key" type="button" data-code="AltLeft" aria-label="알트 옆걸음">⌥<span>옆걸음</span></button>
             <button class="pad-key" type="button" data-code="Digit1" aria-label="무기 1">1<span>무기 1</span></button>
@@ -245,8 +253,39 @@
     </footer>
   </main>
 
+  <div class="keymodal" id="keymapModal" hidden>
+    <div class="keymodal-backdrop" data-keymap-close></div>
+    <div class="keymodal-panel" role="dialog" aria-modal="true" aria-labelledby="keymapTitle" aria-describedby="keymapLede">
+      <div class="keymodal-head">
+        <div>
+          <p class="keymodal-eyebrow">PC KEY SETTINGS</p>
+          <h2 id="keymapTitle">키 설정</h2>
+        </div>
+        <button class="keymodal-x" id="keymapX" type="button" aria-label="키 설정 닫기">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <p class="keymodal-lede" id="keymapLede">키 칸을 누른 뒤 원하는 키를 누르세요. 다른 동작에 이미 쓰인 키를 고르면 서로 바뀝니다. <b>Esc</b>는 입력 취소·창 닫기에 쓰입니다.</p>
+      <ul class="keymodal-list" id="keymapList"></ul>
+      <p class="keymodal-note" id="keymapNote" hidden></p>
+      <div class="keymodal-foot">
+        <button class="ghost-btn small" id="keymapReset" type="button">기본값 초기화</button>
+        <button class="primary-btn small" id="keymapDone" type="button">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mini-bar" id="miniBar" hidden>
+    <button class="mini-btn" id="miniPadBtn" type="button" aria-pressed="false">패드 숨김</button>
+    <button class="mini-btn" id="miniKbBtn" type="button">⌨️ 가상 키보드</button>
+    <button class="mini-btn" id="miniMuteBtn" type="button" aria-pressed="false">🔊 소리</button>
+    <button class="mini-btn mini-exit" id="miniExitBtn" type="button">✕ 나가기</button>
+  </div>
+
+  <input class="soft-input" id="softKeyboard" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="게임 키 입력" tabindex="-1" />
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=20261116b" defer></script>
+  <script src="app.js?v=20261116c" defer></script>
 </body>
 </html>
