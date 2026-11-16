@@ -26,6 +26,7 @@ import {
   nearestStations,
   normalizePoint,
   parseShareState,
+  exactCenterSpot,
   recommendMeetingSpot,
   sanitizeName,
   spotAllowed,
@@ -639,15 +640,59 @@ test('모드 분리: 같은 좌표라면 대중교통과 자차의 추천이 다
   const transit = recommendMeetingSpot(points, spots, { travelMode: 'transit' });
   const car = recommendMeetingSpot(points, spots, { travelMode: 'car' });
   assertEqual(transit.primary.name, '강남역');
-  assertEqual(spotKind(car.primary), 'ic');
+  // 근거리 자차 기본값은 '정확한 중심점' — IC 로 무조건 스냅하지 않는다
+  assertEqual(car.carAnchor, 'center');
+  assertEqual(spotKind(car.primary), 'center');
   assert(spotAllowed(transit.primary, 'transit'));
   assert(!spotAllowed(transit.primary, 'car'));
-  assert(spotAllowed(car.primary, 'car'));
+  // 명시적으로 IC·휴게소를 고르면 고속도로 거점이 나온다
+  const highway = recommendMeetingSpot(points, spots, { travelMode: 'car', carAnchor: 'highway' });
+  assertEqual(highway.carAnchor, 'highway');
+  assertEqual(spotKind(highway.primary), 'ic');
+  assert(spotAllowed(highway.primary, 'car'));
 });
 
-test('모드 분리: 영남권 자차 모드는 IC·휴게소가 나온다', () => {
+test('자차: 근거리 시내 모임은 정확한 중심점(주차 거점)을 쓴다', () => {
+  const spots = [
+    ['중심 주차장', 37.5325, 127.0035, [], { kind: 'parking', parking: true }],
+    ['먼 주차장', 37.6100, 126.9780, [], { kind: 'parking', parking: true }],
+    ['판교IC', 37.3948, 127.1111, [], { kind: 'ic', road: '경부고속도로' }],
+  ];
+  const rec = recommendMeetingSpot([CITY_HALL, GANGNAM], spots, { travelMode: 'car' });
+  assertEqual(rec.carAnchor, 'center');
+  assertEqual(spotKind(rec.primary), 'parking');
+  assertEqual(rec.primary.name, '중심 주차장');
+  assert(rec.primary.km <= 2.5, `주차 거점이 중심에서 너무 멀다: ${rec.primary.km}km`);
+});
+
+test('자차: 중심 근처에 주차 거점이 없으면 중심 좌표 자체를 거점으로 쓴다', () => {
+  const spots = [['먼 주차장', 37.6100, 126.9780, [], { kind: 'parking', parking: true }]];
+  const points = [CITY_HALL, GANGNAM];
+  const rec = recommendMeetingSpot(points, spots, { travelMode: 'car' });
+  assertEqual(rec.carAnchor, 'center');
+  assertEqual(spotKind(rec.primary), 'center');
+  assertEqual(rec.primary.name, '정확한 중심점');
+  assertEqual(rec.primary.km, 0);
+  assertClose(rec.primary.lat, rec.center.lat, 1e-9);
+  assertClose(rec.primary.lng, rec.center.lng, 1e-9);
+  assert(rec.primary.maxKm > 0, '가장 먼 참가자 거리가 없다');
+  assertEqual(rec.primary.distances.length, points.length);
+});
+
+test('exactCenterSpot: 중심 좌표와 참가자 거리 통계를 그대로 담는다', () => {
+  const points = [CITY_HALL, GANGNAM];
+  const center = midpoint(points, 'fair');
+  const spot = exactCenterSpot(center, points);
+  assertEqual(spot.kind, 'center');
+  assertEqual(spot.km, 0);
+  assertClose(spot.maxKm, Math.max(...points.map(p => haversineKm(center, p))), 1e-9);
+  assertEqual(spot.sumKm.toFixed(6), spot.distances.reduce((a, b) => a + b, 0).toFixed(6));
+});
+
+test('모드 분리: 영남권 자차 IC·휴게소 모드는 고속도로 거점이 나온다', () => {
   const rec = recommendMeetingSpot([CHANGWON_GAEUM, BUSAN_SASANG], SPOTS_FIXTURE(), {
     travelMode: 'car',
+    carAnchor: 'highway',
   });
   assert(rec && rec.primary, '자차 추천이 없다');
   assert(['ic', 'rest', 'parking'].includes(spotKind(rec.primary)), `자차인데 ${rec.primary.name} (${spotKind(rec.primary)})`);
@@ -701,10 +746,14 @@ test('장거리: 허브 가중치는 상한이 있다', () => {
 });
 
 test('길찾기 없음: 추천 후보가 없어도 결과가 깨지지 않는다', () => {
-  const rec = recommendMeetingSpot([SEOUL_STATION, BUSAN_STATION], [], { travelMode: 'car' });
-  assert(rec && rec.center, '중심 계산이 없다');
-  assertEqual(rec.primary, null);
-  assertEqual(rec.nearBy.length, 0);
+  const transit = recommendMeetingSpot([SEOUL_STATION, BUSAN_STATION], [], { travelMode: 'transit' });
+  assert(transit && transit.center, '중심 계산이 없다');
+  assertEqual(transit.primary, null);
+  assertEqual(transit.nearBy.length, 0);
+  // 자차 근거리는 거점 데이터가 없어도 중심 좌표로 결과를 만든다
+  const car = recommendMeetingSpot([GANGNAM, HONGDAE], [], { travelMode: 'car' });
+  assertEqual(spotKind(car.primary), 'center');
+  assertEqual(car.nearBy.length, 0);
 });
 
 /* ------------------------------------------------------------------

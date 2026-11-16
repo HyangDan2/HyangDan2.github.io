@@ -31,13 +31,13 @@ import {
   travelModeOf,
   walkMinutesForMeters,
   walkingMinutes,
-} from './js/core.js';
+} from './js/core.js?v=20261116-ux4';
 import {
   LIVE_RADIUS_KM,
   MAX_LIVE_RADIUS_KM,
   loadLivePlaces,
   needsLiveSearch,
-} from './js/live_places.js';
+} from './js/live_places.js?v=20261116-ux4';
 import { LINES, STATIONS } from './js/stations.js';
 import { DRIVING_SPOTS, ROADS } from './js/driving_spots.js';
 import { LANDMARKS } from './js/landmarks.js';
@@ -109,8 +109,11 @@ const state = {
   activeId: null,
   mapType: 'normal', // normal | hybrid (지도 도구의 레이어 버튼)
   placeView: 'course', // course | restaurant | cafe
+  placeSort: 'recommend', // recommend | distance — 맛집·카페 목록 정렬
   courseIndex: 0,
   liveRadiusKm: LIVE_RADIUS_KM, // 실시간 주변 조회 반경 (1 → 2 → 3km)
+  carAnchor: 'auto', // auto | center(정확한 중심점) | highway(IC·휴게소) — 자차 기준
+  lastInput: 'other', // map | other — 지도 탭으로 결과가 바뀌었는지
 };
 
 const el = {
@@ -118,6 +121,7 @@ const el = {
   panel: document.getElementById('panel'),
   panelScroll: document.getElementById('panelScroll'),
   grab: document.getElementById('sheetGrab'),
+  grabHandle: document.getElementById('sheetHandle'),
   grabLabel: document.getElementById('grabLabel'),
   list: document.getElementById('participantList'),
   count: document.getElementById('participantCount'),
@@ -221,6 +225,8 @@ function initMap() {
 
   naver.maps.Event.addListener(map, 'click', event => {
     if (onOverlayClick(event)) return;
+    // 지도를 직접 만졌으니 시트는 미니로 접어 지도를 보여 준다
+    if (isMobile()) setSheet('mini');
     addPoint({ lat: event.coord.lat(), lng: event.coord.lng(), source: 'map' });
   });
 
@@ -254,9 +260,11 @@ function fitAll(animate = true) {
     moveTo(state.points[0].lat, state.points[0].lng, Math.max(map.getZoom(), 13), animate);
     return;
   }
-  const peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peek-h')) || 200;
+  const peek = readPx('--sheet-h', 0) || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peek-h')) || 200;
+  const vh = window.visualViewport?.height || window.innerHeight;
+  const bottom = isMobile() ? Math.min(peek + 26, Math.round(vh * 0.46)) : 70;
   const padding = isMobile()
-    ? { top: 70, left: 26, bottom: peek + 26, right: 26, maxZoom: 14 }
+    ? { top: 70, left: 26, bottom, right: 26, maxZoom: 14 }
     : { top: 70, left: 56, bottom: 70, right: 56, maxZoom: 14 };
   map.fitBounds(boundsOf(state.points), padding);
 }
@@ -370,6 +378,8 @@ function installMapInteractions() {
   const host = el.map;
 
   host.addEventListener('pointerdown', event => {
+    // 지도 캔버스를 만지면 시트를 미니로 자동 축소 (핀 드래그·팬·탭 모두)
+    if (isMobile()) setSheet('mini');
     const holder = event.target.closest?.('.pin-holder[data-pin]');
     if (!holder || event.button > 0 || !mapReady()) return;
     const point = state.points.find(p => p.id === holder.dataset.pin);
@@ -489,11 +499,9 @@ function addPoint({ lat, lng, name, address, source = 'other' }) {
   }
   state.points.push(point);
   state.activeId = point.id;
+  state.lastInput = source === 'map' ? 'map' : 'other';
   if (!address) requestAddress(point);
 
-  if (source !== 'map' && state.points.length === 2 && isMobile()) {
-    setTimeout(() => setSheet('full'), 120);
-  }
   fitAll();
   scheduleRender();
   return point;
@@ -533,6 +541,40 @@ const geoCache = new Map();
 let geoChain = Promise.resolve();
 let lastGeoAt = 0;
 
+/* 주소 캐시 — 한 번 받은 주소는 브라우저에 남겨 두고 다음 방문에 0ms 로 쓴다. */
+const GEO_STORE_KEY = 'pkp2.geo.v1';
+const GEO_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const GEO_STORE_MAX = 240;
+
+function loadGeoStore() {
+  const store = new Map();
+  try {
+    const raw = JSON.parse(localStorage.getItem(GEO_STORE_KEY) || '{}');
+    const now = Date.now();
+    Object.entries(raw).forEach(([key, item]) => {
+      if (item && typeof item.text === 'string' && typeof item.at === 'number' && now - item.at < GEO_TTL_MS) {
+        store.set(key, item);
+      }
+    });
+  } catch {
+    /* 사생활 모드·저장 공간 부족이면 메모리 캐시만 쓴다 */
+  }
+  return store;
+}
+
+const addressStore = loadGeoStore();
+
+function saveGeoStore() {
+  try {
+    const entries = [...addressStore.entries()]
+      .sort((a, b) => (b[1].at || 0) - (a[1].at || 0))
+      .slice(0, GEO_STORE_MAX);
+    localStorage.setItem(GEO_STORE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch {
+    /* 저장할 수 없으면 그냥 넘긴다 */
+  }
+}
+
 function queueGeocode(task) {
   const run = geoChain.then(async () => {
     const wait = Math.max(0, 1050 - (Date.now() - lastGeoAt));
@@ -550,6 +592,13 @@ function requestAddress(point) {
     applyAddress(point, geoCache.get(key));
     return;
   }
+  const stored = addressStore.get(key);
+  if (stored && stored.text) {
+    // 이전 방문에서 받아 둔 주소 — 네트워크 없이 바로 채운다
+    geoCache.set(key, stored.text);
+    applyAddress(point, stored.text);
+    return;
+  }
   point.addressState = 'loading';
   queueGeocode(async () => {
     try {
@@ -559,6 +608,10 @@ function requestAddress(point) {
       const data = await response.json();
       const text = describeAddress(data);
       geoCache.set(key, text);
+      if (text) {
+        addressStore.set(key, { text, at: Date.now() });
+        saveGeoStore();
+      }
       applyAddress(point, text);
     } catch {
       applyAddress(point, '');
@@ -726,9 +779,13 @@ async function runSearch(term) {
   if (!query) return;
   el.searchBtn.disabled = true;
   const token = ++searchToken;
+  // 주소 검색은 응답이 늦을 수 있다 — 먼저 '찾는 중'을 보여 주고 8초 뒤에는 포기한다.
+  renderSearchRows([], { empty: '주소·장소 검색 중…' });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&limit=5&accept-language=ko&addressdetails=1`;
-    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
     if (!response.ok) throw new Error(String(response.status));
     const data = await response.json();
     if (token !== searchToken) return;
@@ -743,8 +800,13 @@ async function runSearch(term) {
     renderSearchRows(rows, { empty: `‘${query}’ 주소를 찾지 못했어요. 지도에서 직접 찍어 보세요.` });
   } catch {
     if (token !== searchToken) return;
-    renderSearchRows([], { empty: '검색에 실패했어요. 잠시 후 다시 시도해 주세요.' });
+    renderSearchRows([], {
+      empty: controller.signal.aborted
+        ? '검색이 너무 오래 걸려 중단했어요 — 잠시 뒤 다시 시도하거나 지도에서 직접 찍어 주세요.'
+        : '검색에 실패했어요. 잠시 후 다시 시도해 주세요.',
+    });
   } finally {
+    clearTimeout(timer);
     if (token === searchToken) el.searchBtn.disabled = false;
   }
 }
@@ -793,6 +855,7 @@ function computeResult() {
     mode: state.mode,
     travelMode: state.travelMode,
     stations: STATIONS,
+    carAnchor: state.carAnchor === 'auto' ? undefined : state.carAnchor,
   });
   // 맛집·카페·코스의 기준이 되는 거점 — 추천 거점이 없으면 가장 가까운 역으로 후퇴
   const anchor = rec?.primary || (rec ? nearestStations(rec.center, SPOTS, 1, Infinity)[0] : null);
@@ -946,6 +1009,7 @@ function shortLineName(meta) {
 /** IC·휴게소·주차 거점 배지 */
 function spotBadges(spot) {
   const badges = [];
+  if (spot.exact) badges.push('<span class="line-badge center-badge">중심 좌표</span>');
   if (spot.road) {
     const color = ROADS[spot.road] || '#8b8f83';
     const label = spot.road.replace(/고속도로$/, '').replace('수도권제1순환', '1순환').replace('수도권제2순환', '2순환');
@@ -972,6 +1036,8 @@ function isCarMode() {
 
 function kindKicker(spot) {
   const kind = spotKind(spot);
+  if (kind === 'center') return '정확한 중심점';
+  if (spot?.centerAnchor) return '가까운 주차 거점';
   if (kind === 'ktx' || kind === 'terminal') return '광역 환승 거점';
   if (kind === 'ic') return '고속도로 IC';
   if (kind === 'rest') return '휴게소 · 만남의 광장';
@@ -1035,13 +1101,13 @@ function tagBadges(tags, category) {
     .join('');
 }
 
-/** 네이버·카카오 지도 검색(리뷰) 링크 — POI에 저장된 링크가 없을 때 대비 */
+/** 네이버·카카오 지도 평점·리뷰 링크 — POI에 저장된 링크가 없을 때 대비 */
 function reviewLinks(place) {
   const query = `${place.name}`;
   const naver = place.naverUrl || placeSearchUrl('naver', query);
   const kakao = place.kakaoUrl || placeSearchUrl('kakao', query);
-  return `<a class="place-link is-naver" href="${esc(naver)}" target="_blank" rel="noopener noreferrer" title="${esc(place.name)} 네이버지도 검색">네이버</a>
-    <a class="place-link is-kakao" href="${esc(kakao)}" target="_blank" rel="noopener noreferrer" title="${esc(place.name)} 카카오맵 검색">카카오</a>`;
+  return `<a class="place-link is-naver place-rating" href="${esc(naver)}" target="_blank" rel="noopener noreferrer" title="${esc(place.name)} 네이버 평점·리뷰 보기"><span aria-hidden="true">★</span> 네이버 평점</a>
+    <a class="place-link is-kakao place-rating" href="${esc(kakao)}" target="_blank" rel="noopener noreferrer" title="${esc(place.name)} 카카오맵 리뷰 보기">카카오 리뷰</a>`;
 }
 
 function focusButton(place) {
@@ -1073,6 +1139,28 @@ function placeCardHtml(place) {
 function formatRadius(km) {
   const value = Number.isFinite(km) ? km : LIVE_RADIUS_KM;
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+/**
+ * 맛집·카페 목록 정렬 — [추천순] 검증·큐레이션된 곳과 주차 가능한 곳을 앞세우고,
+ * [거리순] 은 거점에서 가까운 순서 그대로다.
+ */
+function sortPlaces(list) {
+  const rows = [...(list || [])];
+  const meters = place => (Number.isFinite(place.fromSpotMeters) ? place.fromSpotMeters : 0);
+  if (state.placeSort === 'distance') {
+    return rows.sort((a, b) => meters(a) - meters(b) || String(a.name).localeCompare(String(b.name), 'ko'));
+  }
+  const score = place => {
+    const tags = place.tags || [];
+    let value = meters(place);
+    if (place.source === 'snapshot') value -= 140; // 내장 스냅샷 — 미리 검증된 거점 POI
+    if (tags.includes('주차')) value -= isCarMode() ? 120 : 40;
+    if (tags.includes('야외석') || tags.includes('디저트')) value -= 20;
+    if (tags.includes('체인')) value += 60;
+    return value;
+  };
+  return rows.sort((a, b) => score(a) - score(b) || String(a.name).localeCompare(String(b.name), 'ko'));
 }
 
 /** 실시간 조회 상태 칩 — 화면을 떠나지 않고 무엇을 하는지 보여 준다. */
@@ -1211,6 +1299,12 @@ function nearbyMarkup(result) {
   const radiusLabel = formatRadius(radiusKm);
   const list = view === 'restaurant' ? nearby.restaurants : nearby.cafes;
   const hasContent = view === 'course' ? courses.length > 0 : list.length > 0;
+  const sortControls = view === 'course' ? '' : `
+      <div class="place-sort" role="group" aria-label="맛집·카페 정렬">
+        <span class="place-sort-label">정렬</span>
+        <button type="button" data-place-sort="recommend" aria-pressed="${state.placeSort === 'recommend'}">추천순</button>
+        <button type="button" data-place-sort="distance" aria-pressed="${state.placeSort === 'distance'}">거리순</button>
+      </div>`;
   let body = '';
   if (live.status === 'loading' && !hasContent) {
     body = liveLoadingHtml(anchor, radiusLabel);
@@ -1221,8 +1315,8 @@ function nearbyMarkup(result) {
       : emptyNearbyHtml(anchor, 'course', counts, live, radiusKm);
   } else {
     body = list.length
-      ? `<ul class="place-list">${list.map(placeCardHtml).join('')}</ul>`
-      : emptyNearbyHtml(anchor, view, counts, live, radiusKm);
+      ? `${sortControls}<ul class="place-list">${sortPlaces(list).map(placeCardHtml).join('')}</ul>`
+      : `${sortControls}${emptyNearbyHtml(anchor, view, counts, live, radiusKm)}`;
   }
 
   const sourceNote = live.status === 'ready'
@@ -1262,6 +1356,19 @@ function renderResult(result) {
 
   const station = result.anchor;
   const car = isCarMode();
+  const carAnchor = car ? (rec?.carAnchor || (state.carAnchor === 'highway' ? 'highway' : 'center')) : null;
+  const carToggle = car ? `
+    <div class="car-anchor" role="group" aria-label="자차 만남 기준">
+      <button type="button" data-car-anchor="center" aria-pressed="${carAnchor === 'center'}">
+        <span class="ca-emoji" aria-hidden="true">🎯</span>
+        <span class="ca-body"><b>정확한 중심점</b><small>시내·주차장</small></span>
+      </button>
+      <button type="button" data-car-anchor="highway" aria-pressed="${carAnchor === 'highway'}">
+        <span class="ca-emoji" aria-hidden="true">🛣️</span>
+        <span class="ca-body"><b>IC·휴게소</b><small>장거리</small></span>
+      </button>
+    </div>` : '';
+  const exact = Boolean(station?.exact);
 
   const spreadRows = state.points.map((point, i) => {
     const d = result.distances[i];
@@ -1276,15 +1383,15 @@ function renderResult(result) {
   }).join('');
 
   const stationMarkup = station ? `
-    <div class="card station-card ${car ? 'is-car' : ''}">
+    <div class="card station-card ${car ? 'is-car' : ''}${exact ? ' is-exact' : ''}">
       <div class="station-top">
         <span class="station-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#${car ? 'i-car' : 'i-train'}"/></svg>${primary ? kindKicker(station) : '가장 가까운 곳'}</span>
-        <span class="station-dist">중심에서 ${formatKm(primary ? primary.km : station.km)}</span>
+        <span class="station-dist">${exact ? '참가자 평균 위치' : `중심에서 ${formatKm(primary ? primary.km : station.km)}`}</span>
       </div>
       <div class="station-name">${esc(station.name)} ${car ? spotBadges(station) : (car ? '' : lineBadges(station.lines))}</div>
       <div class="station-actions">
         <div class="station-meta">
-          <span>${approachLabel(primary ? primary.km : station.km, car)}</span>
+          <span>${exact ? '시내·주차 기준' : approachLabel(primary ? primary.km : station.km, car)}</span>
           <span>가장 먼 참가자 <b>${formatKm(stats.max)}</b></span>
         </div>
         <button class="mini-btn" type="button" data-focus-lat="${station.lat}" data-focus-lng="${station.lng}">
@@ -1308,6 +1415,7 @@ function renderResult(result) {
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>
       </button>
     </div>
+    ${carToggle}
     <div class="card">
       <div class="fair">
         <div class="ring" style="--p:${score.toFixed(0)}">
@@ -1359,6 +1467,27 @@ function renderResult(result) {
       render();
     });
   });
+  // 자차 기준 — 정확한 중심점 ↔ IC·휴게소
+  el.result.querySelectorAll('[data-car-anchor]').forEach(button => {
+    button.addEventListener('click', () => {
+      const next = button.dataset.carAnchor === 'highway' ? 'highway' : 'center';
+      if (state.carAnchor === next) return;
+      state.carAnchor = next;
+      toast(next === 'highway'
+        ? 'IC·휴게소 기준 — 장거리 고속도로 모임에 맞춰 다시 계산했어요'
+        : '정확한 중심점 기준 — 시내·주차장 중심으로 다시 계산했어요');
+      render();
+    });
+  });
+  // 맛집·카페 정렬 — 추천순 ↔ 거리순
+  el.result.querySelectorAll('[data-place-sort]').forEach(button => {
+    button.addEventListener('click', () => {
+      const next = button.dataset.placeSort === 'distance' ? 'distance' : 'recommend';
+      if (state.placeSort === next) return;
+      state.placeSort = next;
+      render();
+    });
+  });
   el.result.querySelectorAll('[data-focus-lat]').forEach(button => {
     button.addEventListener('click', () => {
       const lat = Number(button.dataset.focusLat);
@@ -1368,7 +1497,7 @@ function renderResult(result) {
         if (button.dataset.focusName) {
           focusPlace({ lat, lng, name: button.dataset.focusName });
         }
-        if (isMobile()) setSheet('peek');
+        if (isMobile()) setSheet('mini');
       }
     });
   });
@@ -1394,7 +1523,7 @@ function renderResult(result) {
           boundsOf([course.restaurant, course.cafe]),
           { top: 46, left: 46, bottom: 46, right: 46, maxZoom: 17 },
         );
-        if (isMobile()) setSheet('peek');
+        if (isMobile()) setSheet('mini');
       }
     });
   });
@@ -1659,6 +1788,34 @@ function render() {
   drawOverlays(result);
   updateChrome();
   syncUrl();
+  syncSheetWithResult(result);
+}
+
+/**
+ * 결과가 처음 생길 때만 시트를 올린다 — 기본은 하프(48dvh), 지도 탭으로 만든 결과라면 미니.
+ * 이후에는 사용자가 고른 단계를 그대로 둔다.
+ */
+let hadResult = false;
+function syncSheetWithResult(result) {
+  const has = Boolean(result && state.points.length >= 2);
+  if (has && !hadResult && isMobile()) {
+    const viaMap = state.lastInput === 'map';
+    setSheet(viaMap ? 'mini' : 'half');
+    fitAll(false); // 시트가 덮는 만큼 지도 여백을 다시 잡는다
+    if (!viaMap) scrollPanelTo(el.result);
+  }
+  hadResult = has;
+}
+
+/** 시트 안(scroll 영역)을 특정 요소가 보이도록 내린다 — 페이지 스크롤은 건드리지 않는다. */
+function scrollPanelTo(node) {
+  if (!node) return;
+  requestAnimationFrame(() => {
+    const scroller = el.panelScroll;
+    if (!scroller) return;
+    const top = node.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 10;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  });
 }
 
 function updateChrome() {
@@ -1720,77 +1877,137 @@ async function copyLink() {
 }
 
 /* ------------------------------------------------------------------
-   모바일 바텀 시트
+   모바일 바텀 시트 — 3단 스냅 (미니 132px · 하프 48dvh · 풀 80dvh)
    ------------------------------------------------------------------ */
-function setSheet(mode) {
-  if (!isMobile()) return;
-  el.panel.dataset.sheet = mode;
-  el.grab.setAttribute('aria-expanded', String(mode === 'full'));
-  el.grabLabel.textContent = mode === 'full' ? '패널 접기' : '패널 펼치기';
+const SHEET_STAGES = ['mini', 'half', 'full'];
+const SHEET_FULL_RATIO = 0.80;
+const SHEET_HALF_RATIO = 0.48;
+const SHEET_MINI_PX = 134;
+
+function readPx(name, fallback = 0) {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name);
+  const value = parseFloat(raw);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+/** 각 단계의 translateY(px) — 풀(0)에서 아래로 내려간 거리 */
+function sheetOffsets() {
+  const vh = window.visualViewport?.height || window.innerHeight;
+  const panelH = el.panel.getBoundingClientRect().height || vh * SHEET_FULL_RATIO;
+  const safe = readPx('--safe-bottom');
+  const miniH = Math.min(panelH, readPx('--sheet-mini', SHEET_MINI_PX) + safe);
+  const halfH = Math.min(panelH, vh * SHEET_HALF_RATIO);
+  return { panelH, mini: panelH - miniH, half: panelH - halfH, full: 0 };
+}
+
+function sheetVisibleHeight(stage) {
+  const o = sheetOffsets();
+  return Math.max(0, o.panelH - (o[stage] ?? o.mini));
+}
+
+const SHEET_LABEL = {
+  mini: '미니 — 위로 펼치기',
+  half: '하프 — 더 펼치기',
+  full: '풀 — 접기',
+};
+
+function setSheet(stage) {
+  const next = SHEET_STAGES.includes(stage) ? stage : 'mini';
+  el.panel.dataset.sheet = next;
   el.panel.style.transform = '';
-  if (mode === 'peek') el.panelScroll.scrollTop = 0;
+  el.panel.classList.remove('is-dragging');
+  if (!isMobile()) {
+    document.documentElement.style.setProperty('--sheet-h', '0px');
+    return;
+  }
+  // 지도 위에 떠 있는 도구(확대·축소·범례·토스트)를 시트 높이만큼 올린다
+  document.documentElement.style.setProperty('--sheet-h', `${Math.round(sheetVisibleHeight(next))}px`);
+  el.panel.querySelectorAll('[data-sheet-set]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.sheetSet === next));
+  });
+  if (el.grabLabel) el.grabLabel.textContent = SHEET_LABEL[next] || SHEET_LABEL.mini;
+  if (el.grabHandle) el.grabHandle.setAttribute('aria-expanded', String(next === 'full'));
+  if (next === 'mini') el.panelScroll.scrollTop = 0;
 }
 
 function initSheet() {
-  let startY = 0;
-  let startOffset = 0;
-  let dragging = false;
-  let moved = 0;
-
-  const closedOffset = () => {
-    const panelHeight = el.panel.getBoundingClientRect().height;
-    const peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peek-h')) || 200;
-    return Math.max(0, panelHeight - peek);
-  };
+  let drag = null;
+  let suppressClick = false;
+  let pressOnHandle = false;
 
   el.grab.addEventListener('pointerdown', event => {
-    if (!isMobile()) return;
-    dragging = true;
-    moved = 0;
-    startY = event.clientY;
-    startOffset = el.panel.dataset.sheet === 'full' ? 0 : closedOffset();
+    if (!isMobile() || event.button > 0) return;
+    if (event.target.closest('[data-sheet-set]')) return;
+    pressOnHandle = Boolean(event.target.closest('#sheetHandle'));
+    const stage = el.panel.dataset.sheet || 'mini';
+    if (!SHEET_STAGES.includes(stage)) return;
+    drag = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startOffset: sheetOffsets()[stage] ?? sheetOffsets().mini,
+      moved: 0,
+    };
     el.panel.classList.add('is-dragging');
-    el.grab.setPointerCapture(event.pointerId);
+    try {
+      el.grab.setPointerCapture(event.pointerId);
+    } catch {
+      /* 캡처를 못 해도 pointerup 은 온다 */
+    }
   });
 
   el.grab.addEventListener('pointermove', event => {
-    if (!dragging) return;
-    const dy = event.clientY - startY;
-    moved = Math.max(moved, Math.abs(dy));
-    const next = Math.max(0, Math.min(closedOffset(), startOffset + dy));
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const o = sheetOffsets();
+    const dy = event.clientY - drag.startY;
+    drag.moved = Math.max(drag.moved, Math.abs(dy));
+    const next = Math.max(0, Math.min(o.mini, drag.startOffset + dy));
     el.panel.style.transform = `translateY(${next}px)`;
   });
 
-  const end = event => {
-    if (!dragging) return;
-    dragging = false;
+  const endDrag = event => {
+    if (!drag || (event.pointerId !== undefined && event.pointerId !== drag.pointerId)) return;
+    const startOffset = drag.startOffset;
+    const moved = drag.moved;
+    const dy = (event.clientY ?? drag.startY) - drag.startY;
+    drag = null;
     el.panel.classList.remove('is-dragging');
-    const dy = event.clientY - startY;
-    const wasFull = el.panel.dataset.sheet === 'full';
-    if (Math.abs(dy) < 8) {
-      setSheet(wasFull ? 'peek' : 'full');
-      return;
-    }
-    const threshold = closedOffset() / 2;
-    if (wasFull) setSheet(dy > threshold ? 'peek' : 'full');
-    else setSheet(dy < -40 ? 'full' : 'peek');
+    if (moved < 8) return; // 탭은 click 핸들러가 단계를 넘긴다
+    suppressClick = true;
+    const o = sheetOffsets();
+    const landed = Math.max(0, Math.min(o.mini, startOffset + dy));
+    const nearest = SHEET_STAGES
+      .map(stage => ({ stage, gap: Math.abs(o[stage] - landed) }))
+      .sort((a, b) => a.gap - b.gap)[0].stage;
+    setSheet(nearest);
   };
 
-  el.grab.addEventListener('pointerup', end);
-  el.grab.addEventListener('pointercancel', end);
+  el.grab.addEventListener('pointerup', endDrag);
+  el.grab.addEventListener('pointercancel', endDrag);
 
-  el.grab.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      setSheet(el.panel.dataset.sheet === 'full' ? 'peek' : 'full');
+  el.grab.addEventListener('click', event => {
+    // 단계 버튼(미니·하프·풀) — 드래그 없이 한 번에 전환
+    const button = event.target.closest('[data-sheet-set]');
+    if (button) {
+      setSheet(button.dataset.sheetSet);
+      return;
     }
+    if (!event.target.closest('#sheetHandle') && !pressOnHandle) return;
+    if (suppressClick) {
+      suppressClick = false;
+      return;
+    }
+    // 핸들 탭 — 미니 → 하프 → 풀 → 미니 순환
+    const index = SHEET_STAGES.indexOf(el.panel.dataset.sheet || 'mini');
+    setSheet(SHEET_STAGES[(index + 1) % SHEET_STAGES.length]);
   });
 
   window.addEventListener('resize', () => {
     if (!isMobile()) {
       el.panel.style.transform = '';
-      el.panel.dataset.sheet = 'peek';
+      document.documentElement.style.setProperty('--sheet-h', '0px');
+      return;
     }
+    setSheet(el.panel.dataset.sheet || 'mini');
   });
 }
 
@@ -1829,6 +2046,7 @@ function setTravelMode(mode, notify = true) {
   const next = travelModeOf(mode);
   if (state.travelMode === next) return;
   state.travelMode = next;
+  state.carAnchor = 'auto'; // 이동 수단을 바꾸면 자차 기준도 거리에 맞춰 다시 잡는다
   el.modeToggle.querySelectorAll('[data-travel]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.travel === next));
   });
@@ -1836,7 +2054,7 @@ function setTravelMode(mode, notify = true) {
   render();
   if (notify) {
     toast(next === 'car'
-      ? '자차 모드 — 고속도로 IC·휴게소 거점을 추천해요'
+      ? '자차 모드 — 시내는 정확한 중심점, 장거리는 IC·휴게소로 추천해요'
       : '대중교통 모드 — 역·터미널 거점을 추천해요');
   }
 }
@@ -2141,6 +2359,7 @@ function boot() {
   initPortalMenu();
   initSheet();
   initViewportLock();
+  setSheet(el.panel.dataset.sheet || 'mini');
 
   const parsed = parseShareState(location.href);
   if (parsed.present && parsed.points.length) {

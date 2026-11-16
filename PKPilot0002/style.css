@@ -42,7 +42,13 @@
 
   --header-h: 60px;
   --panel-w: 412px;
+  /* 모바일 바텀 시트 3단 — 미니 / 하프 / 풀 */
   --peek-h: 216px;
+  --sheet-mini: 134px;
+  --sheet-half: 48dvh;
+  --sheet-full: 80dvh;
+  --sheet-h: 0px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
     'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
@@ -1351,6 +1357,72 @@ a,
   color: var(--accent-2);
 }
 
+/* 자차 기준 — 정확한 중심점 ↔ IC·휴게소 */
+.car-anchor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.car-anchor button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  text-align: left;
+  color: var(--muted-2);
+  transition: all 0.18s var(--ease);
+}
+
+.car-anchor button:hover:not([aria-pressed='true']) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.car-anchor .ca-emoji {
+  font-size: 15px;
+  line-height: 1;
+  flex: none;
+}
+
+.car-anchor .ca-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.car-anchor .ca-body b {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.car-anchor .ca-body small {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--muted-2);
+}
+
+.car-anchor button[aria-pressed='true'] {
+  background: linear-gradient(180deg, rgba(255, 174, 128, 0.22), rgba(255, 130, 79, 0.14));
+  color: #ffd9c4;
+  box-shadow: inset 0 0 0 1px var(--accent-line), var(--shadow-sm);
+}
+
+.car-anchor button[aria-pressed='true'] b {
+  color: #ffe3d4;
+}
+
+.car-anchor button[aria-pressed='true'] small {
+  color: var(--accent-2);
+}
+
 /* 추천 거점 */
 .station-card {
   position: relative;
@@ -1546,7 +1618,8 @@ a,
 
 .station-meta {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 2px 12px;
   font-size: 11.5px;
   color: var(--muted);
 }
@@ -1789,6 +1862,46 @@ a,
   display: flex;
   flex-direction: column;
   gap: 7px;
+}
+
+/* 맛집·카페 정렬 — 추천순 / 거리순 */
+.place-sort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid var(--border-soft);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.place-sort-label {
+  padding: 0 4px 0 6px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted-2);
+  text-transform: uppercase;
+}
+
+.place-sort button {
+  flex: 1;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--muted-2);
+  transition: all 0.16s var(--ease);
+}
+
+.place-sort button:hover:not([aria-pressed='true']) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.place-sort button[aria-pressed='true'] {
+  color: #1b1206;
+  background: linear-gradient(180deg, #ffc59f, #ffa070);
 }
 
 .nearby-note {
@@ -2075,6 +2188,26 @@ a,
 .place-link.is-kakao:hover {
   border-color: rgba(254, 229, 0, 0.45);
   color: #ffe066;
+}
+
+/* 네이버 평점 · 카카오 리뷰 뱃지 */
+.place-link.place-rating {
+  gap: 3px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.place-link.place-rating.is-naver {
+  color: #9fe7be;
+}
+
+.place-link.place-rating.is-kakao {
+  color: #ffe27a;
+}
+
+.line-badge.center-badge {
+  background: rgba(255, 130, 79, 0.2);
+  color: #ffd9c4;
 }
 
 .place-actions .mini-btn {
@@ -2888,15 +3021,24 @@ body.is-dragging-pin .pin-person {
     right: 0;
     bottom: 0;
     z-index: 1100;
-    height: 86dvh;
-    max-height: 86dvh;
+    height: var(--sheet-full);
+    max-height: var(--sheet-full);
     border: 1px solid var(--border);
     border-bottom: 0;
     border-radius: 22px 22px 0 0;
     box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.6);
-    transform: translateY(calc(86dvh - var(--peek-h) - env(safe-area-inset-bottom, 0px)));
-    transition: transform 0.36s var(--ease-out);
+    transform: translateY(calc(var(--sheet-full) - var(--sheet-mini) - var(--safe-bottom)));
+    transition: transform 0.34s var(--ease-out);
     will-change: transform;
+  }
+
+  /* 3단 스냅 — 미니 132px · 하프 48dvh · 풀 80dvh */
+  .panel[data-sheet='mini'] {
+    transform: translateY(calc(var(--sheet-full) - var(--sheet-mini) - var(--safe-bottom)));
+  }
+
+  .panel[data-sheet='half'] {
+    transform: translateY(calc(var(--sheet-full) - var(--sheet-half)));
   }
 
   .panel[data-sheet='full'] {
@@ -2907,37 +3049,102 @@ body.is-dragging-pin .pin-person {
     transition: none;
   }
 
+  /* 미니 — 검색과 빠른 선택만 남기고 나머지는 숨김다 (지도를 넓게) */
+  .panel[data-sheet='mini'] .panel-head,
+  .panel[data-sheet='mini'] .mode-toggle,
+  .panel[data-sheet='mini'] .participants,
+  .panel[data-sheet='mini'] .result,
+  .panel[data-sheet='mini'] .panel-foot {
+    display: none;
+  }
+
+  .panel[data-sheet='mini'] .panel-scroll {
+    padding: 0 15px calc(4px + env(safe-area-inset-bottom, 0px));
+    gap: 6px;
+  }
+
   .sheet-grab {
     position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 3px;
     height: 34px;
     flex: none;
-    cursor: grab;
+    padding: 0 8px 0 10px;
     touch-action: none;
     user-select: none;
   }
 
-  .sheet-grab:active {
+  .grab-handle {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 28px;
+    min-width: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--muted-2);
+    cursor: grab;
+  }
+
+  .grab-handle:active,
+  .panel.is-dragging .grab-handle {
     cursor: grabbing;
   }
 
   .grab-bar {
-    width: 40px;
+    width: 38px;
     height: 4px;
     border-radius: 99px;
     background: #4a4e45;
+    flex: none;
   }
 
   .grab-label {
     font-size: 9.5px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     color: var(--muted-2);
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .grab-stages {
+    position: absolute;
+    right: 10px;
+    top: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px;
+    border-radius: 9px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--border-soft);
+    backdrop-filter: blur(4px);
+  }
+
+  /* 미니에서는 핸들만 — 단계 버튼은 하프·풀에서 보인다 */
+  .panel[data-sheet='mini'] .grab-stages {
+    display: none;
+  }
+
+  .grab-stages button {
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--muted-2);
+    background: transparent;
+  }
+
+  .grab-stages button[aria-pressed='true'] {
+    color: #1b1206;
+    background: linear-gradient(180deg, #ffae80, var(--accent));
   }
 
   .panel-scroll {
@@ -3089,7 +3296,7 @@ body.is-dragging-pin .pin-person {
   /* 확대·축소는 아래쪽 — 시트 위로 올린다 */
   .map-tools.map-zoom {
     top: auto;
-    bottom: calc(var(--peek-h) + 12px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--sheet-h, var(--peek-h)) + 12px);
   }
 
   .map-tool {
@@ -3098,7 +3305,7 @@ body.is-dragging-pin .pin-person {
   }
 
   .legend {
-    bottom: calc(var(--peek-h) + 14px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--sheet-h, var(--peek-h)) + 14px);
     left: 10px;
     font-size: 10px;
     padding: 6px 10px;
@@ -3106,7 +3313,7 @@ body.is-dragging-pin .pin-person {
   }
 
   .toast {
-    bottom: calc(var(--peek-h) + 20px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--sheet-h, var(--peek-h)) + 20px);
     font-size: 12px;
   }
 
@@ -3131,7 +3338,7 @@ body.is-dragging-pin .pin-person {
   /* 네이버 로고·저작권 컨트롤이 바텀 시트에 가리지 않게 위로 올린다
      (네이버가 지도 컨테이너에 넣는 컨트롤 div 는 클래스가 없어 인라인 스타일로 고른다) */
   #map > div[style*='bottom: 0px'] {
-    bottom: calc(var(--peek-h) + 6px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--sheet-h, var(--peek-h)) + 6px) !important;
   }
 }
 

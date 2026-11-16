@@ -89,6 +89,19 @@ def reset_all(page):
         page.wait_for_timeout(500)
 
 
+def set_stage(page, stage: str):
+    """모바일 3단 시트(mini·half·full)를 원하는 단계로 맞춘다."""
+    for _ in range(4):
+        if page.locator("#panel").get_attribute("data-sheet") == stage:
+            return
+        button = page.locator(f'[data-sheet-set="{stage}"]')
+        if button.count() and button.first.is_visible():
+            button.first.click()
+        else:
+            page.click("#sheetHandle")
+        page.wait_for_timeout(650)
+
+
 def station_name(page) -> str:
     return page.locator(".station-name").first.inner_text().strip()
 
@@ -652,21 +665,20 @@ def main() -> int:
         m.on("pageerror", lambda exc: console_errors.append("mobile: " + str(exc)))
         m.goto(base, wait_until="load")
         settle(m, 2400)
-        if m.locator("#panel").get_attribute("data-sheet") != "peek":
-            problems.append("모바일 패널이 접힌 상태로 시작하지 않습니다")
+        if m.locator("#panel").get_attribute("data-sheet") != "mini":
+            problems.append("모바일 패널이 미니 단계로 시작하지 않습니다")
         if not m.locator(".search").is_visible():
-            problems.append("접힌 시트에서 검색창이 보이지 않습니다")
-        if not m.locator("#modeToggle").is_visible():
-            problems.append("모바일에서 이동 수단 토글이 보이지 않습니다")
+            problems.append("미니 시트에서 검색창이 보이지 않습니다")
         if shots:
             shot(m, "mobile-empty")
+        set_stage(m, "half")
+        if not m.locator("#modeToggle").is_visible():
+            problems.append("하프 시트에서 이동 수단 토글이 보이지 않습니다")
 
         add_preset(m, "강남")
         add_preset(m, "홍대입구")
         settle(m)
-        if m.locator("#panel").get_attribute("data-sheet") != "full":
-            m.click("#sheetGrab")
-            m.wait_for_timeout(700)
+        set_stage(m, "full")
         if not m.locator("#resultCard").is_visible():
             problems.append("모바일에서 결과 카드가 보이지 않습니다")
         m.evaluate("document.getElementById('panelScroll').scrollTop = 0")
@@ -680,10 +692,9 @@ def main() -> int:
             shot(m, "mobile-detail")
 
         # 시트 접기 → 지도 + 핀
-        m.click("#sheetGrab")
-        m.wait_for_timeout(800)
-        if m.locator("#panel").get_attribute("data-sheet") != "peek":
-            problems.append("시트가 다시 접히지 않습니다")
+        set_stage(m, "mini")
+        if m.locator("#panel").get_attribute("data-sheet") != "mini":
+            problems.append("시트가 미니로 접히지 않습니다")
         if shots:
             shot(m, "mobile-peek")
 
@@ -692,9 +703,7 @@ def main() -> int:
         add_search(m, "역삼역")
         add_search(m, "교대역")
         settle(m, 1800)
-        if m.locator("#panel").get_attribute("data-sheet") != "full":
-            m.click("#sheetGrab")
-            m.wait_for_timeout(700)
+        set_stage(m, "full")
         nearby_ready(m)
         if m.locator(".course-card").count() == 0:
             problems.append("모바일에서 추천 코스 카드가 없습니다")
@@ -718,8 +727,8 @@ def main() -> int:
         # 코스 카드 탭 → 지도로 내려가기 (핀 유지)
         m.locator(".course-card").first.click()
         m.wait_for_timeout(900)
-        if m.locator("#panel").get_attribute("data-sheet") != "peek":
-            problems.append("모바일에서 코스 선택 후 패널이 접히지 않습니다")
+        if m.locator("#panel").get_attribute("data-sheet") != "mini":
+            problems.append("모바일에서 코스 선택 후 패널이 미니로 접히지 않습니다")
         if m.locator(".pin-course").count() != 2:
             problems.append("모바일 코스 선택 후 지도 마커가 2개가 아닙니다")
         if shots:
@@ -731,9 +740,7 @@ def main() -> int:
         add_search(m, "사당역")
         add_search(m, "이수역")
         settle(m, 1400)
-        if m.locator("#panel").get_attribute("data-sheet") != "full":
-            m.click("#sheetGrab")
-            m.wait_for_timeout(700)
+        set_stage(m, "full")
         nearby_ready(m)
         wait_live(m)
         if live_status(m) != "ready":

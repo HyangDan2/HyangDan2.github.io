@@ -549,6 +549,65 @@ export function fairestStation(points, stations, options = {}) {
   return best;
 }
 
+/** 자차 기준: 'center' = 정확한 중심점(시내·주차장), 'highway' = 고속도로 IC·휴게소 */
+export const CAR_ANCHORS = ['center', 'highway'];
+
+/** 중심 좌표 자체를 거점으로 쓰는 합성 스팟 — 자차 '정확한 중심점' 모드의 기본값. */
+export function exactCenterSpot(center, points) {
+  const list = (points || []).filter(Boolean);
+  const distances = list.map(p => haversineKm(center, p));
+  return {
+    name: '정확한 중심점',
+    kind: 'center',
+    exact: true,
+    lat: center.lat,
+    lng: center.lng,
+    lines: [],
+    parking: false,
+    km: 0,
+    distances,
+    maxKm: distances.length ? Math.max(...distances) : 0,
+    minKm: distances.length ? Math.min(...distances) : 0,
+    sumKm: distances.reduce((sum, d) => sum + d, 0),
+  };
+}
+
+/**
+ * 자차 '정확한 중심점' 모드 — 고속도로 IC 로 스냅하지 않고
+ * 중심 좌표(또는 가장 가까운 주차 거점)를 만남 지점으로 쓴다.
+ */
+function exactCenterResult({ center, list, usable, travelMode, maxPairKm, longDistance, radiusKm }) {
+  // 시내 모임이니 주차 거점도 중심 가까이(1~2.5km)에 있어야 쓸모가 있다.
+  const parkingCapKm = Math.min(2.5, Math.max(1, maxPairKm * 0.25));
+  const scaled = usable.map(spot => withDistances(spot, center, list));
+  const parking = scaled
+    .filter(spot => spotKind(spot) === 'parking')
+    .filter(spot => Number.isFinite(spot.km) && spot.km <= parkingCapKm)
+    .sort((a, b) => a.km - b.km || a.maxKm - b.maxKm || a.name.localeCompare(b.name, 'ko'));
+
+  const picked = parking[0] || null;
+  const primary = picked
+    ? { ...picked, parking: true, centerAnchor: true }
+    : exactCenterSpot(center, list);
+
+  const fairer = parking
+    .filter(spot => spot.name !== primary.name)
+    .sort((a, b) => a.maxKm - b.maxKm || a.km - b.km)[0] || null;
+  const alternative = fairer && fairer.maxKm < primary.maxKm - 0.3 ? fairer : null;
+
+  return {
+    center,
+    primary,
+    nearBy: parking.slice(0, 3),
+    alternative,
+    travelMode,
+    maxPairKm,
+    longDistance,
+    radiusKm,
+    carAnchor: 'center',
+  };
+}
+
 export function recommendMeetingSpot(points, spots, options = {}) {
   const list = (points || []).filter(Boolean);
   if (list.length < 2) return null;
@@ -564,6 +623,17 @@ export function recommendMeetingSpot(points, spots, options = {}) {
   const longDistance = maxPairKm >= (options.longTripKm ?? LONG_TRIP_KM);
   const radiusKm = options.radiusKm ?? clamp(12 + maxPairKm * 0.09, 12, 45);
   const primaryMaxKm = options.primaryMaxKm ?? clamp(4 + maxPairKm * 0.18, 4, 18);
+
+  // 자차 기준 — 명시하지 않으면 근거리(시내)는 정확한 중심점, 장거리는 IC·휴게소.
+  const carAnchor = travelMode !== 'car'
+    ? null
+    : (CAR_ANCHORS.includes(options.carAnchor)
+      ? options.carAnchor
+      : (longDistance ? 'highway' : 'center'));
+
+  if (carAnchor === 'center') {
+    return exactCenterResult({ center, list, usable, travelMode, maxPairKm, longDistance, radiusKm });
+  }
 
   const scaled = usable.map(spot => withDistances(spot, center, list));
   const candidates = scaled.filter(spot => Number.isFinite(spot.km) && spot.km <= radiusKm);
@@ -587,7 +657,7 @@ export function recommendMeetingSpot(points, spots, options = {}) {
   }
   if (!primary && nearBy.length) primary = nearBy[0];
   if (!primary) {
-    return { center, primary: null, nearBy: [], alternative: null, travelMode, maxPairKm, longDistance, radiusKm };
+    return { center, primary: null, nearBy: [], alternative: null, travelMode, maxPairKm, longDistance, radiusKm, carAnchor };
   }
 
   // 더 공평한 후보: 같은 이동 수단 안에서 가장 먼 참가자의 거리가 더 짧은 곳
@@ -596,7 +666,7 @@ export function recommendMeetingSpot(points, spots, options = {}) {
     .sort((a, b) => a.maxKm - b.maxKm || a.km - b.km)[0] || null;
   const alternative = fairer && fairer.maxKm < primary.maxKm - 0.3 ? fairer : null;
 
-  return { center, primary, nearBy, alternative, travelMode, maxPairKm, longDistance, radiusKm };
+  return { center, primary, nearBy, alternative, travelMode, maxPairKm, longDistance, radiusKm, carAnchor };
 }
 
 export function lineMeta(code, lines) {
