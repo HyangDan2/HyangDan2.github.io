@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FAFAFD">
+    <title>{% if categoryPage %}{{ categoryPage.name }} · {% elif title %}{{ title }} · {% endif %}{{ site.name }}</title>
+    <meta name="description" content="{{ description or summary or site.description }}">
+    <meta property="og:type" content="{% if page.url and page.url.includes('/posts/') %}article{% else %}website{% endif %}">
+    <meta property="og:site_name" content="HD2Lab · {{ site.name }}">
+    <meta property="og:title" content="{% if categoryPage %}{{ categoryPage.name }} · {% elif title %}{{ title }} · {% endif %}{{ site.name }}">
+    <meta property="og:description" content="{{ description or summary or site.tagline }}">
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261106">
+    <link rel="stylesheet" href="{{ '/assets/diary.css' | url }}?v=20261116-softiris">
+</head>
+<body class="page-{{ page.url | slugify }}">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="{{ '/' | url }}" aria-label="{{ site.name }} home">
+                <span class="mark" aria-hidden="true"></span>
+                <span class="brand-name">{{ site.brand }}</span>
+                <em>{{ site.name }}</em>
+            </a>
+            <div class="header-actions">
+                <a class="write-button" href="{{ '/write/' | url }}">새 글 쓰기 <span aria-hidden="true">↗</span></a>
+                <a class="hq-link" href="{{ site.hqUrl }}">{{ site.hqLabel }} <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+    </header>
+
+    <main id="main">
+        {{ content | safe }}
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span>© {{ site.year }} {{ site.brand }}</span>
+            <span class="footer-note">++ BUILD NOTES ++ KEEP SHIPPING ++</span>
+            <a href="{{ site.hqUrl }}">{{ site.hqLabel }} <span aria-hidden="true">↗</span></a>
+        </div>
+    </footer>
+    {% if pageScript %}<script src="{{ pageScript | url }}" defer></script>{% endif %}
+</body>
+</html>
