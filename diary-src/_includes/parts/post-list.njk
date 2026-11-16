@@ -1,0 +1,26 @@
+{% macro postList(posts, showCategory = true) %}
+<ul class="post-list">
+    {% for post in posts %}
+    <li class="post-row">
+        <a class="post-row-link" href="{{ post.url | url }}">
+            <span class="post-row-meta">
+                <time datetime="{{ post.date | htmlDate }}">{{ post.date | displayDate }}</time>
+                {% if showCategory %}<span class="badge">{{ post.data.categoryName }}</span>{% endif %}
+            </span>
+            <span class="post-row-body">
+                <strong class="post-row-title">{{ post.data.title }}</strong>
+                {% if post.data.summary %}<span class="post-row-summary">{{ post.data.summary }}</span>{% endif %}
+            </span>
+            <span class="post-row-arrow" aria-hidden="true">↗</span>
+        </a>
+    </li>
+    {% endfor %}
+</ul>
+{% endmacro %}
+
+{% macro emptyState(message, writeUrl) %}
+<div class="empty-state">
+    <p>{{ message }}</p>
+    <a class="button button-primary" href="{{ writeUrl | url }}">새 글 쓰기 <span aria-hidden="true">↗</span></a>
+</div>
+{% endmacro %}
