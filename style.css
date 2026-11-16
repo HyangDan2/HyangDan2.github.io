@@ -195,7 +195,9 @@ dialog::backdrop { background: rgb(29 25 43 / 34%); }
     .brand { min-height: 42px; font-size: 22px; }
     .brand-name { font-size: 22px; }
     .brand em { padding-left: 10px; }
-    .about-button { padding: 8px 10px; }
+    .header-actions { gap: 12px; }
+    .about-button { padding: 8px 10px; white-space: nowrap; }
+    .header-link { white-space: nowrap; }
     .hero { padding-block: 62px 50px; }
     .hero h1 { margin-top: 28px; font-size: clamp(48px, 12vw, 70px); }
     .hero-description { font-size: 15px; }
@@ -209,8 +211,16 @@ dialog::backdrop { background: rgb(29 25 43 / 34%); }
     .footer-inner > span:nth-child(2) { display: none; }
     .dialog-content { padding: 26px; }
 }
+@media (max-width: 420px) {
+    .header-actions { gap: 8px; }
+    .about-button, .header-link { padding: 8px 7px; font-size: 12.5px; }
+    .brand-name { font-size: 21px; }
+    .brand em { font-size: 10px; padding-left: 8px; }
+}
 @media (max-width: 380px) {
     .brand-divider, .brand-section { display: none; }
+    /* 좁은 화면에서는 락업의 접미어(Web-HQ)를 접고 'HD2Lab'만 남겨 Diary·About 자리를 확보한다 */
+    .brand em { display: none; }
     .hero h1 { font-size: 43px; }
 }
 @media (prefers-reduced-motion: reduce) {
