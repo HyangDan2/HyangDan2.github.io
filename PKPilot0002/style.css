@@ -3456,6 +3456,7 @@ body.is-dragging-pin .pin-person {
 
 /* ---- header · panel · sheet ---- */
 [data-theme="dark"] .app-header { background: rgba(11, 16, 32, 0.88); }
+[data-theme="dark"] .panel-head h1 { color: var(--text); }
 [data-theme="dark"] .map-stage { background: var(--bg-2); }
 
 [data-theme="dark"] .panel {
