@@ -6,13 +6,20 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["minimal-ui", "standalone"],
+  "display_override": [
+    "minimal-ui",
+    "standalone"
+  ],
   "orientation": "any",
-  "background_color": "#101110",
-  "theme_color": "#101110",
+  "background_color": "#FAFAFD",
+  "theme_color": "#FAFAFD",
   "lang": "ko",
   "dir": "ltr",
-  "categories": ["navigation", "travel", "utilities"],
+  "categories": [
+    "navigation",
+    "travel",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "favicon.svg",

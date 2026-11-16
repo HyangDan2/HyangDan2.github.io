@@ -9,25 +9,25 @@
 :root {
   color-scheme: dark;
 
-  --bg: #0b0c0c;
-  --bg-2: #101110;
-  --surface: #151714;
-  --surface-2: #1c1f1a;
-  --glass: rgba(16, 17, 16, 0.72);
-  --glass-strong: rgba(20, 21, 19, 0.9);
+  --bg: #12101A;
+  --bg-2: #171422;
+  --surface: #1D1930;
+  --surface-2: #262040;
+  --glass: rgba(23, 20, 34, 0.72);
+  --glass-strong: rgba(26, 22, 38, 0.9);
 
-  --text: #f2f1eb;
-  --muted: #a2a59c;
-  --muted-2: #767a70;
+  --text: #F3F0FB;
+  --muted: #A9A2BE;
+  --muted-2: #7E7794;
 
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.17);
 
-  --accent: #ff824f;
-  --accent-2: #ffab85;
-  --accent-soft: rgba(255, 130, 79, 0.14);
-  --accent-line: rgba(255, 130, 79, 0.38);
-  --olive: #b9c3a7;
+  --accent: #8B6CE8;
+  --accent-2: #C4B5FD;
+  --accent-soft: rgba(139, 108, 232, 0.16);
+  --accent-line: rgba(139, 108, 232, 0.42);
+  --olive: #C4B5FD;
   --danger: #ff6161;
   --danger-soft: rgba(255, 97, 97, 0.14);
 
@@ -55,31 +55,31 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #f2f2f7;
-  --bg-2: #f7f7fa;
-  --surface: #ffffff;
-  --surface-2: #f0f0f4;
-  --glass: rgba(255, 255, 255, 0.76);
-  --glass-strong: rgba(255, 255, 255, 0.92);
+  --bg: #FAFAFD;
+  --bg-2: #F4F1FC;
+  --surface: #FFFFFF;
+  --surface-2: #F4F1FC;
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-strong: rgba(255, 255, 255, 0.94);
 
-  --text: #16170f;
-  --muted: #6b6f63;
-  --muted-2: #90948a;
+  --text: #1D192B;
+  --muted: #68627A;
+  --muted-2: #8B8598;
 
-  --line: rgba(0, 0, 0, 0.08);
-  --line-strong: rgba(0, 0, 0, 0.16);
+  --line: rgba(29, 25, 43, 0.09);
+  --line-strong: rgba(29, 25, 43, 0.17);
 
-  --accent: #e5622d;
-  --accent-2: #c94f1e;
-  --accent-soft: rgba(229, 98, 45, 0.11);
-  --accent-line: rgba(229, 98, 45, 0.32);
-  --olive: #53613e;
+  --accent: #8B6CE8;
+  --accent-2: #6B4CD6;
+  --accent-soft: #F1ECFE;
+  --accent-line: #D6C9F6;
+  --olive: #6B4CD6;
   --danger: #d92d20;
   --danger-soft: rgba(217, 45, 32, 0.1);
 
-  --shadow-lg: 0 30px 70px rgba(20, 20, 15, 0.18);
-  --shadow-md: 0 14px 34px rgba(20, 20, 15, 0.12);
-  --shadow-sm: 0 3px 12px rgba(20, 20, 15, 0.08);
+  --shadow-lg: 0 30px 70px rgba(29, 25, 43, 0.14);
+  --shadow-md: 0 14px 34px rgba(29, 25, 43, 0.1);
+  --shadow-sm: 0 3px 12px rgba(29, 25, 43, 0.07);
 }
 
 /* ------------------------------------------------------------------
@@ -100,8 +100,8 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(1100px 600px at 82% -12%, rgba(255, 130, 79, 0.09), transparent 62%),
-    radial-gradient(900px 520px at 4% 4%, rgba(185, 195, 167, 0.07), transparent 60%),
+    radial-gradient(1100px 600px at 82% -12%, rgba(139, 108, 232, 0.16), transparent 62%),
+    radial-gradient(900px 520px at 4% 4%, rgba(139, 108, 232, 0.1), transparent 60%),
     var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -116,8 +116,8 @@ body {
 
 [data-theme='light'] body {
   background:
-    radial-gradient(1100px 600px at 84% -14%, rgba(229, 98, 45, 0.1), transparent 60%),
-    radial-gradient(900px 520px at 0% 6%, rgba(83, 97, 62, 0.07), transparent 58%),
+    radial-gradient(1100px 600px at 84% -14%, rgba(139, 108, 232, 0.1), transparent 60%),
+    radial-gradient(900px 520px at 0% 6%, rgba(139, 108, 232, 0.06), transparent 58%),
     var(--bg);
 }
 
@@ -156,7 +156,7 @@ a {
 
 ::selection {
   background: var(--accent);
-  color: #101110;
+  color: #FFFFFF;
 }
 
 :focus-visible {
@@ -196,7 +196,7 @@ a {
   padding: 10px 16px;
   border-radius: 999px;
   background: var(--accent);
-  color: #14100c;
+  color: #FFFFFF;
   font-weight: 700;
   transition: top 0.2s var(--ease);
 }
@@ -531,14 +531,14 @@ a {
 }
 
 .btn.primary {
-  background: linear-gradient(160deg, var(--accent-2), var(--accent) 55%, #eb6b34);
+  background: linear-gradient(160deg, var(--accent), var(--accent-2));
   border-color: transparent;
-  color: #1a0f08;
-  box-shadow: 0 10px 26px rgba(255, 130, 79, 0.26);
+  color: #FFFFFF;
+  box-shadow: 0 10px 26px rgba(139, 108, 232, 0.26);
 }
 
 .btn.primary:hover {
-  box-shadow: 0 14px 32px rgba(255, 130, 79, 0.34);
+  box-shadow: 0 14px 32px rgba(139, 108, 232, 0.34);
 }
 
 .btn.ghost {
@@ -581,7 +581,7 @@ a {
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background:
-    linear-gradient(120deg, rgba(255, 130, 79, 0.07), transparent 46%),
+    linear-gradient(120deg, rgba(139, 108, 232, 0.07), transparent 46%),
     var(--surface);
   margin-bottom: 20px;
   position: relative;
@@ -595,14 +595,14 @@ a {
   top: -80px;
   width: 220px;
   height: 220px;
-  background: radial-gradient(circle, rgba(255, 130, 79, 0.16), transparent 70%);
+  background: radial-gradient(circle, rgba(139, 108, 232, 0.16), transparent 70%);
   pointer-events: none;
 }
 
 .member-banner.is-member {
   border-color: var(--accent-line);
   background:
-    linear-gradient(120deg, rgba(255, 130, 79, 0.12), transparent 52%),
+    linear-gradient(120deg, rgba(139, 108, 232, 0.12), transparent 52%),
     var(--surface);
 }
 
@@ -621,7 +621,7 @@ a {
 
 .member-banner.is-member .banner-badge {
   background: var(--accent);
-  color: #1a0f08;
+  color: #FFFFFF;
   border-color: transparent;
 }
 
@@ -817,7 +817,7 @@ a {
 .tile-mark.lock {
   left: 7px;
   top: 7px;
-  color: #ffe6d6;
+  color: #E4DBFA;
 }
 
 .tile-meta {
@@ -1089,7 +1089,7 @@ a {
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 130, 79, 0.12), transparent 62%),
+    radial-gradient(circle at 50% 0%, rgba(139, 108, 232, 0.12), transparent 62%),
     var(--surface);
 }
 
@@ -1228,7 +1228,7 @@ a {
 .scope-chip.is-active {
   background: var(--accent);
   border-color: transparent;
-  color: #1a0f08;
+  color: #FFFFFF;
 }
 
 .search-summary {
@@ -1342,7 +1342,7 @@ a {
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
   background:
-    radial-gradient(700px 320px at 88% -30%, rgba(255, 130, 79, 0.16), transparent 62%),
+    radial-gradient(700px 320px at 88% -30%, rgba(139, 108, 232, 0.16), transparent 62%),
     linear-gradient(160deg, var(--surface), var(--bg-2));
   position: relative;
   overflow: hidden;
@@ -1379,9 +1379,9 @@ a {
 
 .member-glyph.is-check {
   background: var(--accent);
-  color: #1a0f08;
+  color: #FFFFFF;
   border-color: transparent;
-  box-shadow: 0 10px 26px rgba(255, 130, 79, 0.3);
+  box-shadow: 0 10px 26px rgba(139, 108, 232, 0.3);
 }
 
 .member-glyph .ic {
@@ -2211,9 +2211,9 @@ body.viewer-open {
   font-size: 11.5px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 130, 79, 0.14);
-  border: 1px solid rgba(255, 130, 79, 0.28);
-  color: #ffb593;
+  background: rgba(139, 108, 232, 0.14);
+  border: 1px solid rgba(139, 108, 232, 0.28);
+  color: #C4B5FD;
 }
 
 .info-value {
@@ -2267,8 +2267,8 @@ body.viewer-open {
   padding: 12px 18px;
   font-size: 11px;
   color: var(--accent-2);
-  background: rgba(255, 130, 79, 0.08);
-  border-bottom: 1px solid rgba(255, 130, 79, 0.18);
+  background: rgba(139, 108, 232, 0.08);
+  border-bottom: 1px solid rgba(139, 108, 232, 0.18);
 }
 
 .panel-note .ic {
@@ -2309,7 +2309,7 @@ body.viewer-open {
 
 .filter-card.is-active {
   border-color: var(--accent);
-  background: rgba(255, 130, 79, 0.1);
+  background: rgba(139, 108, 232, 0.1);
 }
 
 .filter-preview {
@@ -2506,7 +2506,7 @@ body.viewer-open {
   border-radius: var(--radius-xl);
   border: 1px solid var(--line-strong);
   background:
-    radial-gradient(420px 240px at 76% -18%, rgba(255, 130, 79, 0.2), transparent 65%),
+    radial-gradient(420px 240px at 76% -18%, rgba(139, 108, 232, 0.2), transparent 65%),
     linear-gradient(165deg, var(--surface), var(--bg-2));
   box-shadow: var(--shadow-lg);
   text-align: center;
@@ -2645,7 +2645,7 @@ body.viewer-open {
 
 .auth-card.is-granted .auth-glyph {
   background: var(--accent);
-  color: #1a0f08;
+  color: #FFFFFF;
   border-color: transparent;
 }
 
