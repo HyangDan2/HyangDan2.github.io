@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#101110" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="HD2Lab | Solver (PKPilot0005) — 문제를 붙여넣거나 캡처를 올리면 유형을 판독해 정답, 단계별 풀이, 오답 소거·핵심 포인트까지 한 장으로 정리하는 문제 판독·답안 생성 웹앱. 객관식·주관식·코딩·어학 문제를 지원하고 Server-HQ AI Gateway와 연결하면 실제 비전 모델로 이미지까지 판독합니다." />
+  <title>HD2Lab | Solver (PKPilot0005)</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HD2Lab Solver" />
+  <meta name="application-name" content="HD2Lab Solver" />
+
+  <!-- 파비콘 (HD2Lab 듀얼 스큐 마크 규격) -->
+  <link rel="icon" href="favicon.ico?v=20261116" sizes="any" />
+  <link rel="icon" href="favicon.svg?v=20261116" type="image/svg+xml" />
+  <link rel="icon" href="favicon-32x32.png?v=20261116" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20261116" sizes="180x180" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="HD2Lab" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:title" content="HD2Lab | Solver (PKPilot0005)" />
+  <meta property="og:description" content="문제를 넣으면, 읽고 풀어드립니다. 유형 판독 · 정답 · 단계별 풀이 · 오답 소거까지 한 장의 답안 카드로." />
+  <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0005/" />
+  <meta property="og:image" content="https://hyangdan2.github.io/PKPilot0005/og-image.png?v=20261116" />
+  <meta property="og:image:secure_url" content="https://hyangdan2.github.io/PKPilot0005/og-image.png?v=20261116" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="HD2Lab | Solver — 문제를 넣으면, 읽고 풀어드립니다" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HD2Lab | Solver (PKPilot0005)" />
+  <meta name="twitter:description" content="문제를 넣으면, 읽고 풀어드립니다. 유형 판독 · 정답 · 단계별 풀이 · 오답 소거까지 한 장의 답안 카드로." />
+  <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0005/og-image.png?v=20261116" />
+  <meta name="twitter:image:alt" content="HD2Lab | Solver — 문제를 넣으면, 읽고 풀어드립니다" />
+
+  <link rel="stylesheet" href="style.css?v=20261116" />
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로</a>
+
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <symbol id="i-solve" viewBox="0 0 24 24"><path d="M4.6 12.4l4.6 4.6L19.4 6.8"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="3"/><circle cx="9" cy="9.8" r="1.8"/><path d="M4.2 17.2l5-4.4 3.4 3 2.4-2.2 4.8 4.2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M5.8 5.8l12.4 12.4M18.2 5.8L5.8 18.2"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.6" y="8.6" width="11.4" height="11.4" rx="2.6"/><path d="M15.4 5.4H6.6a2.2 2.2 0 0 0-2.2 2.2v8.8"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3.4v5.2M15 3.4v5.2M6.4 8.6h11.2v3.2a5.6 5.6 0 0 1-11.2 0z"/><path d="M12 17.4v3.2"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5.4" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.6" r="1.6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.2 7V4.8h5.6V7"/><path d="M6.4 7l.8 12.1a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9L17.6 7"/><path d="M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.4V12l3.2 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5.6 12h12.8M13.4 6.8L18.6 12l-5.2 5.2"/></symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="https://hyangdan2.github.io/" title="HD2Lab Web-HQ로">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="brand-name">HD2Lab</span>
+        <em>Solver</em>
+      </a>
+      <div class="header-actions">
+        <button class="conn-chip" id="connChip" type="button" data-state="demo" title="실행 모드 — 눌러서 API 연결">
+          <span class="dot" aria-hidden="true"></span><span id="connChipText">데모 모드</span>
+        </button>
+        <button class="ghost-btn" id="apiBtn" type="button" title="Server-HQ API 연결 설정">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plug"/></svg><span>API 연결</span>
+        </button>
+        <div class="portal-menu" id="portalMenu">
+          <button class="portal-menu-btn" id="portalMenuBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="portalMenuDropdown" aria-label="HD2Lab 포털 메뉴" title="HD2Lab 포털 메뉴">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dots"/></svg>
+          </button>
+          <div class="portal-menu-dropdown" id="portalMenuDropdown" role="menu" aria-label="HD2Lab 포털" hidden>
+            <p class="portal-menu-head">HD2Lab PORTAL</p>
+            <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/" target="_blank" rel="noopener noreferrer">Web-HQ</a>
+            <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/ApplicationHub/" target="_blank" rel="noopener noreferrer">ApplicationHub</a>
+            <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/PKPilot0002/" target="_blank" rel="noopener noreferrer">Midpoint</a>
+            <a class="portal-item" role="menuitem" href="https://hyangdan2.github.io/PKPilot0003/" target="_blank" rel="noopener noreferrer">Shutterplate</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="intro" aria-labelledby="introTitle">
+      <p class="eyebrow"><i aria-hidden="true"></i>PKPILOT 05 · PROBLEM READER &amp; ANSWER ENGINE</p>
+      <h1 id="introTitle">문제를 넣으면,<br /><strong>읽고 풀어드립니다.</strong></h1>
+      <p class="lede">텍스트·캡처·교재 사진 무엇이든. 유형을 판독해 <b>정답</b>, <b>단계별 풀이</b>, <b>오답 소거</b>까지 한 장의 답안 카드로 정리합니다.</p>
+    </section>
+
+    <div class="studio">
+      <section class="panel input-panel" aria-labelledby="inputTitle">
+        <div class="panel-head">
+          <h2 id="inputTitle">문제 입력</h2>
+          <span class="panel-meta">01 / INPUT</span>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label class="label" for="problemText">문제 텍스트</label>
+            <span class="opt">붙여넣기 · 직접 입력</span>
+          </div>
+          <div class="editor">
+            <textarea id="problemText" rows="7" spellcheck="false" autocomplete="off" placeholder="문제를 그대로 붙여넣으세요.
+
+예)
+2x + 6 = 3x - 4 의 해를 구하시오.
+① x = 2   ② x = 5   ③ x = 8   ④ x = 10   ⑤ 해가 없다"></textarea>
+            <div class="editor-foot">
+              <span id="charCount" class="count">0자</span>
+              <button class="link-btn" id="clearText" type="button">텍스트 지우기</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <span class="label">이미지 · 캡처</span>
+            <span class="opt">드래그 · Ctrl+V · 사진 선택</span>
+          </div>
+          <div class="dropzone" id="dropZone" tabindex="0" role="button" aria-label="문제 이미지 선택 또는 드래그해서 올리기">
+            <input type="file" id="fileInput" accept="image/*" hidden />
+            <div class="drop-idle" id="dropIdle">
+              <svg class="ic big" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg>
+              <p><b>캡처를 여기에 떨어뜨리세요</b></p>
+              <p class="drop-sub">클릭해서 사진 선택 · 모바일은 카메라/앨범 · <kbd>Ctrl</kbd>+<kbd>V</kbd></p>
+            </div>
+            <div class="thumb-wrap" id="thumbWrap" hidden>
+              <img id="thumb" alt="업로드한 문제 이미지 미리보기" />
+              <div class="thumb-bar">
+                <span id="thumbMeta" class="thumb-meta"></span>
+                <button class="icon-btn" id="clearImage" type="button" aria-label="이미지 지우기">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <span class="label" id="modeLabel">문제 유형</span>
+            <span class="opt">모르면 자동 판독</span>
+          </div>
+          <div class="chips" role="group" aria-labelledby="modeLabel" id="modeChips">
+            <button class="chip is-on" type="button" data-mode="auto" aria-pressed="true">자동 판독</button>
+            <button class="chip" type="button" data-mode="quiz" aria-pressed="false">객관식</button>
+            <button class="chip" type="button" data-mode="essay" aria-pressed="false">주관식·서술형</button>
+            <button class="chip" type="button" data-mode="code" aria-pressed="false">코딩·디버깅</button>
+            <button class="chip" type="button" data-mode="enpago" aria-pressed="false">엔파고다·어학</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label class="label" for="hintInput">추가 힌트</label>
+            <span class="opt">선택</span>
+          </div>
+          <input id="hintInput" type="text" maxlength="300" autocomplete="off" placeholder="예) 고1 수학 · 일차방정식 / 오답 이유 위주로" />
+        </div>
+
+        <div class="samples">
+          <span class="samples-label">예시 문제</span>
+          <button class="sample-btn" type="button" data-sample="quiz">객관식 ⟶</button>
+          <button class="sample-btn" type="button" data-sample="code">코딩 ⟶</button>
+          <button class="sample-btn" type="button" data-sample="image">캡처 ⟶</button>
+        </div>
+
+        <div class="actions">
+          <button class="primary-btn" id="solveBtn" type="button">
+            <span>풀어줘</span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
+          </button>
+          <button class="ghost-btn" id="resetBtn" type="button">초기화</button>
+        </div>
+        <p class="form-error" id="formError" role="alert" hidden></p>
+      </section>
+
+      <section class="panel output-panel" aria-labelledby="outputTitle">
+        <div class="panel-head">
+          <h2 id="outputTitle">답안</h2>
+          <span class="panel-meta" id="outputMeta">02 / ANSWER</span>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-glyph" aria-hidden="true">
+            <span class="mark mini"></span>
+          </div>
+          <p class="empty-title">아직 비어 있습니다</p>
+          <p class="empty-copy">문제를 넣고 <b>풀어줘</b>를 누르면<br />판독 → 정답 → 단계별 풀이 순서로 채워집니다.</p>
+          <ul class="empty-list">
+            <li>객관식은 정답 번호와 오답 소거까지</li>
+            <li>코딩은 원인 · 수정 코드 · 경계값 점검</li>
+            <li>캡처는 이미지 판독(API 모드) 지원</li>
+          </ul>
+        </div>
+
+        <div class="loading" id="loadingState" hidden aria-live="polite">
+          <p class="loading-head"><span class="spinner" aria-hidden="true"></span><span id="loadingText">문제를 읽는 중…</span></p>
+          <div class="skeleton"><span></span><span></span><span></span></div>
+          <div class="skeleton short"><span></span><span></span></div>
+          <ol class="loading-steps" id="loadingSteps">
+            <li data-step="0">입력 정리</li>
+            <li data-step="1">유형 · 주제 판독</li>
+            <li data-step="2">풀이 생성</li>
+          </ol>
+        </div>
+
+        <article class="answer-card" id="answerCard" hidden aria-live="polite">
+          <header class="answer-head">
+            <div class="badges">
+              <span class="badge badge-type" id="badgeType">객관식</span>
+              <span class="badge badge-topic" id="badgeTopic">수학</span>
+              <span class="badge badge-src" id="badgeSrc">DEMO</span>
+            </div>
+            <time class="answer-time" id="answerTime"></time>
+          </header>
+
+          <section class="answer-main">
+            <p class="answer-label">정답 <span>FINAL ANSWER</span></p>
+            <p class="answer-value" id="answerValue"></p>
+            <p class="answer-sub" id="answerSub" hidden></p>
+          </section>
+
+          <section class="answer-section">
+            <h3>단계별 풀이 <span>STEP BY STEP</span></h3>
+            <ol class="steps" id="stepList"></ol>
+          </section>
+
+          <section class="answer-section">
+            <h3 id="pointsTitle">오답 소거 · 핵심 포인트 <span>KEY POINTS</span></h3>
+            <ul class="points" id="pointList"></ul>
+          </section>
+
+          <footer class="answer-foot">
+            <p class="answer-note" id="answerNote"></p>
+            <div class="answer-actions">
+              <button class="primary-btn small" id="copyBtn" type="button">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg><span>답안 복사</span>
+              </button>
+              <button class="ghost-btn small" id="againBtn" type="button">한 번 더 풀기</button>
+            </div>
+          </footer>
+        </article>
+
+        <p class="panel-hint"><kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> 로 바로 풀기 · 답안 기록은 이 브라우저에만 저장됩니다</p>
+      </section>
+    </div>
+
+    <section class="history" aria-labelledby="historyTitle">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">LOCAL ARCHIVE</p>
+          <h2 id="historyTitle">풀이 기록</h2>
+        </div>
+        <button class="link-btn danger" id="clearHistory" type="button" hidden>전체 삭제</button>
+      </div>
+      <p class="history-empty" id="historyEmpty">아직 기록이 없습니다. 한 문제 풀면 이 브라우저에만 쌓입니다.</p>
+      <ul class="history-list" id="historyList"></ul>
+    </section>
+
+    <footer class="site-footer">
+      <p>HD2Lab · PKPilot0005 Solver — static front end on GitHub Pages, answers via Server-HQ AI Gateway when connected.</p>
+      <p class="footer-mark">STAY CURIOUS · KEEP BUILDING</p>
+    </footer>
+  </main>
+
+  <dialog class="api-dialog" id="apiDialog" aria-labelledby="apiTitle">
+    <div class="dialog-body">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">SERVER-HQ · AI GATEWAY</p>
+          <h2 id="apiTitle">API 연결</h2>
+        </div>
+        <button class="icon-btn" id="apiClose" type="button" aria-label="닫기">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <p class="dialog-lede">Server-HQ의 <code>/api/solver</code> 엔드포인트를 연결하면 실제 비전 모델이 판독·풀이합니다. 비워 두면 이 브라우저 안에서 도는 <b>데모 모드</b>로 동작합니다.</p>
+
+      <div class="field">
+        <label class="label" for="apiUrl">엔드포인트</label>
+        <input id="apiUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://hd2lab.duckdns.org/api/solver/solve" />
+        <p class="field-note"><code>/solve</code>로 끝나면 <code>/health</code>로 연결을 확인합니다.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="apiAuth">인증 방식</label>
+        <select id="apiAuth">
+          <option value="none">없음 · 공개 엔드포인트</option>
+          <option value="bearer">베어러 토큰</option>
+          <option value="cookie">세션 쿠키 · 관리자 SSO</option>
+        </select>
+      </div>
+
+      <div class="field" id="tokenField" hidden>
+        <label class="label" for="apiToken">토큰</label>
+        <input id="apiToken" type="password" autocomplete="off" placeholder="solver 전용 토큰" />
+        <p class="field-note">이 브라우저의 localStorage에만 저장되며 화면·로그에 남기지 않습니다.</p>
+      </div>
+
+      <p class="api-status" id="apiStatus" role="status" hidden></p>
+
+      <div class="dialog-actions">
+        <button class="ghost-btn" id="apiTest" type="button">연결 테스트</button>
+        <button class="primary-btn" id="apiSave" type="button">저장</button>
+        <button class="link-btn danger" id="apiClear" type="button">연결 해제</button>
+      </div>
+      <p class="dialog-note">서버 CORS는 <code>https://hyangdan2.github.io</code>만 허용합니다. 연결 전에는 모든 기능이 데모로 동작합니다.</p>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js?v=20261116" defer></script>
+</body>
+</html>
