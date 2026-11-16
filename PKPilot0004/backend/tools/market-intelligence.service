@@ -1,0 +1,44 @@
+# HD2Lab Market Intelligence (draft) systemd unit
+# 설치 예시:
+#   sudo install -d -o hd2lab-mi -g hd2lab-mi -m 0755 /opt/hd2lab-market-intel
+#   sudo install -d -o hd2lab-mi -g hd2lab-mi -m 0700 /var/lib/hd2lab-market-intel
+#   sudo install -m 0644 tools/market-intelligence.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now hd2lab-market-intel
+#
+# 주의: 이 서비스는 아직 운영 배포가 아니다. 코드는 /opt/hd2lab-market-intel/current
+# (릴리스 심볼릭 링크)를 가리키고, 키는 EnvironmentFile 로만 주입한다.
+
+[Unit]
+Description=HD2Lab Market Intelligence (free-API draft)
+Documentation=file:///opt/hd2lab-market-intel/current/HANDOFF_ANTIGRAVITY.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hd2lab-mi
+Group=hd2lab-mi
+WorkingDirectory=/opt/hd2lab-market-intel/current
+EnvironmentFile=/etc/hd2lab/market-intelligence.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/hd2lab-market-intel/venv/bin/python -m uvicorn market_intel.app:create_app --factory --host 127.0.0.1 --port 8791 --no-access-log --no-proxy-headers
+Restart=on-failure
+RestartSec=5
+
+# --- hardening (기존 서버 서비스 규격과 동일한 방향) ---
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/hd2lab-market-intel
+CapabilityBoundingSet=
+MemoryMax=512M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

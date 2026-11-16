@@ -1,0 +1,9 @@
+# 백엔드 초안(파이썬) 실행 산출물
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/.venv/
+backend/output/
+
+# 로컬 정적 서버 로그
+*.log

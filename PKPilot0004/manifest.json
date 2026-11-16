@@ -1,0 +1,21 @@
+{
+  "name": "HD2Lab Market Intelligence",
+  "short_name": "Market Intelligence",
+  "description": "기업 본질 가치와 무관한 경제 외적 주가 변동 요인 10선 — 4대 축 메커니즘, 요인 분류표, 종목별 비재무 요인 태깅과 평균 회귀 리스크.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101110",
+  "theme_color": "#101110",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "favicon-32x32.png", "sizes": "32x32", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
