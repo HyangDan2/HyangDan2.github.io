@@ -363,11 +363,49 @@ export function parseLivePayload(payload, origin, options = {}) {
 }
 
 /* ------------------------------------------------------------------
-   세션 캐시
+   캐시 — 세션 메모리 + 브라우저 저장소(다시 열어도 0ms)
    ------------------------------------------------------------------ */
 
 const sessionCache = new Map();
 const CACHE_REUSE_M = 300;
+/** 브라우저 저장소 캐시 — 30분 안에 같은 거점을 다시 보면 네트워크를 쓰지 않는다. */
+const STORE_KEY = 'pkp2.live.v1';
+const STORE_TTL_MS = 30 * 60 * 1000;
+const STORE_MAX = 8;
+
+function readStore() {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const rows = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStore(rows) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(rows.slice(0, STORE_MAX)));
+  } catch {
+    /* 저장 공간·사생활 모드에서는 건너뛴다 */
+  }
+}
+
+function rememberPersistently(entry) {
+  const rows = readStore().filter(row =>
+    row && !(row.key === liveCacheKey(entry.origin.lat, entry.origin.lng, entry.radiusKm)));
+  rows.unshift({
+    key: liveCacheKey(entry.origin.lat, entry.origin.lng, entry.radiusKm),
+    origin: entry.origin,
+    radiusKm: entry.radiusKm,
+    places: entry.places,
+    source: entry.source,
+    endpoint: entry.endpoint,
+    at: entry.at,
+  });
+  writeStore(rows);
+}
 
 export function liveCacheKey(lat, lng, radiusKm = LIVE_RADIUS_KM) {
   return `${Number(lat).toFixed(3)},${Number(lng).toFixed(3)}@${Number(radiusKm).toFixed(1)}`;
@@ -382,6 +420,24 @@ export function getCachedLive(lat, lng, radiusKm = LIVE_RADIUS_KM) {
     if (entry.radiusKm !== radiusKm) continue;
     if (haversineKm(origin, entry.origin) * 1000 <= CACHE_REUSE_M) return entry;
   }
+
+  // 브라우저 저장소 — 지난 방문에서 받아 둔 결과
+  const now = Date.now();
+  for (const row of readStore()) {
+    if (!row || row.radiusKm !== radiusKm || !row.origin) continue;
+    if (now - (row.at || 0) > STORE_TTL_MS) continue;
+    if (haversineKm(origin, row.origin) * 1000 > CACHE_REUSE_M) continue;
+    const entry = {
+      origin: row.origin,
+      radiusKm: row.radiusKm,
+      places: row.places || [],
+      source: row.source || 'live',
+      endpoint: row.endpoint || '',
+      at: row.at || now,
+    };
+    sessionCache.set(liveCacheKey(row.origin.lat, row.origin.lng, radiusKm), entry);
+    return entry;
+  }
   return null;
 }
 
@@ -395,11 +451,19 @@ export function rememberLive(lat, lng, radiusKm, result) {
     at: Date.now(),
   };
   sessionCache.set(liveCacheKey(lat, lng, radiusKm), entry);
+  if (entry.places.length) rememberPersistently(entry);
   return entry;
 }
 
 export function clearLiveCache() {
   sessionCache.clear();
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(STORE_KEY);
+    } catch {
+      /* 무시 */
+    }
+  }
 }
 
 export function liveCacheSize() {
