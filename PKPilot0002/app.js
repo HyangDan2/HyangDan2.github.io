@@ -31,13 +31,13 @@ import {
   travelModeOf,
   walkMinutesForMeters,
   walkingMinutes,
-} from './js/core.js?v=20261116-ux4';
+} from './js/core.js?v=20261116-ux4b';
 import {
   LIVE_RADIUS_KM,
   MAX_LIVE_RADIUS_KM,
   loadLivePlaces,
   needsLiveSearch,
-} from './js/live_places.js?v=20261116-ux4';
+} from './js/live_places.js?v=20261116-ux4b';
 import { LINES, STATIONS } from './js/stations.js';
 import { DRIVING_SPOTS, ROADS } from './js/driving_spots.js';
 import { LANDMARKS } from './js/landmarks.js';
@@ -2114,6 +2114,11 @@ function initSearchEvents() {
 
   el.searchInput.addEventListener('input', scheduleSuggest);
   el.searchInput.addEventListener('focus', () => {
+    // 미니에서는 자동완성 목록이 시트 밖으로 잘린다 — 검색할 때는 하프로 열고 검색창을 위로 올린다
+    if (isMobile() && el.panel.dataset.sheet === 'mini') {
+      setSheet('half');
+      scrollPanelTo(el.searchForm);
+    }
     if (el.searchInput.value.trim()) scheduleSuggest();
   });
 
