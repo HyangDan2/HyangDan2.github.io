@@ -1,0 +1,19 @@
+# GitHub Pages (legacy / branch source) runs Jekyll over this repository even though the site is
+# plain static HTML: no layouts, no _posts, nothing to render.
+#
+# `diary-src/` holds the Eleventy sources for /diary/. It contains Nunjucks templates
+# ({% extends %} / {% import %} / {% include %}), which Jekyll's Liquid parser rejects —
+# "Liquid syntax error (line 1): Unknown tag 'import'" — and that failed the whole deploy
+# while the previously published site stayed live. The built output is produced by the
+# Eleventy workflow, so the sources never belong in the published tree.
+#
+# Keep Jekyll's default exclusions and add the Eleventy sources on top.
+exclude:
+  - diary-src
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
