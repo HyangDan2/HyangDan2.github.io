@@ -22,7 +22,11 @@
 - **번들 전환** — 라이브러리 카드 클릭 한 번으로 기존 인스턴스를 `stop()`하고 새 번들을 부팅
 - **내 파일 실행** — `.jsdos` / `.zip`을 드래그&드롭하거나 파일 선택. `URL.createObjectURL(file)`로 열고 페이지 어디에 떨어뜨려도 플레이어로 들어온다. 파일은 서버로 전송되지 않는다
 - **전체화면** — 화면 셸을 네이티브 Fullscreen API로 전환하고, 전체화면 안에서도 `전체화면 나가기` 버튼을 제공(Esc는 DOS가 가로챌 수 있다)
-- **가상 게임패드** — 방향키 · Enter · Space · Ctrl · Esc · Y · N을 실제 `KeyboardEvent`(keyCode 포함)로 에뮬레이터에 전달. 터치 기기에서 길게 눌러 이동할 수 있다
+- **입력 (js-dos CommandInterface 직결)** — `Dos(stage, { onEvent })`의 `"ci-ready"`에서 `ci`(CommandInterface)를 잡아 모든 키를 `ci.sendKeyEvent(kbdCode, pressed)`로 넣는다. 포커스가 캔버스 안에 있지 않아도, 캔버스를 한 번도 클릭하지 않아도 에뮬레이터에 바로 들어간다
+- **가상 게임패드** — 방향 · Enter · Space · Ctrl · Esc · Y · N에 더해 `Shift`(달리기) · `Alt`(옆걸음) · `1`~`4`(무기) 보조 줄. `pointerdown`에서 `setPointerCapture`로 누름을 붙잡고 `pointerup` · `pointercancel` · `lostpointercapture`에서만 놓는다(예전 `pointerleave` 해제는 손가락이 버튼을 살짝 벗어나면 이동이 끊겼다). 다중 터치(이동 + 사격) 동시 지원, `blur` · `visibilitychange` · `pagehide`에서 전체 해제로 키가 붙잡히지 않는다
+- **게임별 키 프로필** — 이 DOOM 셰어웨어 번들은 자체 `DEFAULT.CFG`를 싣고 있어 방향키 위·아래가 게임플레이에서 아무것도 하지 않는다(`key_up=W`, `key_down=S`, `key_strafeleft/right=A/D`, `key_left/right`=좌우 방향키, `key_fire=Ctrl`, `key_use=Space`, `key_speed=Shift`). 그래서 DOOM에서 d-pad ▲▼는 `W`+`↑`, ◀▶는 `←`/`→`를 보낸다 — 게임에서는 W/S로 걷고 메뉴에서는 방향키로 이동한다. Digger 등 나머지는 방향키 그대로
+- **PC 키보드 바인딩 (WASD 모드, 기본 켜짐·`localStorage` 기억)** — `W`/`A`/`S`/`D` → 이동, `J`·`Z` → `Ctrl`(사격), `K`·`X` → `Space`, `L`·`C` → `Enter`. 방향키 · `Ctrl` · `Space` · `Enter` · `Esc` · `1`~`7` · `Y`/`N`은 모드와 무관하게 항상 동작한다. 한 번 누른 키가 두 번 들어가지 않도록 js-dos의 `window` 키 리스너는 이 키들에서 `stopPropagation`으로 막고 직접 `ci.sendKeyEvent`만 부른다. 방향키·Space의 페이지 스크롤도 막는다
+- **키 안내** — 플레이 바 아래에 `W A S D 이동 · ← → 회전 · J/Z 사격 …` 압축 범례(데스크톱), 조작 안내 패널에 게임별 키 표
 - **소리 · 다시 시작** — `setVolume(0|1)`, `stop()` 후 재부팅
 - **딥링크 · 기억** — `?game=doom`으로 특정 번들 직행, 마지막 게임은 `localStorage`에 기억
 - **반응형** — 1440×900 데스크톱 2단 / 390×844 모바일 1단, 가로 넘침 0 (320·768·1024px 확인)
@@ -37,7 +41,7 @@ js-dos는 자체 사이드바(저장·키보드·확대·성능·설정)를 주�
 |------|------|
 | `index.html` | 마크업 + OG/PWA 메타 |
 | `style.css` | HD2Lab 다크 테마, 플레이어·라이브러리·패드 레이아웃 |
-| `app.js` | js-dos 로더, 부팅 상태 머신, 파일 실행, 전체화면, 가상 패드 |
+| `app.js` | js-dos 로더, 부팅 상태 머신, 파일 실행, 전체화면, CommandInterface 입력(패드·키보드·게임별 프로필) |
 | `manifest.json` | PWA 매니페스트 |
 | `og-image.png` | 1200×630 소셜 카드 |
 | `favicon.*`, `icon-*.png`, `apple-touch-icon.png` | 파비콘 세트 (듀얼 스큐 마크) |
