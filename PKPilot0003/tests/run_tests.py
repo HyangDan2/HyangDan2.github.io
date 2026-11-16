@@ -145,8 +145,8 @@ def static_tests():
     check("meta description present",
           any(t == "meta" and d.get("name") == "description" and len(d.get("content", "")) > 60
               for t, d in c.tags))
-    check("theme-color #101110",
-          any(t == "meta" and d.get("name") == "theme-color" and d.get("content", "").lower() == "#101110"
+    check("theme-color #FAFAFD (Soft Iris)",
+          any(t == "meta" and d.get("name") == "theme-color" and d.get("content", "").lower() == "#fafafd"
               for t, d in c.tags))
     check("manifest linked", any(t == "link" and d.get("rel") == "manifest" for t, d in c.tags))
     check("apple-touch-icon linked",
@@ -358,8 +358,8 @@ def static_tests():
     check("the title is no longer a link off the site", '<a class="brand"' not in html)
     hero = re.search(r'<header class="home-hero">.*?</header>', html, re.S)
     hero_html = hero.group(0) if hero else ""
-    check("hero carries the official dual-skew mark in the accent",
-          MARK_PATH in hero_html and "#ff824f" in hero_html)
+    check("hero carries the official dual-skew mark in the Soft Iris accent",
+          MARK_PATH in hero_html and "#8b6ce8" in hero_html.lower())
     check("hero mark is drawn with mitred joins", 'stroke-linejoin="miter"' in hero_html)
     check("hero mark keeps the square corners (no round joins)",
           "stroke-linejoin=\"round\"" not in hero_html)
@@ -544,7 +544,8 @@ def static_tests():
     print("\n[static] CSS tokens & compact viewport rules")
     css = read("style.css")
     check("dark token #101110", "#101110" in css)
-    check("accent token #ff824f", "#ff824f" in css)
+    check("Soft Iris accent token #8B6CE8", "#8b6ce8" in css.lower())
+    check("Soft Iris shell ground #FAFAFD", "#fafafd" in css.lower())
     check("body locks the viewport (no page scroll)",
           re.search(r"body\s*\{[^}]*height:\s*100dvh", css, re.S) is not None
           and re.search(r"body\s*\{[^}]*overflow:\s*hidden", css, re.S) is not None)
@@ -654,7 +655,8 @@ def static_tests():
           "업로드 0 B" in html and "File System Access" not in html)
 
     favicon = read("favicon.svg")
-    check("favicon.svg uses the dual-skew mark", MARK_PATH in favicon and "#101110" in favicon)
+    check("favicon.svg uses the dual-skew mark on Soft Iris",
+          MARK_PATH in favicon and "#fafafd" in favicon.lower() and "#8b6ce8" in favicon.lower())
     check("favicon.svg round-square radius 12", 'rx="12"' in favicon)
     gen = read("tools/generate_brand_assets.py")
     check("generator draws the dual-skew mark", MARK_PATH in gen)
@@ -2765,8 +2767,8 @@ def browser_tests(port):
         tile_colors = page.evaluate(TILE_COLORS_JS)
         check("emblem pane: tiles show each maker's own colour by default",
               "#cc0000" in tile_colors["canon"] and
-              "#3b6bff" in tile_colors["samsung"] and      # night value: the tiles sit on dark ground
-              "#ff824f" in tile_colors["hd2lab"] and
+              "#3b6bff" in tile_colors["samsung"] and      # the tiles sit on the white Soft Iris ground
+              "#8b6ce8" in tile_colors["hd2lab"] and
               "#e20613" in tile_colors["leica"], str(tile_colors))
         page.click('#emblemMonoSeg [data-emblem-mono="mono"]')
         page.wait_for_timeout(260)
@@ -2776,7 +2778,7 @@ def browser_tests(port):
               page.get_attribute('#emblemMonoSeg [data-emblem-mono="color"]', "aria-pressed") == "false")
         mono_tiles = page.evaluate(TILE_COLORS_JS)
         check("emblem pane: All Black repaints every tile in one ink",
-              all(v == ["#d9ded6"] for v in mono_tiles.values()), str(mono_tiles))
+              all(v == ["#1d192b"] for v in mono_tiles.values()), str(mono_tiles))
         check("emblem pane: the plate follows the switch",
               page.evaluate("() => SPApp.layoutFor(null, 1200, 800).opts.emblemMono") is True)
         page.click('#emblemMonoSeg [data-emblem-mono="color"]')

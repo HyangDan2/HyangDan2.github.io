@@ -313,7 +313,7 @@
   }
 
   /* ── emblems ──────────────────────────────────────────────────────────── */
-  var INK = '#d9ded6', ACCENT = '#ff824f', BASE = '#121412';
+  var INK = '#1D192B', ACCENT = '#8B6CE8', BASE = '#FFFFFF';
 
   function emblemTile(id, name, inner) {
     var b = document.createElement('button');

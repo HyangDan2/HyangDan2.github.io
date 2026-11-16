@@ -143,7 +143,7 @@ function applyTheme(theme, { persist = true } = {}) {
     }
   }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', next === 'light' ? '#f2f2f7' : '#101110');
+  if (meta) meta.setAttribute('content', next === 'light' ? '#FAFAFD' : '#12101A');
   themeBtn.innerHTML = icon(next === 'light' ? 'moon' : 'sun');
   themeBtn.setAttribute('aria-label', next === 'light' ? '다크 모드로 전환' : '라이트 모드로 전환');
 }
