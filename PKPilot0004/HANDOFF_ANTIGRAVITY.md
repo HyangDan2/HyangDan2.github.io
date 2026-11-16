@@ -168,7 +168,7 @@
 ```
 PKPilot0004/
 ├── index.html          ← 헤더 · 히어로 · 메커니즘 · 분석기 · 10선 표 · 원칙 · 푸터 + API 설정 시트
-├── style.css           ← HD2Lab 다크/오렌지, Web-HQ 헤더 락업, 320~1440px
+├── style.css           ← Soft Iris/Navy & Lavender 토큰, Web-HQ 헤더 락업, 320~1440px
 ├── app.js              ← DOMAIN · SAMPLES · 데모 스코어링 엔진 · API 모드 · 렌더러
 ├── manifest.json       ← PWA(설치형) 메타
 ├── favicon.ico / favicon.svg / favicon-32x32.png / apple-touch-icon.png / icon-192.png / icon-512.png
@@ -181,7 +181,7 @@ PKPilot0004/
 
 ```html
 <a class="brand" href="https://hyangdan2.github.io/">
-  <span class="mark" aria-hidden="true"></span>   <!-- CSS 듀얼 스큐: 17×22, skewY(-23deg), 3px 오렌지 -->
+  <span class="mark" aria-hidden="true"></span>   <!-- CSS 듀얼 스큐: 17×22, skewY(-23deg), 3px var(--accent) -->
   <span class="brand-name">HD2Lab</span>          <!-- 25px / 800 / -1.5px -->
   <em>MARKET INTELLIGENCE</em>                    <!-- 12px, 좌측 1px 보더 = "|" 구분선 -->
 </a>
@@ -196,7 +196,8 @@ PKPilot0004/
 
 - `robots: noindex, nofollow` — 초안이므로 검색 노출을 막는다.
 - OG 이미지는 만들지 않았다(Phase 3 항목). 카카오톡 미리보기를 붙일 때는 1200×630 규격과 정식 로고를 쓴다.
-- `theme-color #101110`, PWA 매니페스트, 파비콘 6종으로 404 를 만들지 않는다.
+- `theme-color #FAFAFD`, PWA 매니페스트(`theme_color`·`background_color` 동일), 파비콘 6종으로 404 를 만들지 않는다.
+- 라이트/다크는 `../assets/hd2-theme.css`·`hd2-theme.js` 공용 토글과 `localStorage['hd2-theme']` FOUC 스니펫으로 처리한다(Web-HQ·PKPilot0001~0006과 동일).
 
 ### 3.2 두 가지 모드
 

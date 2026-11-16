@@ -25,7 +25,7 @@ API 주소는 `localStorage` 에만 저장되고 서버로 전송되지 않습�
 | 파일 | 내용 |
 | --- | --- |
 | `index.html` | 헤더(Web-HQ 락업) · 히어로 · 메커니즘 도해 · 종목 분석기 · 10선 분류표 · 투자자 원칙 · API 설정 시트 |
-| `style.css` | HD2Lab 다크/오렌지(#101110 / #ff824f), 320~1440px 반응형, 의존성 0 |
+| `style.css` | Soft Iris 라이트(#FAFAFD / #FFFFFF / #8B6CE8) + Navy & Lavender 다크(#0B1020 / #12192E / #A78BFA) 토큰, 320~1440px 반응형, 의존성 0 (`../assets/hd2-theme.*` 공용 토글) |
 | `app.js` | 도메인 문구 · 표본 데이터 · 데모 스코어링 엔진 · API 클라이언트 · 렌더러 (외부 문자열은 `textContent` 만 사용) |
 | `manifest.json`, `favicon.*`, `icon-*.png` | PWA·아이콘 세트(404 방지) |
 | `backend/` | FastAPI 초안(무료 API 파이프라인 + pytest 61개) |
