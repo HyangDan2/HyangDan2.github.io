@@ -175,7 +175,12 @@ def static_tests():
             refs.append(d["src"].split("?")[0])
         if t == "link" and d.get("href") and not d["href"].startswith(("http", "data:")):
             refs.append(d["href"].split("?")[0])
-    missing = [r for r in refs if not os.path.exists(os.path.join(ROOT, r))]
+    def ref_exists(ref: str) -> bool:
+        if ref.startswith("/assets/hd2-theme."):  # shared site asset, lives above the app
+            return os.path.exists(os.path.join(SITE_ROOT, ref.lstrip("/")))
+        return os.path.exists(os.path.join(ROOT, ref))
+
+    missing = [r for r in refs if not ref_exists(r)]
     check("every local script/link target exists", not missing, str(missing))
     check("no CDN scripts (offline-first)", not re.search(r"<script[^>]+src=\"https?://", html))
     # The one external stylesheet is the signature face for a custom caption
@@ -694,9 +699,21 @@ CHROME_UA = ("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML
              "Chrome/124.0.0.0 Mobile Safari/537.36")
 
 
+# The studio shares the site-wide theme assets (/assets/hd2-theme.css|js) with
+# every other HD2Lab route, so those absolute URLs are resolved against the
+# repository root while the app itself is served at "/".
+SITE_ROOT = os.path.dirname(ROOT)
+
+
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
+
+    def translate_path(self, path):
+        clean = path.split("?", 1)[0].split("#", 1)[0]
+        if clean.startswith("/assets/hd2-theme."):
+            return os.path.join(SITE_ROOT, clean.lstrip("/"))
+        return super().translate_path(path)
 
     def log_message(self, *a):
         pass

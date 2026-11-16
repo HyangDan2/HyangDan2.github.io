@@ -20,7 +20,7 @@ import { createViewer } from './js/viewer.js';
 /* ------------------------------------------------------------------ *
  * 기본 설정 · 저장소
  * ------------------------------------------------------------------ */
-const THEME_KEY = 'pkpilot0001:theme';
+const THEME_KEY = 'hd2-theme'; // shared across every HD2Lab route (see /assets/hd2-theme.js)
 
 function safeLocalStorage() {
   try {
@@ -132,21 +132,34 @@ function toast(message, { actionLabel, onAction, duration, tone = 'default' } = 
 /* ------------------------------------------------------------------ *
  * 테마
  * ------------------------------------------------------------------ */
-function applyTheme(theme, { persist = true } = {}) {
-  const next = theme === 'light' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next;
-  if (persist) {
-    try {
-      storage.setItem(THEME_KEY, next);
-    } catch {
-      /* noop */
-    }
-  }
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', next === 'light' ? '#FAFAFD' : '#12101A');
+function paintThemeControls(next) {
   themeBtn.innerHTML = icon(next === 'light' ? 'moon' : 'sun');
   themeBtn.setAttribute('aria-label', next === 'light' ? '다크 모드로 전환' : '라이트 모드로 전환');
 }
+
+function applyTheme(theme, { persist = true } = {}) {
+  const next = theme === 'light' ? 'light' : 'dark';
+  // the floating toggle, the meta colour and the stored key are all owned by
+  // hd2-theme.js; fall back to doing it here if that file is not present
+  if (window.HD2Theme) {
+    window.HD2Theme.set(next, { persist });
+  } else {
+    document.documentElement.dataset.theme = next;
+    if (persist) {
+      try {
+        storage.setItem(THEME_KEY, next);
+      } catch {
+        /* noop */
+      }
+    }
+    paintThemeControls(next);
+  }
+}
+
+// the floating toggle (or another tab) can change the theme under our feet
+window.addEventListener('hd2-theme-change', (event) => {
+  paintThemeControls(event.detail?.theme === 'light' ? 'light' : 'dark');
+});
 
 /* ------------------------------------------------------------------ *
  * 렌더링 — 공통 조각
@@ -1166,15 +1179,10 @@ const viewer = createViewer({
 });
 
 function init() {
-  const savedTheme = (() => {
-    try {
-      return storage.getItem(THEME_KEY);
-    } catch {
-      return null;
-    }
-  })();
-  const prefersLight = window.matchMedia?.('(prefers-color-scheme: light)').matches;
-  applyTheme(savedTheme || (prefersLight ? 'light' : 'dark'), { persist: false });
+  // the inline <head> script already resolved hd2-theme (default light)
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light', {
+    persist: false,
+  });
 
   window.addEventListener('hashchange', applyRoute);
 

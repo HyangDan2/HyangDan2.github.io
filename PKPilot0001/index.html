@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#FAFAFD" />
-  <meta name="color-scheme" content="dark light" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="HD2Lab | Photos (PKPilot0001) — iOS 사진 앱 감성의 정적 사진 라이브러리. 목업 EXIF, 정회원 패스코드 인증, 필터 보정, 비밀 앨범." />
   <title>HD2Lab | Photos (PKPilot0001)</title>
 
@@ -38,8 +38,12 @@
   <meta name="twitter:description" content="iOS 감성의 정적 사진 라이브러리 · 목업 EXIF · 정회원 패스코드 인증 · 필터 보정" />
   <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0001/og-image.png?v=20261116-softiris" />
 
-  <link rel="stylesheet" href="style.css?v=20261116-softiris" />
-  <script type="module" src="app.js?v=20261110"></script>
+  <!-- HD2Lab shared theme: applies the stored hd2-theme before first paint (no flash) -->
+  <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+  <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy" />
+  <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
+  <link rel="stylesheet" href="style.css?v=20261117-navy" />
+  <script type="module" src="app.js?v=20261117-navy"></script>
 </head>
 <body>
   <!-- 아이콘 스프라이트 -->

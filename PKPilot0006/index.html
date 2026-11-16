@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#FAFAFD" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="HD2Lab | DOS Player (PKPilot0006) — js-dos v8(DOSBox WebAssembly)로 고전 DOS 게임과 프로그램을 설치 없이 브라우저에서 바로 실행하는 인스턴트 플레이어. 검증된 무료·셰어웨어 번들 3종을 한 번에 부팅하고, 내 .jsdos·.zip 파일도 드래그해서 바로 돌립니다." />
   <title>HD2Lab | DOS Player (PKPilot0006)</title>
 
@@ -43,7 +43,11 @@
   <meta name="twitter:image:alt" content="HD2Lab | DOS Player — 고전 DOS 게임을, 설치 없이 바로" />
 
   <link rel="preconnect" href="https://v8.js-dos.com" crossorigin />
-  <link rel="stylesheet" href="style.css?v=20261116-softiris" />
+  <!-- HD2Lab shared theme: applies the stored hd2-theme before first paint (no flash) -->
+  <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+  <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy" />
+  <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
+  <link rel="stylesheet" href="style.css?v=20261117-navy" />
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로</a>
@@ -286,6 +290,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=20261116c" defer></script>
+  <script src="app.js?v=20261117-navy" defer></script>
 </body>
 </html>

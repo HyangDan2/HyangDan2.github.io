@@ -1,0 +1,78 @@
+/* ==========================================================================
+   HD2Lab · shared Light/Dark toggle (Navy & Lavender)
+   One button, injected by /assets/hd2-theme.js, that flips
+   :root[data-theme] between "light" (Soft Iris) and "dark" (Navy & Lavender).
+
+   Per-page placement: an app overrides the custom properties below on
+   `.hd2-theme-toggle` (bottom offset, z-index, surface colours).
+   ========================================================================== */
+
+.hd2-theme-toggle {
+  --hd2-toggle-size: 44px;  /* 44px = the smallest comfortable touch target */
+  --hd2-toggle-right: max(16px, env(safe-area-inset-right, 0px) + 16px);
+  --hd2-toggle-bottom: max(18px, env(safe-area-inset-bottom, 0px) + 18px);
+  --hd2-toggle-z: 60;
+
+  position: fixed;
+  z-index: var(--hd2-toggle-z);
+  right: var(--hd2-toggle-right);
+  bottom: var(--hd2-toggle-bottom);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hd2-toggle-size);
+  height: var(--hd2-toggle-size);
+  margin: 0;
+  padding: 0;
+
+  border: 1px solid var(--hd2-toggle-border, rgba(29, 25, 43, 0.14));
+  border-radius: 999px;
+  background: var(--hd2-toggle-bg, #FFFFFF);
+  color: var(--hd2-toggle-fg, #1D192B);
+  box-shadow: var(--hd2-toggle-shadow, 0 10px 26px rgba(29, 25, 43, 0.16));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(10px);
+  transition: transform 0.18s ease, background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hd2-theme-toggle:hover {
+  border-color: var(--hd2-toggle-hover, #A78BFA);
+  color: var(--hd2-toggle-hover, #A78BFA);
+}
+
+.hd2-theme-toggle:active {
+  transform: scale(0.94);
+}
+
+.hd2-theme-toggle:focus-visible {
+  outline: 2px solid var(--hd2-toggle-hover, #A78BFA);
+  outline-offset: 3px;
+}
+
+.hd2-theme-toggle .hd2-theme-ic {
+  display: none;
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+/* the icon shows where the button takes you */
+html[data-theme='light'] .hd2-theme-toggle .hd2-theme-ic[data-icon='moon'],
+html[data-theme='dark'] .hd2-theme-toggle .hd2-theme-ic[data-icon='sun'] {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hd2-theme-toggle,
+  .hd2-theme-toggle:active {
+    transition: none;
+    transform: none;
+  }
+}

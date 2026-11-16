@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#FAFAFD" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="HD2Lab | Solver (PKPilot0005) — 문제를 붙여넣거나 캡처를 올리면 유형을 판독해 정답, 단계별 풀이, 오답 소거·핵심 포인트까지 한 장으로 정리하는 문제 판독·답안 생성 웹앱. 객관식·주관식·코딩·어학 문제를 지원하고 Server-HQ AI Gateway와 연결하면 실제 비전 모델로 이미지까지 판독합니다." />
   <title>HD2Lab | Solver (PKPilot0005)</title>
 
@@ -42,7 +42,11 @@
   <meta name="twitter:image" content="https://hyangdan2.github.io/PKPilot0005/og-image.png?v=20261116-softiris" />
   <meta name="twitter:image:alt" content="HD2Lab | Solver — 문제를 넣으면, 읽고 풀어드립니다" />
 
-  <link rel="stylesheet" href="style.css?v=20261116-softiris" />
+  <!-- HD2Lab shared theme: applies the stored hd2-theme before first paint (no flash) -->
+  <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+  <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy" />
+  <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
+  <link rel="stylesheet" href="style.css?v=20261117-navy" />
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로</a>
@@ -320,6 +324,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=20261116" defer></script>
+  <script src="app.js?v=20261117-navy" defer></script>
 </body>
 </html>

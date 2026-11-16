@@ -3410,3 +3410,129 @@ body.is-dragging-pin .pin-person {
     height: 30px;
   }
 }
+
+/* ------------------------------------------------------------------
+   1b. Navy & Lavender — dark mode ([data-theme="dark"])
+   Shell, panel and bottom sheet go navy; the map tiles keep their own
+   light rendering (Naver's tiles are not themeable) and the pins on top
+   of them are re-inked so they still read.
+   ------------------------------------------------------------------ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0B1020;
+  --bg-2: #12192E;
+  --surface: #12192E;
+  --surface-2: #1A2340;
+  --surface-3: #202B4C;
+  --border: #253154;
+  --border-soft: #1E2947;
+  --border-strong: #344472;
+
+  --text: #EEF2FF;
+  --muted: #94A3C4;
+  --muted-2: #8494B6;
+
+  --accent: #A78BFA;
+  --accent-2: #C4B5FD;
+  --accent-soft: rgba(167, 139, 250, 0.14);
+  --accent-line: #344472;
+  --olive: #C4B5FD;
+  --good: #4ADE9B;
+  --warn: #FBBF24;
+  --bad: #F87171;
+
+  --shadow-lg: 0 26px 70px rgba(0, 0, 0, 0.58);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.46);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.36);
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(900px 520px at 86% -18%, rgba(167, 139, 250, 0.13), transparent 62%),
+    radial-gradient(760px 480px at 0% 110%, rgba(167, 139, 250, 0.08), transparent 58%),
+    var(--bg);
+}
+
+/* ---- header · panel · sheet ---- */
+[data-theme="dark"] .app-header { background: rgba(11, 16, 32, 0.88); }
+[data-theme="dark"] .map-stage { background: var(--bg-2); }
+
+[data-theme="dark"] .panel {
+  background:
+    radial-gradient(600px 300px at 100% 0%, rgba(167, 139, 250, 0.07), transparent 70%),
+    linear-gradient(180deg, #12192E 0%, #101731 46%, #0D1428 100%);
+}
+
+[data-theme="dark"] .panel-scroll { scrollbar-color: #344472 transparent; }
+[data-theme="dark"] .panel-scroll::-webkit-scrollbar-thumb { background: #344472; }
+
+[data-theme="dark"] .portal-menu-dropdown,
+[data-theme="dark"] .portal-menu-dropdown::before { background: var(--surface); }
+
+/* ---- cards ---- */
+[data-theme="dark"] .card,
+[data-theme="dark"] .station-card,
+[data-theme="dark"] .course-card { background: linear-gradient(180deg, var(--surface), var(--surface-2)); }
+[data-theme="dark"] .nearby { background: linear-gradient(180deg, var(--surface), var(--surface-2)); }
+[data-theme="dark"] .ring::before { background: linear-gradient(180deg, var(--surface), var(--bg-deep, #0B1020)); }
+[data-theme="dark"] .search-results { background: var(--surface-2); }
+[data-theme="dark"] .search-btn:hover { background: var(--surface-3); }
+
+[data-theme="dark"] .leg-num,
+[data-theme="dark"] .place-cat,
+[data-theme="dark"] .pin-focus,
+[data-theme="dark"] .nearby-live[data-live="loading"] { background: var(--accent-soft); }
+
+[data-theme="dark"] .toast { background: rgba(18, 25, 46, 0.97); }
+[data-theme="dark"] .grab-bar { background: var(--border-strong); }
+
+/* ---- map furniture (sits on Naver's light tiles) ---- */
+[data-theme="dark"] .map-tool,
+[data-theme="dark"] .map-hint { background: rgba(11, 16, 32, 0.9); }
+[data-theme="dark"] .pin-station,
+[data-theme="dark"] .pin-label,
+[data-theme="dark"] .course-label,
+[data-theme="dark"] .pin-tip { background: rgba(18, 25, 46, 0.96); border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .pin-course { border-color: var(--surface); }
+
+/* the accent is a pale lavender in this palette, so ink sits on it, not paper */
+[data-theme="dark"] .primary-btn,
+[data-theme="dark"] .skip-link,
+[data-theme="dark"] .nearby-btn,
+[data-theme="dark"] .mode-toggle button[aria-pressed="true"],
+[data-theme="dark"] .nearby-tabs button[aria-selected="true"],
+[data-theme="dark"] .place-sort button[aria-pressed="true"],
+[data-theme="dark"] .grab-stages button[aria-pressed="true"] { color: #0B1020; }
+
+
+/* ------------------------------------------------------------------
+   Floating Light/Dark toggle — bottom-right of the map, above the zoom
+   stack on desktop and above the bottom sheet + zoom stack on phones.
+   ------------------------------------------------------------------ */
+.hd2-theme-toggle {
+  --hd2-toggle-bg: var(--surface);
+  --hd2-toggle-fg: var(--text);
+  --hd2-toggle-border: var(--border);
+  --hd2-toggle-shadow: 0 10px 26px rgba(29, 25, 43, 0.16);
+  --hd2-toggle-hover: var(--accent);
+  --hd2-toggle-z: 520;
+  --hd2-toggle-right: 14px;
+  --hd2-toggle-bottom: 104px;
+}
+[data-theme="dark"] .hd2-theme-toggle {
+  --hd2-toggle-bg: rgba(18, 25, 46, 0.92);
+  --hd2-toggle-border: var(--border-strong);
+  --hd2-toggle-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+@media (max-width: 900px) {
+  .hd2-theme-toggle {
+    /* ride above the sheet snap the map tools already use, but never climb
+       past the header when the sheet is opened to full */
+    --hd2-toggle-bottom: min(calc(var(--sheet-h, var(--peek-h)) + 88px),
+                             calc(100dvh - var(--header-h) - 64px));
+  }
+  /* sheet opened to full: only a 20% map strip is left, so step aside */
+  .hd2-theme-toggle { transition: opacity 0.2s var(--ease); }
+  html:has(.panel[data-sheet="full"]) .hd2-theme-toggle { opacity: 0; pointer-events: none; }
+}

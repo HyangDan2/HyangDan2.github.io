@@ -680,3 +680,83 @@ html:has(dialog[open]) { overflow: hidden; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
+
+/* ------------------------------------------------------------------
+   Navy & Lavender — dark mode ([data-theme="dark"])
+   Same palette as Web-HQ / PKPilot0001~0003 / 0006 / diary. The toggle
+   and the stored key (hd2-theme) live in /assets/hd2-theme.js.
+   ------------------------------------------------------------------ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0B1020;
+  --bg-deep: #12192E;
+  --surface: #12192E;
+  --surface-2: #1A2340;
+  --surface-3: #202B4C;
+  --border: #253154;
+  --border-soft: #1E2947;
+  --border-strong: #344472;
+
+  --text: #EEF2FF;
+  --text-body: #C6D0E9;
+  --muted: #94A3C4;
+  --muted-2: #8494B6;
+
+  --accent: #A78BFA;
+  --accent-2: #C4B5FD;
+  --accent-soft: rgba(167, 139, 250, 0.14);
+  --accent-line: #344472;
+
+  --good: #4ADE9B;
+  --good-soft: rgba(74, 222, 155, 0.14);
+  --warn: #FBBF24;
+  --bad: #F87171;
+  --bad-soft: rgba(248, 113, 113, 0.14);
+
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.52);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(1100px 520px at 78% -10%, rgba(167, 139, 250, 0.13), transparent 62%),
+    radial-gradient(760px 420px at 4% 4%, rgba(167, 139, 250, 0.07), transparent 60%),
+    var(--bg);
+}
+
+/* the accent is a pale lavender in this palette, so ink sits on it, not paper */
+[data-theme="dark"] .primary-btn,
+[data-theme="dark"] .skip-link { color: #0B1020; }
+
+[data-theme="dark"] .steps code,
+[data-theme="dark"] .answer-sub code,
+[data-theme="dark"] .points code,
+[data-theme="dark"] .dialog-lede code,
+[data-theme="dark"] .field-note code,
+[data-theme="dark"] .dialog-note code { background: rgba(167, 139, 250, 0.16); color: var(--accent-2); }
+
+[data-theme="dark"] .toast { background: rgba(18, 25, 46, 0.97); }
+[data-theme="dark"] .site-header { background: rgba(11, 16, 32, 0.88); }
+[data-theme="dark"] .dropzone { background: rgba(26, 35, 64, 0.55); }
+
+
+/* ------------------------------------------------------------------
+   Floating Light/Dark toggle — clears the viewport edge and the toast.
+   ------------------------------------------------------------------ */
+.hd2-theme-toggle {
+  --hd2-toggle-bg: var(--surface);
+  --hd2-toggle-fg: var(--text);
+  --hd2-toggle-border: var(--border);
+  --hd2-toggle-shadow: 0 10px 26px rgba(29, 25, 43, 0.16);
+  --hd2-toggle-hover: var(--accent);
+  --hd2-toggle-z: 70;
+}
+[data-theme="dark"] .hd2-theme-toggle {
+  --hd2-toggle-bg: rgba(18, 25, 46, 0.92);
+  --hd2-toggle-border: var(--border-strong);
+  --hd2-toggle-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+@media (max-width: 720px) {
+  .hd2-theme-toggle { --hd2-toggle-right: 14px; --hd2-toggle-bottom: 16px; }
+}
