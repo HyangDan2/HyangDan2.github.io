@@ -1,58 +1,6 @@
-/* ==================================================================
-   HD2Lab | Photos (PKPilot0001)
-   style.css — iOS Photos 감성 + HD2Lab 브랜드 디자인 시스템
-   ================================================================== */
-
-/* ------------------------------------------------------------------
-   1. 디자인 토큰
-   ------------------------------------------------------------------ */
 :root {
-  color-scheme: dark;
-
-  --bg: #12101A;
-  --bg-2: #171422;
-  --surface: #1D1930;
-  --surface-2: #262040;
-  --glass: rgba(23, 20, 34, 0.72);
-  --glass-strong: rgba(26, 22, 38, 0.9);
-
-  --text: #F3F0FB;
-  --muted: #A9A2BE;
-  --muted-2: #7E7794;
-
-  --line: rgba(255, 255, 255, 0.09);
-  --line-strong: rgba(255, 255, 255, 0.17);
-
-  --accent: #8B6CE8;
-  --accent-2: #C4B5FD;
-  --accent-soft: rgba(139, 108, 232, 0.16);
-  --accent-line: rgba(139, 108, 232, 0.42);
-  --olive: #C4B5FD;
-  --danger: #ff6161;
-  --danger-soft: rgba(255, 97, 97, 0.14);
-
-  --radius-xl: 26px;
-  --radius: 18px;
-  --radius-sm: 12px;
-  --radius-xs: 9px;
-
-  --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.55);
-  --shadow-md: 0 14px 40px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.28);
-
-  --tabbar-h: 62px;
-  --header-h: 62px;
-  --maxw: 1240px;
-
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
-    'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
-
-  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-theme='light'] {
+  /* Soft Iris — the light default. Navy & Lavender overrides the colours
+     under [data-theme='dark'] further down. */
   color-scheme: light;
 
   --bg: #FAFAFD;
@@ -77,10 +25,71 @@
   --danger: #d92d20;
   --danger-soft: rgba(217, 45, 32, 0.1);
 
+  --radius-xl: 26px;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-xs: 9px;
+
   --shadow-lg: 0 30px 70px rgba(29, 25, 43, 0.14);
   --shadow-md: 0 14px 34px rgba(29, 25, 43, 0.1);
   --shadow-sm: 0 3px 12px rgba(29, 25, 43, 0.07);
+
+  --tabbar-h: 62px;
+  --header-h: 62px;
+  --maxw: 1240px;
+
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+    'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* ------------------------------------------------------------------
+   Navy & Lavender — dark mode ([data-theme="dark"])
+   The library, chrome and modals go navy; the photo tiles themselves keep
+   their own artwork. Shared palette with Web-HQ and PKPilot0002~0006.
+   ------------------------------------------------------------------ */
+[data-theme='dark'],
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0B1020;
+  --bg-2: #12192E;
+  --surface: #12192E;
+  --surface-2: #1A2340;
+  --glass: rgba(11, 16, 32, 0.82);
+  --glass-strong: rgba(18, 25, 46, 0.94);
+
+  --text: #EEF2FF;
+  --muted: #94A3C4;
+  --muted-2: #8494B6;
+
+  --line: #253154;
+  --line-strong: #344472;
+
+  --accent: #A78BFA;
+  --accent-2: #C4B5FD;
+  --accent-soft: rgba(167, 139, 250, 0.14);
+  --accent-line: #344472;
+  --olive: #C4B5FD;
+  --danger: #F87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
+
+  --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.58);
+  --shadow-md: 0 14px 40px rgba(0, 0, 0, 0.46);
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.36);
+}
+
+[data-theme='dark'] body,
+[data-theme="dark"] body {
+  background:
+    radial-gradient(1100px 600px at 84% -14%, rgba(167, 139, 250, 0.16), transparent 60%),
+    radial-gradient(900px 520px at 0% 6%, rgba(167, 139, 250, 0.1), transparent 58%),
+    var(--bg);
+}
+
 
 /* ------------------------------------------------------------------
    2. 기본
@@ -3200,4 +3209,27 @@ body.viewer-open {
   .toast-stack {
     display: none !important;
   }
+}
+
+/* ------------------------------------------------------------------
+   Floating Light/Dark toggle — the tab bar owns the bottom edge on a
+   phone, so the button rides above it.
+   ------------------------------------------------------------------ */
+.hd2-theme-toggle {
+  --hd2-toggle-bg: var(--surface);
+  --hd2-toggle-fg: var(--text);
+  --hd2-toggle-border: var(--line-strong);
+  --hd2-toggle-shadow: var(--shadow-md);
+  --hd2-toggle-hover: var(--accent);
+  --hd2-toggle-z: 55;
+  --hd2-toggle-right: 18px;
+  --hd2-toggle-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px);
+}
+[data-theme="dark"] .hd2-theme-toggle {
+  --hd2-toggle-bg: rgba(18, 25, 46, 0.92);
+  --hd2-toggle-border: #344472;
+  --hd2-toggle-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+@media (max-width: 640px) {
+  .hd2-theme-toggle { --hd2-toggle-right: 12px; }
 }
