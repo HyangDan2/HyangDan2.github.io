@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="HD2Lab Markdown Editor — GFM 실시간 미리보기, .md·HTML 내보내기, Diary frontmatter 생성과 GitHub 1클릭 커밋까지 브라우저에서 끝낸다.">
+    <meta name="description" content="HD2Lab Markdown Editor — GFM 실시간 미리보기, .md·HTML 내보내기, Diary frontmatter 생성과 GitHub 1클릭 커밋까지 브라우저에서 끝냅니다.">
     <meta name="theme-color" content="#FAFAFD">
     <title>HD2Lab | Markdown Editor</title>
     <link rel="canonical" href="https://hyangdan2.github.io/PKPilot0007/">
@@ -17,7 +17,7 @@
     <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
     <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy">
     <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-    <link rel="stylesheet" href="style.css?v=20261117-a">
+    <link rel="stylesheet" href="style.css?v=20261117-polite">
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261116-softiris">
@@ -25,7 +25,7 @@
     <script src="js/vendor/markdown-it.min.js" defer></script>
     <script src="js/vendor/highlight.min.js" defer></script>
     <script src="js/vendor/purify.min.js" defer></script>
-    <script src="app.js?v=20261117-a" defer></script>
+    <script src="app.js?v=20261117-polite" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#editor">본문으로 건너뛰기</a>
@@ -46,7 +46,7 @@
         <section class="page-head shell">
             <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>PKPilot 0007 · Markdown</p>
             <h1>Write it in<br><span>Markdown.</span></h1>
-            <p class="page-lede">GFM 그대로 쓰고 실시간으로 확인한다. .md·HTML로 내려받고, 필요하면 Diary 발행 패널에서 frontmatter를 채워 GitHub에 바로 커밋한다.</p>
+            <p class="page-lede">GFM 그대로 쓰고 실시간으로 확인합니다. .md·HTML로 내려받고, 필요하면 Diary 발행 패널에서 frontmatter를 채워 GitHub에 바로 커밋합니다.</p>
             <ul class="head-chips" aria-label="Editor features">
                 <li>GFM · 코드 하이라이팅</li>
                 <li>자동 저장 · 단어/글자 수</li>
@@ -105,7 +105,7 @@
             <div class="panes mode-split" id="panes">
                 <div class="pane pane-edit" id="pane-edit" role="tabpanel" aria-labelledby="tab-edit">
                     <label class="visually-hidden" for="editor">마크다운 본문</label>
-                    <textarea id="editor" spellcheck="false" placeholder="# 첫 소제목&#10;&#10;여기에 마크다운을 쓴다. 오른쪽 미리보기에 바로 반영된다.&#10;&#10;```js&#10;console.log('hello, HD2Lab');&#10;```&#10;&#10;- [x] 자동 저장&#10;- [ ] GitHub 커밋"></textarea>
+                    <textarea id="editor" spellcheck="false" placeholder="# 첫 소제목&#10;&#10;여기에 마크다운을 쓰세요. 오른쪽 미리보기에 바로 반영됩니다.&#10;&#10;```js&#10;console.log('hello, HD2Lab');&#10;```&#10;&#10;- [x] 자동 저장&#10;- [ ] GitHub 커밋"></textarea>
                 </div>
                 <div class="pane pane-preview" id="pane-preview" role="tabpanel" aria-labelledby="tab-preview">
                     <div class="pane-head">
@@ -130,7 +130,7 @@
                     <button type="button" class="button button-ghost" id="btnCopyHtml">HTML 복사</button>
                     <button type="button" class="button button-ghost" id="btnExportHtml">단독 HTML 저장</button>
                 </div>
-                <p class="export-note">모든 변환은 이 브라우저 안에서만 일어난다. 본문은 자동으로 로컬에 저장된다.</p>
+                <p class="export-note">모든 변환은 이 브라우저 안에서만 일어납니다. 본문은 자동으로 로컬에 저장됩니다.</p>
             </div>
 
             <details class="publish" id="publishPanel">
@@ -139,12 +139,12 @@
                     <span class="publish-meta">frontmatter 생성 → 저장소에 바로 커밋</span>
                 </summary>
                 <div class="publish-body">
-                    <p class="publish-lede">제목·카테고리·날짜·슬러그·태그·요약을 채우면 Diary 포스트 frontmatter가 만들어진다. PAT를 저장해 두면 아래 버튼 한 번으로 <code>HyangDan2/HyangDan2.github.io</code>에 커밋된다.</p>
+                    <p class="publish-lede">제목·카테고리·날짜·슬러그·태그·요약을 채우면 Diary 포스트 frontmatter가 만들어집니다. PAT를 저장해 두면 아래 버튼 한 번으로 <code>HyangDan2/HyangDan2.github.io</code>에 커밋됩니다.</p>
 
                     <div class="field-grid">
                         <label class="field field-wide">
                             <span class="field-label">제목 <em>title</em></span>
-                            <input type="text" id="fmTitle" placeholder="예: 마크다운 에디터와 뷰어를 붙이다" autocomplete="off">
+                            <input type="text" id="fmTitle" placeholder="예: 마크다운 에디터와 뷰어를 잇기" autocomplete="off">
                         </label>
                         <label class="field">
                             <span class="field-label">카테고리 <em>category</em></span>
@@ -169,7 +169,7 @@
                         </label>
                         <label class="field field-wide">
                             <span class="field-label">요약 <em>summary</em></span>
-                            <input type="text" id="fmSummary" placeholder="한두 문장으로 이 글을 설명한다." autocomplete="off">
+                            <input type="text" id="fmSummary" placeholder="한두 문장으로 이 글을 설명해 주세요." autocomplete="off">
                         </label>
                     </div>
 
@@ -190,7 +190,7 @@
                         <button type="button" class="button button-ghost" id="btnDownloadPost">이 글 .md 저장</button>
                         <a class="button button-ghost" id="ghNewFile" href="https://github.com/HyangDan2/HyangDan2.github.io/new/main/diary-src/posts" target="_blank" rel="noopener">GitHub 새 파일 ↗</a>
                     </div>
-                    <p class="publish-status" id="publishStatus" role="status" aria-live="polite">PAT가 없으면 <strong>GitHub 설정</strong>에서 한 번만 등록하면 된다. 커밋 후 <code>/diary/</code> 빌드 산출물은 별도로 갱신해야 화면에 나타난다.</p>
+                    <p class="publish-status" id="publishStatus" role="status" aria-live="polite">PAT가 없으면 <strong>GitHub 설정</strong>에서 한 번만 등록하면 됩니다. 커밋 후 <code>/diary/</code> 빌드 산출물은 별도로 갱신해야 화면에 나타납니다.</p>
                 </div>
             </details>
         </section>
@@ -202,7 +202,7 @@
             </div>
             <div>
                 <span class="mono-note">SANITIZE</span>
-                <p>미리보기 HTML은 DOMPurify를 거친다. 마크다운에 섞인 스크립트는 화면에 실행되지 않는다.</p>
+                <p>미리보기 HTML은 DOMPurify를 거칩니다. 마크다운에 섞인 스크립트는 화면에 실행되지 않습니다.</p>
             </div>
         </section>
     </main>
@@ -247,8 +247,8 @@
                 </label>
             </div>
             <div class="gh-warning">
-                <strong>토큰은 이 브라우저(localStorage)에만 저장된다.</strong>
-                <p>GitHub → Settings → Developer settings → Personal access tokens → <em>Fine-grained tokens</em>에서 해당 저장소만 선택하고 권한은 <strong>Contents: Read &amp; Write</strong> 하나만 주면 충분하다. 토큰은 어디로도 전송되지 않고, 커밋할 때 api.github.com으로만 나간다.</p>
+                <strong>토큰은 이 브라우저(localStorage)에만 저장됩니다.</strong>
+                <p>GitHub → Settings → Developer settings → Personal access tokens → <em>Fine-grained tokens</em>에서 해당 저장소만 선택하고 권한은 <strong>Contents: Read &amp; Write</strong> 하나만 주면 충분합니다. 토큰은 어디로도 전송되지 않고, 커밋할 때 api.github.com으로만 나갑니다.</p>
             </div>
             <div class="gh-dialog-actions">
                 <button type="button" class="button button-primary" id="btnSaveSettings">설정 저장</button>

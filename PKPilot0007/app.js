@@ -20,12 +20,12 @@
     const SAMPLE = [
         '# 마크다운으로 기록하기',
         '',
-        'HD2Lab의 글은 **마크다운 한 파일**로 끝난다. 여기서 쓰고, 확인하고, 그대로 커밋한다.',
+        'HD2Lab의 글은 **마크다운 한 파일**로 끝납니다. 여기서 쓰고, 확인하고, 그대로 커밋합니다.',
         '',
-        '## 왜 브라우저에서 쓰나',
+        '## 왜 브라우저에서 쓸까요',
         '',
-        '- 서버가 없다 — 모든 변환이 이 페이지 안에서 일어난다',
-        '- 초안은 자동 저장된다',
+        '- 서버가 없습니다 — 모든 변환이 이 페이지 안에서 일어납니다',
+        '- 초안은 자동 저장됩니다',
         '- [x] 실시간 미리보기',
         '- [ ] Diary frontmatter 자동 생성',
         '',
@@ -256,9 +256,9 @@
                 document.execCommand('copy');
                 helper.remove();
             }
-            toast(okMessage || '복사했다.');
+            toast(okMessage || '복사했습니다.');
         } catch (error) {
-            toast('복사에 실패했다. 브라우저 권한을 확인해 달라.', 'err');
+            toast('복사에 실패했습니다. 브라우저 권한을 확인해 주세요.', 'err');
         }
     }
 
@@ -337,7 +337,7 @@
             el.saveState.textContent = `자동 저장됨 · ${timeLabel(new Date(state.savedAt))}`;
             el.saveState.classList.add('is-ok');
         } catch (error) {
-            el.saveState.textContent = '자동 저장 불가 (저장 공간 부족)';
+            el.saveState.textContent = '자동 저장할 수 없습니다 (저장 공간 부족)';
             el.saveState.classList.add('is-warn');
         }
     }
@@ -365,7 +365,7 @@
             }
         } else {
             el.editor.value = SAMPLE;
-            el.saveState.textContent = '샘플 문서로 시작했다. 지우고 쓰면 된다.';
+            el.saveState.textContent = '샘플 문서로 시작했습니다. 지우고 쓰면 됩니다.';
         }
     }
 
@@ -529,21 +529,21 @@
             const token = el.ghToken.value.trim();
             if (token) window.localStorage.setItem(PAT_KEY, token);
         } catch (error) {
-            toast('설정을 저장하지 못했다. 브라우저 저장 공간을 확인해 달라.', 'err');
+            toast('설정을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.', 'err');
             return;
         }
         paintGhState();
         el.ghNewFile.href = newFileUrl();
-        toast('GitHub 설정을 저장했다.', 'ok');
+        toast('GitHub 설정을 저장했습니다.', 'ok');
         if (el.ghDialog.open) el.ghDialog.close();
-        setStatus(el.publishStatus, `커밋 대상 <strong>${repo}</strong> · <code>${branch}</code> · <code>${path}</code>. 이제 <strong>GitHub에 바로 커밋</strong>을 누르면 된다.`, 'ok');
+        setStatus(el.publishStatus, `커밋 대상 <strong>${repo}</strong> · <code>${branch}</code> · <code>${path}</code>. 이제 <strong>GitHub에 바로 커밋</strong>을 누르면 됩니다.`, 'ok');
     }
 
     function forgetToken() {
         try { window.localStorage.removeItem(PAT_KEY); } catch (error) { /* ignore */ }
         el.ghToken.value = '';
         paintGhState();
-        toast('저장된 토큰을 지웠다.');
+        toast('저장된 토큰을 지웠습니다.');
     }
 
     /* ---------------------------------------------------------------- github commit */
@@ -573,16 +573,16 @@
         if (state.committing) return;
         const token = getToken();
         if (!token) {
-            setStatus(el.publishStatus, '먼저 GitHub 토큰을 등록해야 한다. 아래 <strong>GitHub 설정</strong>에서 PAT를 저장하거나, <strong>이 글 .md 저장</strong>으로 받아 GitHub에 직접 올려도 된다.', 'warn');
-            openSettings('GitHub PAT가 없다. 설정에서 한 번만 등록하면 된다.');
+            setStatus(el.publishStatus, '먼저 GitHub 토큰을 등록해야 합니다. 아래 <strong>GitHub 설정</strong>에서 PAT를 저장하거나, <strong>이 글 .md 저장</strong>으로 받아 GitHub에 직접 올려도 됩니다.', 'warn');
+            openSettings('GitHub PAT가 없습니다. 설정에서 한 번만 등록하면 됩니다.');
             return;
         }
         if (!bodyText().trim()) {
-            setStatus(el.publishStatus, '본문이 비어 있다. 내용을 먼저 써 달라.', 'err');
+            setStatus(el.publishStatus, '본문이 비어 있습니다. 내용을 먼저 써 주세요.', 'err');
             return;
         }
         if (!el.fmTitle.value.trim()) {
-            setStatus(el.publishStatus, 'Diary 제목이 비어 있다. <strong>제목</strong>을 채워야 frontmatter가 완성된다.', 'err');
+            setStatus(el.publishStatus, 'Diary 제목이 비어 있습니다. <strong>제목</strong>을 채워야 frontmatter가 완성됩니다.', 'err');
             el.fmTitle.focus();
             return;
         }
@@ -628,15 +628,15 @@
 
             const result = await put.json();
             const url = (result.commit && result.commit.html_url) || `https://github.com/${settings.repo}/commit/${result.commit && result.commit.sha}`;
-            const action = sha ? '덮어썼다' : '새로 만들었다';
+            const action = sha ? '덮어썼습니다' : '새로 만들었습니다';
             setStatus(
                 el.publishStatus,
-                `커밋 완료 — <code>${path}</code>를 ${action}. <a href="${url}" target="_blank" rel="noopener">커밋 ${String((result.commit && result.commit.sha) || '').slice(0, 7)} 보기 ↗</a><br>Diary 화면에 나타나려면 <code>diary-src</code> 빌드 후 <code>/diary/</code> 산출물을 함께 커밋해야 한다.`,
+                `커밋 완료 — <code>${path}</code>를 ${action}. <a href="${url}" target="_blank" rel="noopener">커밋 ${String((result.commit && result.commit.sha) || '').slice(0, 7)} 보기 ↗</a><br>Diary 화면에 나타나려면 <code>diary-src</code> 빌드 후 <code>/diary/</code> 산출물을 함께 커밋해야 합니다.`,
                 'ok'
             );
             toast(`커밋 완료 · ${path}`, 'ok');
         } catch (error) {
-            setStatus(el.publishStatus, `${escapeHtml(error.message)}<br>토큰 권한(Contents: Read &amp; Write)과 저장소 이름을 확인해 달라.`, 'err');
+            setStatus(el.publishStatus, `${escapeHtml(error.message)}<br>토큰 권한(Contents: Read &amp; Write)과 저장소 이름을 확인해 주세요.`, 'err');
             toast(error.message, 'err');
         } finally {
             state.committing = false;
@@ -647,11 +647,11 @@
 
     function describeError(status, stage) {
         const map = {
-            401: '토큰이 유효하지 않다 (401).',
-            403: '권한이 없다 (403). Fine-grained 토큰에 Contents: Read & Write를 줘야 한다.',
-            404: '저장소나 경로를 찾지 못했다 (404). 저장소 이름·브랜치를 확인해 달라.',
-            409: '동시에 수정됐다 (409). 잠시 뒤 다시 시도해 달라.',
-            422: '요청이 거부됐다 (422). 경로나 브랜치가 올바른지 확인해 달라.',
+            401: '토큰이 유효하지 않습니다 (401).',
+            403: '권한이 없습니다 (403). Fine-grained 토큰에 Contents: Read & Write를 줘야 합니다.',
+            404: '저장소나 경로를 찾지 못했습니다 (404). 저장소 이름·브랜치를 확인해 주세요.',
+            409: '동시에 수정됐습니다 (409). 잠시 뒤 다시 시도해 주세요.',
+            422: '요청이 거부됐습니다 (422). 경로나 브랜치가 올바른지 확인해 주세요.',
         };
         return map[status] ? `${stage} 실패 — ${map[status]}` : `${stage} 실패 — HTTP ${status}`;
     }
@@ -775,11 +775,11 @@ ${bodyHtml}
     function downloadPost() {
         const content = fullMarkdown();
         if (!content.trim()) {
-            toast('내보낼 내용이 없다.', 'err');
+            toast('내보낼 내용이 없습니다.', 'err');
             return;
         }
         download(hasDiaryFields() ? currentFileName() : 'document.md', content, 'text/markdown;charset=utf-8');
-        toast('마크다운 파일을 내려받았다.', 'ok');
+        toast('마크다운 파일을 내려받았습니다.', 'ok');
     }
 
     function wireActions() {
@@ -787,11 +787,11 @@ ${bodyHtml}
         $('btnDownloadPost').addEventListener('click', downloadPost);
 
         $('btnCopyMd').addEventListener('click', () => {
-            copyText(fullMarkdown(), '마크다운을 복사했다.');
+            copyText(fullMarkdown(), '마크다운을 복사했습니다.');
         });
 
         $('btnCopyHtml').addEventListener('click', () => {
-            copyText(renderMarkdown(el.editor.value), 'HTML을 복사했다.');
+            copyText(renderMarkdown(el.editor.value), 'HTML을 복사했습니다.');
         });
 
         $('btnExportHtml').addEventListener('click', () => {
@@ -799,11 +799,11 @@ ${bodyHtml}
             const html = standaloneHtml(title, renderMarkdown(el.editor.value));
             const name = (hasDiaryFields() ? currentSlug() : 'document') + '.html';
             download(name, html, 'text/html;charset=utf-8');
-            toast('단독 HTML 파일을 내려받았다.', 'ok');
+            toast('단독 HTML 파일을 내려받았습니다.', 'ok');
         });
 
         $('btnReset').addEventListener('click', () => {
-            if (!window.confirm('작성 중인 본문과 Diary 입력값을 모두 지운다. 계속할까?')) return;
+            if (!window.confirm('작성 중인 본문과 Diary 입력값을 모두 지웁니다. 계속할까요?')) return;
             try { window.localStorage.removeItem(DRAFT_KEY); } catch (error) { /* ignore */ }
             el.editor.value = '';
             el.fmTitle.value = '';
@@ -834,7 +834,7 @@ ${bodyHtml}
     /* ---------------------------------------------------------------- boot */
     function boot() {
         if (!window.markdownit) {
-            el.saveState.textContent = '렌더러를 불러오지 못했다. 새로고침해 달라.';
+            el.saveState.textContent = '렌더러를 불러오지 못했습니다. 새로고침해 주세요.';
             return;
         }
         loadDraft();
