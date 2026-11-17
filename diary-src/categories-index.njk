@@ -1,0 +1,55 @@
+---
+layout: base.njk
+title: "카테고리"
+description: "HD2Lab Diary의 네 개 서랍 — Devlog, Architecture, Troubleshooting, Notes."
+permalink: "/categories/index.html"
+---
+
+{% set categories = collections.diaryCategories %}
+{% set posts = collections.diaryPosts %}
+
+<section class="page-hero shell">
+    <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="{{ '/' | url }}">Diary</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Categories</span>
+    </nav>
+    <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>Categories</p>
+    <h1>네 개의 서랍.</h1>
+    <p class="page-hero-lede">글은 주제별로 쌓인다. 서랍을 열면 그 주제의 전체 목록이 나온다.</p>
+    <div class="page-hero-meta">
+        <span class="badge">{{ categories | length }} categories</span>
+        <span class="badge">{{ posts | length }} post{% if posts | length != 1 %}s{% endif %}</span>
+    </div>
+</section>
+
+<section class="categories shell" aria-labelledby="categories-all-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">All drawers</p>
+            <h2 id="categories-all-title">서랍 전체.</h2>
+        </div>
+        <p>만든 것, 지은 것, 깨진 것, 적어 둔 것.</p>
+    </div>
+    <nav class="category-grid" aria-label="Diary categories">
+        {% for category in categories %}
+        <a class="category-card" href="{{ ('/categories/' + category.slug + '/') | url }}">
+            <span class="card-index">{{ category.index }} / {{ category.name | upper }}</span>
+            <span class="category-name">{{ category.name }}</span>
+            <span class="category-blurb">{{ category.blurb or '이 주제로 쓴 글 모음.' }}</span>
+            <span class="category-foot">
+                <span class="category-count">{{ category.count }} post{% if category.count != 1 %}s{% endif %}</span>
+                <span class="category-latest">{% if category.latest %}최근 {{ category.latest | relativeDate }}{% else %}아직 글 없음{% endif %}</span>
+            </span>
+        </a>
+        {% endfor %}
+    </nav>
+</section>
+
+<section class="cta-band shell">
+    <div>
+        <h2>어느 서랍에<br><span>넣을까.</span></h2>
+        <p>주제를 고르고 쓰면 된다. 브라우저에서 쓰고, .md로 내려받거나 GitHub에 바로 커밋한다.</p>
+    </div>
+    <a class="button button-primary" href="{{ '/write/' | url }}">새 글 쓰기 <span aria-hidden="true">↗</span></a>
+</section>
