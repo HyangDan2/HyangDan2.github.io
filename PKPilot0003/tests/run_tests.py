@@ -279,11 +279,50 @@ def static_tests():
           ".beta-badge" not in mark_css and ".prod-link" not in mark_css)
     check("the brand's own auto margin holds the header row apart",
           re.search(r"\.brand\s*\{[^}]*margin:\s*0 auto 0 0;", mark_css, re.S) is not None)
-    check("the product name is hidden only at the 360px floor",
+    check("the product name is hidden only at the phone floor",
           mark_css.count(".brand em { display: none; }") == 1,
           str(mark_css.count(".brand em { display: none; }")))
+    check("the product name's floor moved up to make room for the docked toggle",
+          re.search(r"@media \(max-width: 379px\) \{\s*\.brand em \{ display: none; \}",
+                    mark_css) is not None)
     check("the header actions carry the auto margin on a phone",
           re.search(r"\.header-actions \{[^}]*margin-left: auto;", mark_css) is not None)
+
+    # ── the docked Light/Dark toggle ─────────────────────────────────────────
+    # The shared /assets/hd2-theme.js floats one button on the plate preview;
+    # the studio hides that copy and docks the same circle in the header.
+    print("\n[static] header-docked Light/Dark toggle")
+    hdr = re.search(r"<header.*?</header>", html, re.S).group(0)
+    check("the header carries the docked theme button", 'id="headerThemeBtn"' in hdr)
+    check("the docked toggle sits between 저장 and ⋮",
+          hdr.index('id="headerDownloadBtn"') < hdr.index('id="headerThemeBtn"')
+          < hdr.index('id="portalMenu"'))
+    check("the docked toggle is a plain button that reports its state",
+          re.search(r'class="hbtn-theme" id="headerThemeBtn" type="button"\s+aria-pressed="false"',
+                    hdr) is not None)
+    check("the docked toggle draws the moon and the sun",
+          'ic-theme--moon' in hdr and 'ic-theme--sun' in hdr)
+    check("the docked moon is the one the floating button draws",
+          "M20.4 14.4A8.6 8.6 0 0 1 9.6 3.6a8.6 8.6 0 1 0 10.8 10.8z" in hdr)
+    check("the dock script is loaded after the shared theme",
+          html.index("/assets/hd2-theme.js") < html.index("js/theme-dock.js"))
+    dock_js = read("js/theme-dock.js")
+    check("the dock script goes through the shared theme instead of its own storage",
+          "HD2Theme.toggle()" in dock_js and "hd2-theme-change" in dock_js)
+    check("the docked toggle is a 36px circle on the desktop row",
+          re.search(r"\.hbtn-theme \{[^}]*width: 36px;[^}]*height: 36px;[^}]*border-radius: 999px;",
+                    mark_css, re.S) is not None)
+    check("the docked toggle keeps the 44px floor on a phone",
+          ".hbtn-theme { width: 44px; height: 44px; }" in mark_css)
+    check("the docked toggle only shows in the studio",
+          'body[data-view="editor"] .hbtn-theme { display: inline-flex; }' in mark_css)
+    check("the studio takes the floating toggle out of sight and out of the tab order",
+          re.search(r'body\[data-view="editor"\] \.hd2-theme-toggle \{[^}]*opacity: 0;'
+                    r"[^}]*pointer-events: none;[^}]*visibility: hidden;", mark_css, re.S) is not None)
+    check("the phone header hands 샘플's slot to the docked toggle",
+          'body[data-view="editor"] #headerSampleBtn { display: none; }' in mark_css)
+    check("the landing keeps the floating toggle's own offset",
+          re.search(r"\.hd2-theme-toggle \{[^}]*--hd2-toggle-bottom: 24px;", mark_css, re.S) is not None)
 
     # ── the frame library the promotion brings ─────────────────────────────
     check("landing counts thirteen signatures", "13 SIGNATURE FRAMES" in html)
@@ -1213,6 +1252,9 @@ def browser_tests(port):
               "HD2Lab" in lpage.inner_text(".home-hero"))
         check("landing: the hero states the local-EXIF promise",
               "EXIF" in lpage.inner_text(".home-hero"))
+        check("landing: the floating toggle is the only theme control on screen",
+              lpage.evaluate("""() => getComputedStyle(document.querySelector('#hd2ThemeToggle')).visibility === 'visible'
+                && getComputedStyle(document.querySelector('#headerThemeBtn')).display === 'none'"""))
         check("landing: thirteen signature cards", lpage.locator(".hf-card").count() == 13,
               str(lpage.locator(".hf-card").count()))
         spread = lpage.evaluate("""() => [...document.querySelectorAll('.hf-card canvas')].map(cv => {
@@ -3181,6 +3223,54 @@ def browser_tests(port):
         check("PC: landing offers 파일 열기 / 폴더 열기",
               ppage.is_visible("#emptyOpenFilesBtn") and ppage.is_visible("#emptyOpenFolderBtn"))
 
+        check("PC: the docked toggle rides the header row between 저장 and ⋮",
+              ppage.evaluate("""() => {
+                const th = document.querySelector('#headerThemeBtn');
+                const save = document.querySelector('#headerDownloadBtn').getBoundingClientRect();
+                const dots = document.querySelector('#portalMenuBtn').getBoundingClientRect();
+                const b = th.getBoundingClientRect();
+                const hdr = document.querySelector('.app-header').getBoundingClientRect();
+                return {shown: getComputedStyle(th).display, w: b.width, h: b.height,
+                        between: b.left >= save.right - 0.5 && b.right <= dots.left + 0.5,
+                        inside: b.top >= hdr.top && b.bottom <= hdr.bottom};
+              }""") == {"shown": "flex", "w": 36, "h": 36, "between": True, "inside": True},
+              str(ppage.evaluate("() => getComputedStyle(document.querySelector('#headerThemeBtn')).display")))
+        check("PC: the floating toggle is out of the studio",
+              ppage.evaluate("""() => {
+                const f = document.querySelector('#hd2ThemeToggle');
+                const cs = getComputedStyle(f);
+                return cs.visibility === 'hidden' && cs.opacity === '0' && cs.pointerEvents === 'none';
+              }"""))
+        check("PC: nothing of the toggle touches the plate",
+              ppage.evaluate("""() => {
+                const ov = (a, c) => Math.max(0, Math.min(a.right, c.right) - Math.max(a.left, c.left)) *
+                                    Math.max(0, Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top));
+                const cv = document.querySelector('#stageCanvas').getBoundingClientRect();
+                return ov(document.querySelector('#headerThemeBtn').getBoundingClientRect(), cv) === 0 &&
+                       ov(document.querySelector('#hd2ThemeToggle').getBoundingClientRect(), cv) === 0;
+              }"""))
+        ppage.click("#headerThemeBtn")
+        ppage.wait_for_timeout(240)
+        pcdark = ppage.evaluate("""() => {
+          const th = document.querySelector('#headerThemeBtn');
+          return {theme: document.documentElement.getAttribute('data-theme'),
+                  stored: (() => { try { return localStorage.getItem('hd2-theme'); } catch (e) { return null; } })(),
+                  pressed: th.getAttribute('aria-pressed'),
+                  moon: getComputedStyle(th.querySelector('.ic-theme--moon')).display,
+                  sun: getComputedStyle(th.querySelector('.ic-theme--sun')).display,
+                  label: th.getAttribute('aria-label')};
+        }""")
+        check("PC: the header toggle flips the studio to dark",
+              pcdark["theme"] == "dark" and pcdark["stored"] == "dark", str(pcdark))
+        check("PC: dark swaps the moon for the sun",
+              pcdark["moon"] == "none" and pcdark["sun"] != "none", str(pcdark))
+        check("PC: the docked button reports what it will do",
+              pcdark["pressed"] == "true" and "라이트" in (pcdark["label"] or ""), str(pcdark))
+        ppage.click("#headerThemeBtn")
+        ppage.wait_for_timeout(200)
+        check("PC: the same button comes back to light",
+              ppage.evaluate("() => document.documentElement.getAttribute('data-theme')") == "light")
+
         ppage.click('#insTabs [data-tab="geometry"]')
         ppage.wait_for_timeout(240)
         tab = ppage.evaluate("""() => ({pane: [...document.querySelectorAll('.pane.is-active')].map(p => p.dataset.pane),
@@ -3470,7 +3560,7 @@ def browser_tests(port):
         shpage.wait_for_timeout(300)
         check("share: canShare probe reads true when the platform has a sheet",
               shpage.evaluate("() => SPApp.canShareFiles()") is True)
-        shpage.click("#headerSampleBtn")
+        shpage.click("#emptySampleBtn")  # 샘플 leaves the phone header for the empty state
         shpage.wait_for_timeout(900)
         shpage.click('[data-sheet="export"]')
         shpage.wait_for_timeout(400)
@@ -3824,6 +3914,82 @@ def browser_tests(port):
         total = layout["header"] + layout["stage"] + layout["session"] + layout["strip"] + layout["bar"]
         check("mobile: whole studio fits in one viewport", total <= layout["vh"] + 2,
               f"{total} vs {layout['vh']}")
+
+        # the docked Light/Dark toggle — a 44px circle in the header, and the
+        # floating copy out of the way of the plate
+        mdock = mpage.evaluate("""() => {
+          const th = document.querySelector('#headerThemeBtn');
+          const f = document.querySelector('#hd2ThemeToggle');
+          const hdr = document.querySelector('.app-header').getBoundingClientRect();
+          const save = document.querySelector('#headerDownloadBtn').getBoundingClientRect();
+          const dots = document.querySelector('#portalMenuBtn').getBoundingClientRect();
+          const b = th.getBoundingClientRect();
+          const cv = document.querySelector('#stageCanvas').getBoundingClientRect();
+          const ov = (a, c) => Math.max(0, Math.min(a.right, c.right) - Math.max(a.left, c.left)) *
+                              Math.max(0, Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top));
+          return {shown: getComputedStyle(th).display, w: b.width, h: b.height,
+                  between: b.left >= save.right - 0.5 && b.right <= dots.left + 0.5,
+                  inside: b.top >= hdr.top && b.bottom <= hdr.bottom,
+                  dotsRight: dots.right, vw: window.innerWidth,
+                  float: getComputedStyle(f).visibility,
+                  floatOpacity: getComputedStyle(f).opacity,
+                  overlap: ov(b, cv) + ov(f.getBoundingClientRect(), cv),
+                  sample: getComputedStyle(document.querySelector('#headerSampleBtn')).display,
+                  moon: getComputedStyle(th.querySelector('.ic-theme--moon')).display,
+                  sun: getComputedStyle(th.querySelector('.ic-theme--sun')).display};
+        }""")
+        check("mobile: the docked toggle is in the header at the 44px floor",
+              mdock["shown"] in ("flex", "inline-flex") and mdock["w"] >= 44 and mdock["h"] >= 44,
+              str(mdock))
+        check("mobile: the docked toggle sits between 저장 and ⋮",
+              mdock["between"] and mdock["inside"], str(mdock))
+        check("mobile: the ⋮ button is no longer squeezed off the header",
+              mdock["dotsRight"] <= mdock["vw"] - 4, json.dumps(mdock))
+        check("mobile: the floating toggle is out of the studio",
+              mdock["float"] == "hidden" and mdock["floatOpacity"] == "0", str(mdock))
+        check("mobile: neither toggle touches the plate", mdock["overlap"] == 0, str(mdock["overlap"]))
+        check("mobile: 샘플 hands its header slot to the toggle", mdock["sample"] == "none", str(mdock))
+        check("mobile: light shows the moon",
+              mdock["moon"] != "none" and mdock["sun"] == "none", str(mdock))
+
+        mpage.tap("#headerThemeBtn")
+        mpage.wait_for_timeout(260)
+        mdark = mpage.evaluate("""() => {
+          const th = document.querySelector('#headerThemeBtn');
+          return {theme: document.documentElement.getAttribute('data-theme'),
+                  stored: (() => { try { return localStorage.getItem('hd2-theme'); } catch (e) { return null; } })(),
+                  pressed: th.getAttribute('aria-pressed'),
+                  moon: getComputedStyle(th.querySelector('.ic-theme--moon')).display,
+                  sun: getComputedStyle(th.querySelector('.ic-theme--sun')).display};
+        }""")
+        check("mobile: tapping the docked toggle turns the studio dark",
+              mdark["theme"] == "dark" and mdark["stored"] == "dark", str(mdark))
+        check("mobile: dark swaps the moon for the sun",
+              mdark["moon"] == "none" and mdark["sun"] != "none", str(mdark))
+        check("mobile: the docked toggle reports the dark state",
+              mdark["pressed"] == "true", str(mdark))
+        mpage.tap("#headerThemeBtn")
+        mpage.wait_for_timeout(200)
+        check("mobile: the same tap comes back to light",
+              mpage.evaluate("() => document.documentElement.getAttribute('data-theme')") == "light")
+
+        # the landing keeps the floating toggle and hides the header copy
+        mpage.evaluate("() => SPApp.setView('home')")
+        mpage.wait_for_timeout(260)
+        mlanding = mpage.evaluate("""() => {
+          const th = document.querySelector('#headerThemeBtn');
+          const f = document.querySelector('#hd2ThemeToggle');
+          const dots = document.querySelector('#portalMenuBtn').getBoundingClientRect();
+          return {btn: getComputedStyle(th).display, float: getComputedStyle(f).visibility,
+                  dotsRight: dots.right, vw: window.innerWidth,
+                  headerWrap: document.querySelector('.app-header').getBoundingClientRect().height > 70};
+        }""")
+        check("mobile: the landing keeps the floating toggle only",
+              mlanding["btn"] == "none" and mlanding["float"] == "visible", str(mlanding))
+        check("mobile: the landing header stays one row too",
+              not mlanding["headerWrap"], str(mlanding))
+        mpage.evaluate("() => SPApp.setView('editor')")
+        mpage.wait_for_timeout(240)
 
         mpage.evaluate("() => SPApp.openSheet('exif')")
         mpage.wait_for_timeout(320)
