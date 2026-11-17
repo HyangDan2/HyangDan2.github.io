@@ -1,0 +1,152 @@
+/* ==========================================================================
+   HD2Lab · /about/ — the standalone About page
+   Shares tokens, header and drawer with /style.css (Soft Iris / Navy & Lavender)
+   ========================================================================== */
+
+/* ---------- hero ---------- */
+.about-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    align-items: center;
+    gap: 48px;
+    padding-block: 84px 76px;
+}
+.about-hero-copy { position: relative; z-index: 1; }
+.about-hero h1 {
+    margin: 34px 0 22px;
+    font-size: clamp(52px, 5.6vw, 88px);
+    line-height: 1.02;
+    font-weight: 800;
+    letter-spacing: -.075em;
+}
+.about-hero h1 span { color: var(--accent-text); }
+.about-representative {
+    margin: 0 0 26px;
+    color: var(--accent-text);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+}
+.about-lead { margin: 0; color: var(--text-body); font-size: 17px; line-height: 1.85; }
+
+.about-visual { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.about-logo-frame {
+    display: grid;
+    place-items: center;
+    width: min(340px, 82%);
+    aspect-ratio: 1;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 50% 35%, var(--accent-soft), transparent 68%),
+        var(--surface);
+    box-shadow: 0 24px 60px rgb(107 76 214 / 12%);
+}
+.about-logo { display: block; width: 100%; height: auto; border-radius: 50%; }
+.about-visual-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-align: center;
+    text-transform: uppercase;
+}
+.about-visual-note span { color: var(--accent); }
+
+/* ---------- shared section heads ---------- */
+.about-story,
+.about-hubs,
+.about-contact { padding-block: 56px 68px; border-top: 1px solid var(--border); }
+.about-story-head { margin-bottom: 30px; }
+.about-story-head h2,
+.about-contact h2 {
+    margin: 14px 0 0;
+    font-size: clamp(28px, 2.8vw, 42px);
+    line-height: 1.15;
+    letter-spacing: -.055em;
+}
+
+.about-story { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 48px; }
+.about-story-head { margin-bottom: 0; }
+.about-story-body p { margin: 0 0 20px; color: var(--text-body); font-size: 16px; line-height: 1.85; }
+.about-story-body p:first-child { color: var(--text); font-size: 19px; line-height: 1.7; font-weight: 600; letter-spacing: -.02em; }
+.about-story-body p:last-child { margin-bottom: 0; }
+
+/* ---------- hubs ---------- */
+.about-hub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.about-hub {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 22px 24px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    text-decoration: none;
+    transition: border-color .2s, background-color .2s, transform .2s;
+}
+.about-hub:hover { border-color: var(--accent); background: var(--panel-raised); transform: translateY(-3px); }
+.about-hub-index { color: var(--accent-text); font-family: var(--mono); font-size: 10px; letter-spacing: .18em; }
+.about-hub strong { color: var(--text); font-size: 19px; font-weight: 750; letter-spacing: -.03em; }
+.about-hub span:last-child { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+/* ---------- contact ---------- */
+.about-contact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+}
+.about-contact-note { margin: 16px 0 0; color: var(--text-body); font-size: 15px; line-height: 1.7; }
+.about-contact-links { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.about-mail,
+.about-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 52px;
+    padding: 12px 20px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 650;
+    transition: border-color .2s, background-color .2s, color .2s;
+}
+.about-mail { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+.about-mail:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.about-ghost { background: var(--surface); color: var(--text); }
+.about-ghost:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+
+[data-theme="dark"] .about-mail { color: #0B1020; }
+[data-theme="dark"] .about-logo-frame { box-shadow: 0 24px 60px rgb(0 0 0 / 42%); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1000px) {
+    .about-hero { gap: 32px; }
+    .about-story { grid-template-columns: 1fr; gap: 22px; }
+}
+@media (max-width: 900px) {
+    .about-hero { grid-template-columns: 1fr; padding-block: 64px 56px; gap: 36px; }
+    .about-hero h1 { font-size: clamp(48px, 10vw, 76px); }
+    .about-visual { order: -1; }
+    .about-logo-frame { width: min(240px, 66%); }
+    .about-story, .about-hubs, .about-contact { padding-block: 44px 52px; }
+    .about-hub-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 650px) {
+    .about-hero { padding-block: 48px 44px; }
+    .about-hero h1 { margin-top: 26px; font-size: clamp(44px, 12vw, 62px); }
+    .about-lead { font-size: 15px; }
+    .about-story-body p:first-child { font-size: 17px; }
+    .about-contact-links { width: 100%; }
+    .about-mail, .about-ghost { flex: 1 1 100%; justify-content: space-between; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .about-hub { transition: none; }
+    .about-hub:hover { transform: none; }
+}
