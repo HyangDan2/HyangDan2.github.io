@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FAFAFD">
+    <title>정적 사이트에 에디터를 붙이는 가장 싼 방법 · HD2&#39;s Diary</title>
+    <meta name="description" content="서버 없이 브라우저에서 글을 쓰고, GitHub 커밋 URL로 바로 올리는 구조를 정리한다.">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HD2Lab · HD2&#39;s Diary">
+    <meta property="og:title" content="정적 사이트에 에디터를 붙이는 가장 싼 방법 · HD2&#39;s Diary">
+    <meta property="og:description" content="서버 없이 브라우저에서 글을 쓰고, GitHub 커밋 URL로 바로 올리는 구조를 정리한다.">
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261106">
+    <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+    <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy">
+    <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
+    <link rel="stylesheet" href="/diary/assets/diary.css?v=20261117-navy">
+</head>
+<body class="page-posts-2026-11-10-static-site-editor-eleventy">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/diary/" aria-label="HD2&#39;s Diary home">
+                <span class="mark" aria-hidden="true"></span>
+                <span class="brand-name">HD2Lab</span>
+                <em>HD2&#39;s Diary</em>
+            </a>
+            <div class="header-actions">
+                <a class="write-button" href="/diary/write/">새 글 쓰기 <span aria-hidden="true">↗</span></a>
+                <a class="hq-link" href="/">Web-HQ <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+    </header>
+
+    <main id="main">
+        <article class="post shell">
+    <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="/diary/">Diary</a>
+        <span aria-hidden="true">/</span>
+        <a href="/diary/categories/architecture/">Architecture</a>
+    </nav>
+
+    <header class="post-header">
+        <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>Architecture · 2026.11.10</p>
+        <h1>정적 사이트에 에디터를 붙이는 가장 싼 방법</h1>
+        <p class="post-summary">서버 없이 브라우저에서 글을 쓰고, GitHub 커밋 URL로 바로 올리는 구조를 정리한다.</p>
+        <div class="post-meta">
+            <span class="badge">Architecture</span>
+            <time datetime="2026-11-10">2026년 11월 10일</time>
+            <span>1분 읽기</span>
+            
+            
+            <span class="post-tags">
+                <span class="tag">#eleventy</span><span class="tag">#github-pages</span><span class="tag">#editor</span><span class="tag">#architecture</span>
+            </span>
+            
+        </div>
+    </header>
+
+    <div class="md-body post-content">
+        <p>블로그를 하나 더 만들면서 제일 먼저 정한 것은 <strong>서버를 두지 않는다</strong>였다. 관리할 것이 늘면 결국 안 쓰게 된다. 대신 브라우저가 전부 하고, GitHub이 저장소와 배포를 맡는다.</p>
+<h2>구조</h2>
+<pre class="code-block" data-lang="text"><code class="hljs language-text">HyangDan2.github.io/
+├── index.html            # Web-HQ (정적)
+├── diary-src/            # Eleventy 소스
+│   ├── index.njk         # /diary/
+│   ├── categories.njk    # /diary/categories/&lt;slug&gt;/
+│   ├── write.njk         # /diary/write/  (클라이언트 에디터)
+│   ├── posts/*.md        # 글
+│   └── assets/
+├── .github/workflows/deploy-pages.yml
+└── (나머지 허브 디렉터리)
+</code></pre>
+<p>빌드는 두 단계다. Eleventy가 <code>diary-src/</code>를 <code>_site/</code>로 만들고, 워크플로가 그 결과를 저장소 루트의 정적 파일과 합쳐 <code>/diary/</code> 아래에 놓는다.</p>
+<h2>왜 서버가 필요 없나</h2>
+<p>글쓰기에 필요한 기능은 세 가지뿐이다. 입력, 미리보기, 저장.</p>
+<div class="table-wrap"><table><thead>
+<tr>
+<th>기능</th>
+<th>구현</th>
+<th>비용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>입력</td>
+<td><code>&lt;textarea&gt;</code> + 마크다운 파서</td>
+<td>0</td>
+</tr>
+<tr>
+<td>미리보기</td>
+<td>같은 파서로 즉시 렌더</td>
+<td>0</td>
+</tr>
+<tr>
+<td>임시 저장</td>
+<td><code>localStorage</code></td>
+<td>0</td>
+</tr>
+<tr>
+<td>최종 저장</td>
+<td>GitHub 웹 커밋 URL</td>
+<td>0</td>
+</tr>
+</tbody>
+</table></div><p>GitHub은 <code>new/&lt;branch&gt;/&lt;path&gt;</code> 경로에 <code>filename</code>과 <code>value</code> 쿼리를 받는다. 즉 <strong>빈 파일 생성 화면에 내용을 미리 채워서</strong> 열 수 있다.</p>
+<pre class="code-block" data-lang="js"><code class="hljs language-js"><span class="hljs-keyword">const</span> url = <span class="hljs-string">`https://github.com/HyangDan2/HyangDan2.github.io/new/main/diary-src/posts`</span>
+  + <span class="hljs-string">`?filename=<span class="hljs-subst">${<span class="hljs-built_in">encodeURIComponent</span>(filename)}</span>`</span>
+  + <span class="hljs-string">`&amp;value=<span class="hljs-subst">${<span class="hljs-built_in">encodeURIComponent</span>(markdown)}</span>`</span>;
+<span class="hljs-variable language_">window</span>.<span class="hljs-title function_">open</span>(url, <span class="hljs-string">&#x27;_blank&#x27;</span>, <span class="hljs-string">&#x27;noopener&#x27;</span>);
+</code></pre>
+<p>사용자는 파일이 채워진 화면을 보고 <code>Commit changes</code>만 누르면 된다. 서버도, 토큰도, 업로드 UI도 필요 없다.</p>
+<h2>대가</h2>
+<p>공짜는 아니다. 세 가지를 감수했다.</p>
+<ul>
+<li><strong>긴 글은 URL에 담기지 않는다.</strong> 브라우저 URL 한계에 걸리면 <code>.md</code> 다운로드로 우회한다.</li>
+<li><strong>초안은 기기 안에만 있다.</strong> 다른 기기에서 이어 쓰려면 파일을 옮겨야 한다.</li>
+<li><strong>커밋은 사용자가 누른다.</strong> 자동 발행이 아니라는 점이 오히려 안전장치이기도 하다.</li>
+</ul>
+<blockquote>
+<p>자동화는 편하지만, 마지막 한 번의 확인은 사람이 누르는 게 좋다. 특히 공개 저장소에 글이 올라갈 때는.</p>
+</blockquote>
+<h2>글 한 편의 머리말</h2>
+<p>모든 글은 같은 여섯 줄로 시작한다. 편집기가 이 형식을 그대로 만들어 준다.</p>
+<pre class="code-block" data-lang="yaml"><code class="hljs language-yaml"><span class="hljs-meta">---</span>
+<span class="hljs-attr">title:</span> <span class="hljs-string">&quot;정적 사이트에 에디터를 붙이는 가장 싼 방법&quot;</span>
+<span class="hljs-attr">date:</span> <span class="hljs-number">2026-11-10</span>
+<span class="hljs-attr">category:</span> <span class="hljs-string">Architecture</span>
+<span class="hljs-attr">summary:</span> <span class="hljs-string">&quot;서버 없이 브라우저에서 글을 쓰고, GitHub 커밋 URL로 바로 올리는 구조.&quot;</span>
+<span class="hljs-attr">tags:</span> [<span class="hljs-string">eleventy</span>, <span class="hljs-string">github-pages</span>, <span class="hljs-string">editor</span>]
+<span class="hljs-attr">layout:</span> <span class="hljs-string">post</span>
+<span class="hljs-meta">---
+</span></code></pre>
+<p>카테고리는 <code>Devlog</code>, <code>Architecture</code>, <code>Troubleshooting</code>, <code>Notes</code> 네 개를 기본으로 두고, 처음 보는 값이 들어오면 빌드할 때 자동으로 새 서랍이 생긴다.</p>
+<h2>정리</h2>
+<p>이 구조의 장점은 <strong>실패했을 때 되돌리기 쉽다</strong>는 것이다. 빌드가 깨지면 이전 커밋으로 돌리고, 잘못 쓴 글은 GitHub에서 바로 고친다. 서버가 없으니 새벽에 죽어 있을 것도 없다.</p>
+
+    </div>
+
+    <nav class="post-nav" aria-label="Post navigation">
+        <a class="post-nav-item" href="/diary/">
+            <span class="post-nav-label">Diary</span>
+            <strong>전체 글 목록</strong>
+        </a>
+        <a class="post-nav-item" href="/diary/categories/architecture/">
+            <span class="post-nav-label">Category</span>
+            <strong>Architecture</strong>
+        </a>
+    </nav>
+
+    
+    <nav class="post-pager" aria-label="Previous and next posts">
+        
+        <a class="pager-item pager-newer" href="/diary/posts/2026-11-13-shipping-pkpilot0006/">
+            <span>← 최신 글</span>
+            <strong>PKPilot0006, 그리고 HD2Lab 사이트를 하나로 묶는 중</strong>
+        </a>
+        
+        <span class="pager-item pager-empty" aria-hidden="true"></span>
+    </nav>
+    
+
+    <p class="post-edit"><a href="/diary/write/">다음 기록 쓰기 <span aria-hidden="true">↗</span></a></p>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span>© 2026 HD2Lab</span>
+            <span class="footer-note">++ BUILD NOTES ++ KEEP SHIPPING ++</span>
+            <a href="/">Web-HQ <span aria-hidden="true">↗</span></a>
+        </div>
+    </footer>
+    
+</body>
+</html>

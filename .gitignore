@@ -9,4 +9,5 @@ PKPilot0002/tools/__pycache__/
 # Eleventy build output and deps (built in CI / Pages workflow)
 diary-src/node_modules/
 diary-src/_site/
-/diary/
+
+# /diary/ is committed as the built output so the legacy Jekyll Pages build serves it
