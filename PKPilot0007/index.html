@@ -17,7 +17,7 @@
     <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
     <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy">
     <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-    <link rel="stylesheet" href="style.css?v=20261117-load">
+    <link rel="stylesheet" href="style.css?v=20261117-image">
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261116-softiris">
@@ -25,7 +25,7 @@
     <script src="js/vendor/markdown-it.min.js" defer></script>
     <script src="js/vendor/highlight.min.js" defer></script>
     <script src="js/vendor/purify.min.js" defer></script>
-    <script src="app.js?v=20261117-load" defer></script>
+    <script src="app.js?v=20261117-image" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#editor">본문으로 건너뛰기</a>
@@ -53,6 +53,7 @@
                 <li>Diary frontmatter</li>
                 <li>.md 열기 · 끌어다 놓기</li>
                 <li>기존 글 불러오기</li>
+                <li>이미지 업로드</li>
                 <li>GitHub 1클릭 커밋</li>
             </ul>
         </section>
@@ -102,6 +103,8 @@
                     <button type="button" class="tool" data-act="quote" title="인용" aria-label="인용"><span class="tool-mark">❝</span></button>
                     <button type="button" class="tool" data-act="link" title="링크" aria-label="링크"><span class="tool-mark">↗</span></button>
                     <button type="button" class="tool" data-act="table" title="표" aria-label="표"><span class="tool-mark">▦</span></button>
+                    <button type="button" class="tool" data-act="image" id="btnUploadImage" title="이미지 업로드 후 ![]() 삽입" aria-label="이미지 업로드"><svg class="tool-icon" viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" focusable="false"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7.3" cy="8.2" r="1.35" fill="currentColor"/><path d="M4.4 14.6l3.9-4.1 2.8 2.7 2.3-2.1 3.2 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <input type="file" id="imageInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
                 </div>
                 <div class="tool-group tool-group-end" aria-label="편집">
                     <button type="button" class="tool" data-act="undo" title="되돌리기 (Ctrl/⌘+Z)" aria-label="되돌리기"><span class="tool-mark">↺</span></button>
@@ -163,7 +166,7 @@
                         <p class="load-status" id="loadStatus" role="status" aria-live="polite">공개 저장소는 토큰 없이도 목록을 불러올 수 있습니다. 목록에서 글을 고르면 바로 열립니다.</p>
                     </div>
 
-                    <p class="publish-lede">제목·카테고리·날짜·슬러그·태그·요약을 채우면 Diary 포스트 frontmatter가 만들어집니다. PAT를 저장해 두면 아래 버튼 한 번으로 <code>HyangDan2/HyangDan2.github.io</code>에 커밋됩니다.</p>
+                    <p class="publish-lede">제목·카테고리·날짜·슬러그·태그·요약을 채우면 Diary 포스트 frontmatter가 만들어집니다. PAT를 저장해 두면 아래 버튼 한 번으로 <code>HyangDan2/HyangDan2.github.io</code>에 커밋됩니다. 툴바의 이미지 버튼으로 올린 사진은 <code>diary-src/assets/images/</code>와 <code>diary/assets/images/</code>에 함께 커밋됩니다.</p>
 
                     <div class="field-grid">
                         <label class="field field-wide">
@@ -227,6 +230,10 @@
             <div>
                 <span class="mono-note">OPEN</span>
                 <p><strong>.md 열기</strong>를 누르거나 편집 화면에 파일을 끌어다 놓으면 본문과 frontmatter를 함께 불러옵니다. 저장소에 있는 글은 발행 패널의 <strong>기존 글 불러오기</strong>로 열고, 그대로 커밋하면 같은 경로로 덮어씁니다.</p>
+            </div>
+            <div>
+                <span class="mono-note">IMAGE</span>
+                <p>툴바의 이미지 버튼으로 PNG · JPEG · WebP · GIF를 올리면 저장소의 <code>diary-src/assets/images/</code>와 <code>diary/assets/images/</code>에 함께 커밋되고, 본문 커서 자리에 <code>![]()</code>가 삽입됩니다. 이미지를 올리려면 GitHub 토큰이 필요합니다.</p>
             </div>
             <div>
                 <span class="mono-note">SANITIZE</span>

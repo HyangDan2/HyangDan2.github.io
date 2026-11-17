@@ -19,6 +19,10 @@
     const MD_EXT = /\.(md|markdown|txt)$/i;
     const MAX_LOCAL_BYTES = 2 * 1024 * 1024;
     const CONTENTS_API = 'https://api.github.com/repos/';
+    const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+    const IMAGE_EXTS = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+    const IMAGE_SRC_DIR = 'diary-src/assets/images/';
+    const IMAGE_PUBLIC_DIR = 'diary/assets/images/';
 
     const SAMPLE = [
         '# 마크다운으로 기록하기',
@@ -56,6 +60,8 @@
         btnOpenLocal: $('btnOpenLocal'),
         btnNewDoc: $('btnNewDoc'),
         fileInput: $('fileInput'),
+        imageInput: $('imageInput'),
+        btnUploadImage: $('btnUploadImage'),
         dropOverlay: $('dropOverlay'),
         postList: $('postList'),
         btnListPosts: $('btnListPosts'),
@@ -98,6 +104,8 @@
         loadedSha: '',
         listing: false,
         loading: false,
+        uploading: false,
+        imageCaret: -1,
     };
 
     /* ---------------------------------------------------------------- markdown */
@@ -652,11 +660,151 @@
         quote: () => prefixLines('> '),
         link: () => replaceSelection('[', '](https://)', '링크 텍스트'),
         table: () => insertBlock('| 항목 | 값 |\n| --- | --- |\n| 예시 | 내용 |\n'),
+        image: () => pickImage(),
         undo: () => {
             focusEditor();
             try { document.execCommand('undo'); } catch (error) { /* native undo only */ }
         },
     };
+
+    /* ---------------------------------------------------------------- image upload */
+    function imageExtension(name) {
+        const match = /\.([A-Za-z0-9]+)$/.exec(String(name || ''));
+        const ext = match ? match[1].toLowerCase() : '';
+        return Object.prototype.hasOwnProperty.call(IMAGE_EXTS, ext) ? ext : '';
+    }
+
+    function imageFileName(originalName, ext) {
+        const raw = String(originalName || '');
+        const dot = raw.lastIndexOf('.');
+        const base = dot > 0 ? raw.slice(0, dot) : raw;
+        const cleaned = base
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 40)
+            .replace(/-+$/g, '') || 'image';
+        return `${todayKst()}-${cleaned}.${ext}`;
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = String(reader.result || '');
+                const comma = result.indexOf(',');
+                resolve(comma >= 0 ? result.slice(comma + 1) : result);
+            };
+            reader.onerror = () => reject(new Error('파일을 읽지 못했습니다.'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function putRepoFile(token, settings, path, content, message) {
+        const api = `https://api.github.com/repos/${settings.repo}/contents/${encodePath(path)}`;
+        const headers = apiHeaders(token);
+        const head = await fetch(`${api}?ref=${encodeURIComponent(settings.branch)}`, { headers });
+        let sha = null;
+        if (head.ok) {
+            const meta = await head.json();
+            sha = meta.sha;
+        } else if (head.status !== 404) {
+            throw new Error(describeError(head.status, '기존 파일 확인'));
+        }
+        const payload = { message, content, branch: settings.branch };
+        if (sha) payload.sha = sha;
+        const put = await fetch(api, {
+            method: 'PUT',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+            body: JSON.stringify(payload),
+        });
+        if (!put.ok) throw new Error(describeError(put.status, sha ? '이미지 덮어쓰기' : '이미지 업로드'));
+        return { sha, result: await put.json() };
+    }
+
+    function insertImageMarkdown(alt, url) {
+        const textarea = el.editor;
+        const value = textarea.value;
+        const fallback = Number.isInteger(textarea.selectionStart) ? textarea.selectionStart : value.length;
+        const position = Number.isInteger(state.imageCaret) && state.imageCaret >= 0 ? state.imageCaret : fallback;
+        const at = Math.max(0, Math.min(position, value.length));
+        const markdown = `![${alt}](${url})`;
+        const leading = at > 0 && value.charAt(at - 1) !== '\n' ? '\n' : '';
+        const trailing = value.charAt(at) === '\n' || at === value.length ? '\n' : '\n\n';
+        const snippet = `${leading}${markdown}${trailing}`;
+        textarea.value = value.slice(0, at) + snippet + value.slice(at);
+        const caret = at + snippet.length;
+        textarea.setSelectionRange(caret, caret);
+        focusEditor();
+        onInput();
+        return markdown;
+    }
+
+    function pickImage() {
+        if (state.uploading) return;
+        if (!getToken()) {
+            openSettings();
+            toast('이미지를 저장소에 올리려면 먼저 GitHub 토큰을 등록해 주세요.', 'err');
+            return;
+        }
+        state.imageCaret = el.editor.selectionStart;
+        el.imageInput.click();
+    }
+
+    async function uploadImage(file) {
+        if (!file || state.uploading) return;
+        const token = getToken();
+        if (!token) {
+            openSettings();
+            toast('이미지를 저장소에 올리려면 먼저 GitHub 토큰을 등록해 주세요.', 'err');
+            return;
+        }
+        const ext = imageExtension(file.name);
+        if (!ext) {
+            toast('PNG · JPEG · WebP · GIF 이미지만 올릴 수 있습니다.', 'err');
+            return;
+        }
+        if (file.size > IMAGE_MAX_BYTES) {
+            toast('5MB 이하 이미지만 올릴 수 있습니다.', 'err');
+            return;
+        }
+
+        const settings = githubSettings();
+        const filename = imageFileName(file.name, ext);
+        const alt = String(file.name).replace(/\.[^.]+$/, '') || '이미지';
+        const sourcePath = `${IMAGE_SRC_DIR}${filename}`;
+        const publicPath = `${IMAGE_PUBLIC_DIR}${filename}`;
+        const button = el.btnUploadImage;
+        state.uploading = true;
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        setStatus(el.publishStatus, `<code>${escapeHtml(filename)}</code> 이미지를 올리는 중입니다.`);
+        let sourceDone = false;
+        try {
+            const content = await fileToBase64(file);
+            const source = await putRepoFile(token, settings, sourcePath, content, `chore(diary): 이미지 원본 추가 — ${filename}`);
+            sourceDone = true;
+            const published = await putRepoFile(token, settings, publicPath, content, `chore(diary): 이미지 배포본 추가 — ${filename}`);
+            insertImageMarkdown(alt, `/${publicPath}`);
+            const overwritten = Boolean(source.sha || published.sha);
+            setStatus(
+                el.publishStatus,
+                `이미지 <code>${escapeHtml(filename)}</code>을(를) <code>${escapeHtml(sourcePath)}</code>와 <code>${escapeHtml(publicPath)}</code>에 올리고 본문에 삽입했습니다.${overwritten ? ' 같은 이름의 파일이 있어 덮어썼습니다.' : ''}`,
+                'ok'
+            );
+            toast(`이미지를 올리고 본문에 삽입했습니다.${overwritten ? ' 같은 이름의 파일을 덮어썼습니다.' : ''}`, 'ok');
+        } catch (error) {
+            const message = sourceDone
+                ? `이미지 원본은 올렸지만 /diary/ 복사본을 올리지 못했습니다. 같은 파일로 다시 시도해 주세요. (${error.message})`
+                : `이미지를 올리지 못했습니다. ${error.message}`;
+            setStatus(el.publishStatus, escapeHtml(message), 'err');
+            toast(message, 'err');
+        } finally {
+            state.uploading = false;
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+        }
+    }
 
     /* ---------------------------------------------------------------- diary preview */
     function paintDiary() {
@@ -1243,6 +1391,12 @@ ${bodyHtml}
         });
 
         el.editor.addEventListener('input', onInput);
+
+        el.imageInput.addEventListener('change', () => {
+            const file = el.imageInput.files && el.imageInput.files[0];
+            el.imageInput.value = '';
+            uploadImage(file);
+        });
     }
 
     /* ---------------------------------------------------------------- boot */
@@ -1289,6 +1443,10 @@ ${bodyHtml}
         loadPost,
         detachSource,
         decodeBase64Utf8,
+        pickImage,
+        uploadImage,
+        imageFileName,
+        insertImageMarkdown,
         getLoaded: () => ({ kind: state.loadedKind, name: state.loadedName, path: state.loadedPath, sha: state.loadedSha }),
     };
 })();
