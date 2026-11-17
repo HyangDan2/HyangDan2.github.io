@@ -18,7 +18,8 @@ A read-only Markdown viewer that runs entirely in the browser. No backend, no bu
 
 - markdown-it (GFM tables, strikethrough, linkify) + highlight.js, `- [ ]` / `- [x]` checkboxes.
 - YAML frontmatter is parsed into the document header (title, category · date, summary, tags) and the
-  first `#` heading becomes the document title.
+  first `#` heading becomes the document title. A collapsible **frontmatter meta card** lists every
+  key/value pair of the block, so custom fields stay visible without entering the source.
 - Every code block gets a header with a language badge and a one-click copy button.
 - Headings get stable ids and feed the sticky TOC (sidebar on desktop, toggle panel on mobile).
 - **Every rendered document is sanitized with DOMPurify** (`script`, `style`, `iframe`, `form`,
