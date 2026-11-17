@@ -19,12 +19,11 @@ Local preview is served under the `/diary/` prefix, so `npm run serve` opens the
 
 ## Writing a post
 
-Two ways, both end with a Markdown file in `posts/`:
+`/diary/` is **read-only**: the site no longer ships a writing page. A post is one Markdown file in
+`posts/`, written either by hand or in the sibling Markdown editor at `/PKPilot0007/` (its
+*Diary 발행 · GitHub 커밋* panel fills this frontmatter and commits the file through the GitHub API).
 
-1. **In the browser** — `/diary/write/` (no backend). Fill in title, category, date, summary, tags
-   and the body; then either commit straight from GitHub (the page opens the new-file screen with
-   the whole file prefilled) or download `<YYYY-MM-DD>-<slug>.md` and add it here.
-2. **By hand** — create `posts/<YYYY-MM-DD>-<slug>.md`:
+By hand, create `posts/<YYYY-MM-DD>-<slug>.md`:
 
 ```yaml
 ---
@@ -54,10 +53,8 @@ _includes/parts/…        post list + empty state macros
 index.njk                /diary/          category cards + recent posts
 categories-index.njk     /diary/categories/  all four drawers
 categories.njk           /diary/categories/<slug>/
-write.njk                /diary/write/    client-side editor
 posts/*.md               the posts
 assets/diary.css         shared theme (mirrors Web-HQ tokens)
-assets/write.js          editor logic (markdown preview, draft, export, GitHub URL)
 ```
 
 ## Deploy

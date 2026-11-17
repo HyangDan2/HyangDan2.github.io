@@ -30,12 +30,12 @@ permalink: "/categories/{{ categoryPage.slug }}/index.html"
             <p class="eyebrow">All posts</p>
             <h2>{{ categoryPage.name }} 전체 글</h2>
         </div>
-        <a class="button button-ghost button-small" href="{{ '/write/' | url }}">이 카테고리에 쓰기</a>
+        <span class="mono-note">{{ categoryPage.count }} post{% if categoryPage.count != 1 %}s{% endif %}</span>
     </div>
     {% if categoryPage.count %}
         {{ parts.postList(categoryPage.posts, false) }}
     {% else %}
-        {{ parts.emptyState('아직 이 서랍은 비어 있다. 첫 글을 넣어 보자.', '/write/') }}
+        {{ parts.emptyState('아직 이 서랍은 비어 있다.') }}
     {% endif %}
 </section>
 
