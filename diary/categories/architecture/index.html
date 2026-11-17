@@ -16,7 +16,7 @@
     <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
     <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy">
     <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-    <link rel="stylesheet" href="/diary/assets/diary.css?v=20261117-navy">
+    <link rel="stylesheet" href="/diary/assets/diary.css?v=20261118-nav">
 </head>
 <body class="page-categories-architecture">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -27,11 +27,63 @@
                 <span class="brand-name">HD2Lab</span>
                 <em>HD2&#39;s Diary</em>
             </a>
+            <nav class="header-nav" aria-label="Hub categories">
+                <a class="nav-tab" href="https://hyangdan2.github.io/">Web-HQ</a>
+                <a class="nav-tab" href="https://hyangdan2.github.io/ApplicationHub/">Apps</a>
+                <a class="nav-tab" href="https://hyangdan2.github.io/GameHub/">Play</a>
+                <a class="nav-tab" href="https://hyangdan2.github.io/TechnicalHub/">Tech</a>
+                <a class="nav-tab is-active" href="/diary/" aria-current="page">Diary</a>
+                <a class="nav-tab" href="https://hyangdan2.github.io/about/">About</a>
+            </nav>
             <div class="header-actions">
-                <a class="hq-link" href="/">Web-HQ <span aria-hidden="true">↗</span></a>
+                <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <path d="M3 5.5H17M3 10H17M3 14.5H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </header>
+
+    <div class="drawer-backdrop" hidden></div>
+    <aside id="mobile-drawer" class="mobile-drawer" aria-label="Hub navigation" aria-hidden="true">
+        <div class="drawer-head">
+            <span class="drawer-title"><span class="mark mark-sm" aria-hidden="true"></span><span>Navigation</span></span>
+            <button class="drawer-close" type="button" aria-label="Close menu">&times;</button>
+        </div>
+        <nav class="drawer-list" aria-label="Hub categories">
+            <a class="drawer-item" href="https://hyangdan2.github.io/">
+                <span class="drawer-item-meta">00 / HQ</span>
+                <span class="drawer-item-row"><strong>Web-HQ</strong><span aria-hidden="true">↗</span></span>
+                <span class="drawer-item-desc">The front door — every hub</span>
+            </a>
+            <a class="drawer-item" href="https://hyangdan2.github.io/ApplicationHub/">
+                <span class="drawer-item-meta">01 / APPS</span>
+                <span class="drawer-item-row"><strong>ApplicationHub</strong><span aria-hidden="true">↗</span></span>
+                <span class="drawer-item-desc">Web applications &amp; tools</span>
+            </a>
+            <a class="drawer-item" href="https://hyangdan2.github.io/GameHub/">
+                <span class="drawer-item-meta">02 / PLAY</span>
+                <span class="drawer-item-row"><strong>GameHub</strong><span aria-hidden="true">↗</span></span>
+                <span class="drawer-item-desc">Games &amp; interaction</span>
+            </a>
+            <a class="drawer-item" href="https://hyangdan2.github.io/TechnicalHub/">
+                <span class="drawer-item-meta">03 / EXPLORE</span>
+                <span class="drawer-item-row"><strong>TechnicalHub</strong><span aria-hidden="true">↗</span></span>
+                <span class="drawer-item-desc">Technology, projects &amp; ideas</span>
+            </a>
+            <a class="drawer-item is-active" href="/diary/" aria-current="page">
+                <span class="drawer-item-meta">04 / DIARY</span>
+                <span class="drawer-item-row"><strong>HD2's Diary</strong><span aria-hidden="true">↗</span></span>
+                <span class="drawer-item-desc">Build notes &amp; architecture</span>
+            </a>
+            <a class="drawer-item" href="https://hyangdan2.github.io/about/">
+                <span class="drawer-item-meta">05 / ABOUT</span>
+                <span class="drawer-item-row"><strong>About HD2Lab</strong><span aria-hidden="true">↗</span></span>
+                <span class="drawer-item-desc">Who builds this &amp; how to reach me</span>
+            </a>
+        </nav>
+    </aside>
 
     <main id="main">
         
@@ -137,5 +189,6 @@
         </div>
     </footer>
     
+    <script src="/diary/assets/diary-nav.js?v=20261118-nav" defer></script>
 </body>
 </html>
