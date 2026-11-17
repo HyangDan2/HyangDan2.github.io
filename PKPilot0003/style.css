@@ -2236,6 +2236,20 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="dark"] .toast { background: rgba(18, 25, 46, 0.96); }
 [data-theme="dark"] .slots { background: linear-gradient(180deg, #101830, var(--ink-3)); }
 [data-theme="dark"] .sheet-backdrop { background: rgba(3, 6, 14, 0.55); }
+/* the frame library shelf is a hand-mixed surface too: left alone it kept its
+   light card and the whole strip read as a white band under a navy studio,
+   which also flattened every label sitting on it. The FYRA 04 re-click chip is
+   the same mistake one size smaller — a pale lavender pill that stayed the
+   brightest thing on the screen. */
+[data-theme="dark"] .strip { background: var(--ink-2); }
+[data-theme="dark"] .strip-hint { color: var(--dim); }
+[data-theme="dark"] .frame-reclick {
+  background: rgba(26, 35, 64, 0.94);
+  color: var(--accent);
+  border-color: rgba(167, 139, 250, 0.4);
+}
+/* the hover gradient stays pale lavender, so the hover ink stays ink */
+[data-theme="dark"] .btn-accent:hover:not(:disabled) { color: #0B1020; }
 
 /* ── floating Light/Dark toggle ──────────────────────────────────────────────
    /assets/hd2-theme.js hands every HD2Lab route this floating button. Here only

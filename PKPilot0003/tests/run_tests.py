@@ -608,6 +608,15 @@ def static_tests():
                     css, re.S) is not None)
     check("the ⋮ menu rows carry a switch state",
           '.portal-item[aria-checked="true"]' in css)
+    # the frame library shelf and the FYRA 04 re-click chip are hand-mixed light
+    # surfaces: each needs its own dark override or it stays a white band under
+    # the navy studio (the strip kept #FBFAFE through the whole first dark pass)
+    check("the frame library shelf has a dark surface override",
+          re.search(r'\[data-theme="dark"\]\s+\.strip\s*\{[^}]*background:', css, re.S) is not None
+          and re.search(r'\[data-theme="dark"\]\s+\.strip-hint\s*\{[^}]*color:', css, re.S) is not None)
+    check("the FYRA 04 re-click chip has a dark surface override",
+          re.search(r'\[data-theme="dark"\]\s+\.frame-reclick\s*\{[^}]*background:', css, re.S) is not None
+          and re.search(r'\[data-theme="dark"\]\s+\.frame-reclick\s*\{[^}]*color:\s*var\(--accent\)', css, re.S) is not None)
     check("inputs are 16px (iOS zoom guard)",
           re.search(r"\.inp,[^{]*\{[^}]*font-size:\s*16px", css, re.S) is not None,
           "expected .inp { font-size: 16px }")
@@ -3266,6 +3275,25 @@ def browser_tests(port):
               pcdark["moon"] == "none" and pcdark["sun"] != "none", str(pcdark))
         check("PC: the docked button reports what it will do",
               pcdark["pressed"] == "true" and "라이트" in (pcdark["label"] or ""), str(pcdark))
+        psurfaces = ppage.evaluate("""() => {
+          const lum = c => {
+            const m = (c || '').match(/[\\d.]+/g);
+            if (!m) return null;
+            const f = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+            return 0.2126 * f(+m[0]) + 0.7152 * f(+m[1]) + 0.0722 * f(+m[2]);
+          };
+          const bg = s => { const e = document.querySelector(s); return e ? getComputedStyle(e).backgroundColor : null; };
+          const strip = bg('.strip'), chip = bg('.frame-reclick');
+          return {theme: document.documentElement.getAttribute('data-theme'),
+                  strip: strip, stripLum: lum(strip),
+                  chip: chip, chipLum: chip ? lum(chip) : null,
+                  hint: document.querySelector('.strip-hint') ? getComputedStyle(document.querySelector('.strip-hint')).color : null};
+        }""")
+        check("PC: dark turns the frame library shelf navy",
+              psurfaces["strip"] == "rgb(18, 25, 46)" and (psurfaces["stripLum"] or 1) < 0.05,
+              str(psurfaces))
+        check("PC: dark leaves no pale pill on the FYRA 04 tile",
+              psurfaces["chipLum"] is not None and psurfaces["chipLum"] < 0.10, str(psurfaces))
         ppage.click("#headerThemeBtn")
         ppage.wait_for_timeout(200)
         check("PC: the same button comes back to light",
