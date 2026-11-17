@@ -66,6 +66,9 @@
         docEyebrow: $('docEyebrow'),
         docSummary: $('docSummary'),
         docTags: $('docTags'),
+        fmCard: $('fmCard'),
+        fmList: $('fmList'),
+        fmHint: $('fmHint'),
         fileName: $('fileName'),
         docSource: $('docSource'),
         statWords: $('statWords'),
@@ -270,6 +273,8 @@
         const tags = Array.isArray(data.tags) ? data.tags : (data.tags ? String(data.tags).split(',').map((t) => t.trim()) : []);
         el.docTags.innerHTML = tags.filter(Boolean).map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join('');
 
+        paintFrontmatterCard(data);
+
         el.fileName.textContent = state.name;
         el.docSource.textContent = state.source ? sourceLabel(state.source) : '';
 
@@ -303,6 +308,27 @@
         if (location.hash.indexOf('#md=') === 0 && source !== '공유 링크') {
             try { history.replaceState(null, '', location.pathname + location.search); } catch (error) { /* ignore */ }
         }
+    }
+
+    function paintFrontmatterCard(data) {
+        const keys = Object.keys(data || {}).filter((key) => {
+            const value = data[key];
+            return value !== '' && value != null && !(Array.isArray(value) && value.length === 0);
+        });
+        if (!keys.length) {
+            el.fmCard.hidden = true;
+            el.fmList.innerHTML = '';
+            el.fmHint.textContent = '';
+            return;
+        }
+        el.fmList.innerHTML = keys.map((key) => {
+            const value = data[key];
+            const text = Array.isArray(value) ? value.join(', ') : String(value);
+            return `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(text)}</dd>`;
+        }).join('');
+        el.fmHint.textContent = `${keys.length} field${keys.length === 1 ? '' : 's'}`;
+        el.fmCard.hidden = false;
+        el.fmCard.open = false;
     }
 
     function sourceLabel(source) {
@@ -532,6 +558,9 @@ ${bodyHtml}
         el.docEyebrow.textContent = 'MARKDOWN';
         el.docSummary.hidden = true;
         el.docTags.innerHTML = '';
+        el.fmCard.hidden = true;
+        el.fmList.innerHTML = '';
+        el.fmHint.textContent = '';
         el.fileName.textContent = '문서 없음';
         el.docSource.textContent = '';
         el.tocNav.innerHTML = '<p class="toc-empty">제목이 있는 문서를 열면 목차가 만들어진다.</p>';
