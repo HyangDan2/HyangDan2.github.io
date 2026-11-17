@@ -215,6 +215,39 @@ a { color: inherit; text-decoration: none; }
 .hbtn--accent:hover:not(:disabled) { background: rgba(139, 108, 232, 0.24); border-color: var(--accent); }
 .hbtn .ic { width: 16px; height: 16px; }
 
+/* the header copy of the Light/Dark toggle — the same circle the landing floats,
+   docked between 저장 and ⋮ so it never sits on the plate. Only the studio shows
+   it: the landing keeps the floating one (/assets/hd2-theme.js). */
+.hbtn-theme {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ink-2);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+body[data-view="editor"] .hbtn-theme { display: inline-flex; }
+.hbtn-theme:hover { border-color: var(--accent-dim); color: var(--accent); }
+.hbtn-theme:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.hbtn-theme .ic-theme {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.7;
+}
+/* the icon shows where the button takes you — the same rule the floating copy uses */
+.hbtn-theme .ic-theme--sun { display: none; }
+[data-theme="dark"] .hbtn-theme .ic-theme--sun { display: block; }
+[data-theme="dark"] .hbtn-theme .ic-theme--moon { display: none; }
+
 /* 포털 드롭다운 */
 /* an open menu has to paint over the fixed inspector */
 body.is-menu-open .app-header { z-index: 65; }
@@ -1392,7 +1425,6 @@ input[type="range"]::-moz-range-thumb {
   .header-actions { gap: 4px; }
   .brand { gap: 8px; }
   .brand-name { font-size: 20px; }
-  .brand em { display: none; }
   .hbtn-label { display: none; }
   .hbtn { min-width: 44px; padding: 0; }
   .session-actions .btn span { display: none; }
@@ -2206,8 +2238,9 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="dark"] .sheet-backdrop { background: rgba(3, 6, 14, 0.55); }
 
 /* ── floating Light/Dark toggle ──────────────────────────────────────────────
-   The studio keeps its toolbar at the bottom edge, so the button sits above
-   the frame strip on a phone and above the toolbar on a desktop. */
+   /assets/hd2-theme.js hands every HD2Lab route this floating button. Here only
+   the landing wears it, bottom-right above the launch cards; the studio turns it
+   off and carries the same circle in the header instead (.hbtn-theme). */
 .hd2-theme-toggle {
   --hd2-toggle-bg: var(--ink-2);
   --hd2-toggle-fg: var(--text-hi);
@@ -2216,8 +2249,7 @@ input[type="range"]::-moz-range-thumb {
   --hd2-toggle-hover: var(--accent);
   --hd2-toggle-z: 45;
   --hd2-toggle-right: 18px;
-  /* the stage sits above session + strip + toolbar; keep the button on the stage */
-  --hd2-toggle-bottom: calc(var(--toolbar-h) + env(safe-area-inset-bottom, 0px) + var(--thumb-h) + 144px);
+  --hd2-toggle-bottom: 24px;
 }
 [data-theme="dark"] .hd2-theme-toggle {
   --hd2-toggle-bg: rgba(18, 25, 46, 0.92);
@@ -2229,14 +2261,23 @@ html:has(.export-modal.is-open) .hd2-theme-toggle,
 html:has(.preview-overlay.is-open) .hd2-theme-toggle,
 html:has(.fyra-modal.is-open) .hd2-theme-toggle,
 html:has(.sheet-backdrop.is-open) .hd2-theme-toggle { opacity: 0; pointer-events: none; }
-body:has(#homeView:not([hidden])) .hd2-theme-toggle { --hd2-toggle-bottom: 24px; }
-/* desktop keeps the inspector docked at the right: sit left of it */
-@media (min-width: 900px) {
-  .hd2-theme-toggle { --hd2-toggle-right: 396px; --hd2-toggle-bottom: calc(var(--toolbar-h) + var(--thumb-h) + 144px); }
-  body:has(#homeView:not([hidden])) .hd2-theme-toggle { --hd2-toggle-right: 18px; }
+/* the studio docks the toggle in the header — the floating one would sit on the
+   plate, so it is taken out of sight and out of the tab order */
+body[data-view="editor"] .hd2-theme-toggle {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 @media (max-width: 520px) {
-  body:has(#homeView:not([hidden])) .hd2-theme-toggle { --hd2-toggle-bottom: 18px; }
-  .hd2-theme-toggle { --hd2-toggle-right: 12px;
-    --hd2-toggle-bottom: calc(var(--toolbar-h) + env(safe-area-inset-bottom, 0px) + var(--thumb-h) + 144px); }
+  .hd2-theme-toggle { --hd2-toggle-right: 12px; --hd2-toggle-bottom: 18px; }
+  /* …and the phone needs the room: 44px keeps the touch target the rest of the
+     header keeps, and 샘플 steps out (it is on the landing card and in ⋮) */
+  .hbtn-theme { width: 44px; height: 44px; }
+  .hbtn-theme .ic-theme { width: 19px; height: 19px; }
+  body[data-view="editor"] #headerSampleBtn { display: none; }
+}
+/* the header now carries a fourth control on a phone, so the product name steps
+   out a little earlier than the 360px floor it used to leave at */
+@media (max-width: 379px) {
+  .brand em { display: none; }
 }

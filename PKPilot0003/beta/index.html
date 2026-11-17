@@ -52,7 +52,7 @@
   <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
   <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy" />
   <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-  <link rel="stylesheet" href="style.css?v=20261117-navy" />
+  <link rel="stylesheet" href="style.css?v=20261117-dock" />
 </head>
 <body>
   <!-- ── 자체 제작 SVG 아이콘 스프라이트 ─────────────────────────────── -->
@@ -137,6 +137,11 @@
       <button class="hbtn hbtn--accent" id="headerDownloadBtn" type="button" title="플레이트 저장" aria-label="플레이트 저장" disabled>
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg>
         <span class="hbtn-label">저장</span>
+      </button>
+      <!-- 편집기 전용: 랜딩의 플로팅 토글이 여기로 도킹한다 (js/theme-dock.js) -->
+      <button class="hbtn-theme" id="headerThemeBtn" type="button" aria-pressed="false" aria-label="다크 모드로 전환 (네이비 &amp; 라벤더)" title="다크 모드로 전환 (네이비 &amp; 라벤더)">
+        <svg class="ic ic-theme ic-theme--moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.4 14.4A8.6 8.6 0 0 1 9.6 3.6a8.6 8.6 0 1 0 10.8 10.8z"/></svg>
+        <svg class="ic ic-theme ic-theme--sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.1"/><path d="M12 2.7v2.3M12 19v2.3M2.7 12h2.3M19 12h2.3M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
       </button>
       <div class="portal-menu" id="portalMenu">
         <button class="portal-menu-btn" id="portalMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="portalMenuDropdown" aria-label="더 보기 — 워크스페이스 · 샘플 · 포털" title="더 보기">
@@ -689,5 +694,6 @@
   <script src="js/exif-core.js?v=20261115-beta-1" defer></script>
   <script src="js/plate.js?v=20261115-beta-5" defer></script>
   <script src="app.js?v=20261117-navy" defer></script>
+  <script src="js/theme-dock.js?v=20261117-dock" defer></script>
 </body>
 </html>
