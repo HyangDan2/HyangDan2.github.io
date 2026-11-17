@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HD2Lab Markdown Editor — GFM 실시간 미리보기, .md·HTML 내보내기, Diary frontmatter 생성과 GitHub 1클릭 커밋까지 브라우저에서 끝낸다.">
+    <meta name="theme-color" content="#FAFAFD">
+    <title>HD2Lab | Markdown Editor</title>
+    <link rel="canonical" href="https://hyangdan2.github.io/PKPilot0007/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="HD2Lab · Markdown Editor">
+    <meta property="og:title" content="HD2Lab | Markdown Editor">
+    <meta property="og:description" content="GFM 실시간 미리보기, .md·HTML 내보내기, Diary frontmatter + GitHub 1클릭 커밋.">
+    <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0007/">
+    <meta name="twitter:card" content="summary">
+    <!-- HD2Lab shared theme: applies the stored hd2-theme before first paint (no flash) -->
+    <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+    <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy">
+    <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
+    <link rel="stylesheet" href="style.css?v=20261117-a">
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261116-softiris">
+    <link rel="shortcut icon" href="/favicon.ico?v=20261116-softiris">
+    <script src="js/vendor/markdown-it.min.js" defer></script>
+    <script src="js/vendor/highlight.min.js" defer></script>
+    <script src="js/vendor/purify.min.js" defer></script>
+    <script src="app.js?v=20261117-a" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#editor">본문으로 건너뛰기</a>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/" aria-label="HD2Lab Web-HQ home">
+                <span class="mark" aria-hidden="true"></span>
+                <span class="brand-name">HD2Lab</span>
+                <em>Markdown Editor</em>
+            </a>
+            <div class="header-actions">
+                <a class="header-link" href="/">Web-HQ <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="page-head shell">
+            <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>PKPilot 0007 · Markdown</p>
+            <h1>Write it in<br><span>Markdown.</span></h1>
+            <p class="page-lede">GFM 그대로 쓰고 실시간으로 확인한다. .md·HTML로 내려받고, 필요하면 Diary 발행 패널에서 frontmatter를 채워 GitHub에 바로 커밋한다.</p>
+            <ul class="head-chips" aria-label="Editor features">
+                <li>GFM · 코드 하이라이팅</li>
+                <li>자동 저장 · 단어/글자 수</li>
+                <li>Diary frontmatter</li>
+                <li>GitHub 1클릭 커밋</li>
+            </ul>
+        </section>
+
+        <section class="workspace shell" aria-label="Markdown editor">
+            <div class="docbar">
+                <div class="docbar-file">
+                    <span class="docbar-label">FILE</span>
+                    <strong id="docFileName">untitled.md</strong>
+                </div>
+                <div class="view-switch" role="tablist" aria-label="편집 화면 모드">
+                    <button type="button" class="view-tab" role="tab" id="tab-edit" aria-selected="false" aria-controls="pane-edit" data-view="edit">편집</button>
+                    <button type="button" class="view-tab is-active" role="tab" id="tab-split" aria-selected="true" aria-controls="pane-edit pane-preview" data-view="split">분할</button>
+                    <button type="button" class="view-tab" role="tab" id="tab-preview" aria-selected="false" aria-controls="pane-preview" data-view="preview">미리보기</button>
+                </div>
+                <div class="docbar-count" aria-live="polite">
+                    <span><strong id="wordCount">0</strong> 단어</span>
+                    <span><strong id="charCount">0</strong> 자</span>
+                </div>
+            </div>
+
+            <div class="toolbar" role="toolbar" aria-label="Markdown 서식">
+                <div class="tool-group" aria-label="제목">
+                    <button type="button" class="tool" data-act="h1" title="H1 제목" aria-label="H1 제목"><span class="tool-mark">H1</span></button>
+                    <button type="button" class="tool" data-act="h2" title="H2 제목" aria-label="H2 제목"><span class="tool-mark">H2</span></button>
+                    <button type="button" class="tool" data-act="h3" title="H3 제목" aria-label="H3 제목"><span class="tool-mark">H3</span></button>
+                </div>
+                <div class="tool-group" aria-label="글자">
+                    <button type="button" class="tool" data-act="bold" title="굵게 (Ctrl/⌘+B)" aria-label="굵게"><span class="tool-mark tool-b">B</span></button>
+                    <button type="button" class="tool" data-act="italic" title="기울임 (Ctrl/⌘+I)" aria-label="기울임"><span class="tool-mark tool-i">I</span></button>
+                    <button type="button" class="tool" data-act="strike" title="취소선" aria-label="취소선"><span class="tool-mark tool-s">S</span></button>
+                </div>
+                <div class="tool-group" aria-label="코드">
+                    <button type="button" class="tool" data-act="code" title="인라인 코드" aria-label="인라인 코드"><span class="tool-mark">&lt;/&gt;</span></button>
+                    <button type="button" class="tool" data-act="codeblock" title="코드 블록" aria-label="코드 블록"><span class="tool-mark">{ }</span></button>
+                </div>
+                <div class="tool-group" aria-label="목록">
+                    <button type="button" class="tool" data-act="ul" title="글머리 목록" aria-label="글머리 목록"><span class="tool-mark">• ≡</span></button>
+                    <button type="button" class="tool" data-act="ol" title="번호 목록" aria-label="번호 목록"><span class="tool-mark">1.</span></button>
+                    <button type="button" class="tool" data-act="task" title="체크리스트" aria-label="체크리스트"><span class="tool-mark">☑</span></button>
+                </div>
+                <div class="tool-group" aria-label="인용과 링크">
+                    <button type="button" class="tool" data-act="quote" title="인용" aria-label="인용"><span class="tool-mark">❝</span></button>
+                    <button type="button" class="tool" data-act="link" title="링크" aria-label="링크"><span class="tool-mark">↗</span></button>
+                    <button type="button" class="tool" data-act="table" title="표" aria-label="표"><span class="tool-mark">▦</span></button>
+                </div>
+                <div class="tool-group tool-group-end" aria-label="편집">
+                    <button type="button" class="tool" data-act="undo" title="되돌리기 (Ctrl/⌘+Z)" aria-label="되돌리기"><span class="tool-mark">↺</span></button>
+                </div>
+            </div>
+
+            <div class="panes mode-split" id="panes">
+                <div class="pane pane-edit" id="pane-edit" role="tabpanel" aria-labelledby="tab-edit">
+                    <label class="visually-hidden" for="editor">마크다운 본문</label>
+                    <textarea id="editor" spellcheck="false" placeholder="# 첫 소제목&#10;&#10;여기에 마크다운을 쓴다. 오른쪽 미리보기에 바로 반영된다.&#10;&#10;```js&#10;console.log('hello, HD2Lab');&#10;```&#10;&#10;- [x] 자동 저장&#10;- [ ] GitHub 커밋"></textarea>
+                </div>
+                <div class="pane pane-preview" id="pane-preview" role="tabpanel" aria-labelledby="tab-preview">
+                    <div class="pane-head">
+                        <span class="mono-note">PREVIEW</span>
+                        <span class="mono-note" id="previewMode">GFM · hljs</span>
+                    </div>
+                    <article class="markdown-body" id="preview"></article>
+                </div>
+            </div>
+
+            <div class="statusbar">
+                <p class="status-text" id="saveState" role="status" aria-live="polite">자동 저장 준비됨</p>
+                <div class="status-actions">
+                    <button type="button" class="text-button" id="btnReset">초기화</button>
+                </div>
+            </div>
+
+            <div class="export-bar">
+                <div class="export-primary">
+                    <button type="button" class="button button-primary" id="btnDownloadMd">.md 다운로드</button>
+                    <button type="button" class="button button-ghost" id="btnCopyMd">마크다운 복사</button>
+                    <button type="button" class="button button-ghost" id="btnCopyHtml">HTML 복사</button>
+                    <button type="button" class="button button-ghost" id="btnExportHtml">단독 HTML 저장</button>
+                </div>
+                <p class="export-note">모든 변환은 이 브라우저 안에서만 일어난다. 본문은 자동으로 로컬에 저장된다.</p>
+            </div>
+
+            <details class="publish" id="publishPanel">
+                <summary class="publish-summary">
+                    <span class="publish-title">Diary 발행 · GitHub 커밋</span>
+                    <span class="publish-meta">frontmatter 생성 → 저장소에 바로 커밋</span>
+                </summary>
+                <div class="publish-body">
+                    <p class="publish-lede">제목·카테고리·날짜·슬러그·태그·요약을 채우면 Diary 포스트 frontmatter가 만들어진다. PAT를 저장해 두면 아래 버튼 한 번으로 <code>HyangDan2/HyangDan2.github.io</code>에 커밋된다.</p>
+
+                    <div class="field-grid">
+                        <label class="field field-wide">
+                            <span class="field-label">제목 <em>title</em></span>
+                            <input type="text" id="fmTitle" placeholder="예: 마크다운 에디터와 뷰어를 붙이다" autocomplete="off">
+                        </label>
+                        <label class="field">
+                            <span class="field-label">카테고리 <em>category</em></span>
+                            <select id="fmCategory">
+                                <option value="devlog">devlog</option>
+                                <option value="architecture">architecture</option>
+                                <option value="troubleshooting">troubleshooting</option>
+                                <option value="notes">notes</option>
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">날짜 <em>date</em></span>
+                            <input type="date" id="fmDate">
+                        </label>
+                        <label class="field">
+                            <span class="field-label">슬러그 <em>slug</em></span>
+                            <input type="text" id="fmSlug" placeholder="markdown-editor-viewer" autocomplete="off">
+                        </label>
+                        <label class="field">
+                            <span class="field-label">태그 <em>tags · 쉼표 구분</em></span>
+                            <input type="text" id="fmTags" placeholder="markdown, editor, github" autocomplete="off">
+                        </label>
+                        <label class="field field-wide">
+                            <span class="field-label">요약 <em>summary</em></span>
+                            <input type="text" id="fmSummary" placeholder="한두 문장으로 이 글을 설명한다." autocomplete="off">
+                        </label>
+                    </div>
+
+                    <div class="fm-preview">
+                        <div class="fm-preview-col">
+                            <span class="mono-note">FILE</span>
+                            <pre class="fm-code" id="fmFilename">—</pre>
+                        </div>
+                        <div class="fm-preview-col">
+                            <span class="mono-note">FRONTMATTER</span>
+                            <pre class="fm-code" id="fmFrontmatter">—</pre>
+                        </div>
+                    </div>
+
+                    <div class="publish-actions">
+                        <button type="button" class="button button-primary" id="btnCommit">GitHub에 바로 커밋</button>
+                        <button type="button" class="button button-ghost" id="btnOpenSettings">GitHub 설정</button>
+                        <button type="button" class="button button-ghost" id="btnDownloadPost">이 글 .md 저장</button>
+                        <a class="button button-ghost" id="ghNewFile" href="https://github.com/HyangDan2/HyangDan2.github.io/new/main/diary-src/posts" target="_blank" rel="noopener">GitHub 새 파일 ↗</a>
+                    </div>
+                    <p class="publish-status" id="publishStatus" role="status" aria-live="polite">PAT가 없으면 <strong>GitHub 설정</strong>에서 한 번만 등록하면 된다. 커밋 후 <code>/diary/</code> 빌드 산출물은 별도로 갱신해야 화면에 나타난다.</p>
+                </div>
+            </details>
+        </section>
+
+        <section class="notes shell" aria-label="사용 안내">
+            <div>
+                <span class="mono-note">SHORTCUTS</span>
+                <p><kbd>Ctrl/⌘</kbd> + <kbd>B</kbd> 굵게 · <kbd>I</kbd> 기울임 · <kbd>S</kbd> 취소선 · <kbd>K</kbd> 링크 · <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 제목 · <kbd>Tab</kbd> 들여쓰기 · <kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> .md 저장</p>
+            </div>
+            <div>
+                <span class="mono-note">SANITIZE</span>
+                <p>미리보기 HTML은 DOMPurify를 거친다. 마크다운에 섞인 스크립트는 화면에 실행되지 않는다.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner shell">
+            <span>© 2026 HD2Lab</span>
+            <span class="footer-note">++ WRITE · PREVIEW · SHIP ++</span>
+            <a href="/">Web-HQ <span aria-hidden="true">↗</span></a>
+        </div>
+    </footer>
+
+    <dialog id="ghSettings" class="gh-dialog" aria-labelledby="ghSettingsTitle">
+        <form method="dialog" class="gh-dialog-body" id="ghForm">
+            <div class="gh-dialog-head">
+                <div>
+                    <p class="eyebrow">GitHub</p>
+                    <h2 id="ghSettingsTitle">커밋 대상 설정</h2>
+                </div>
+                <button type="submit" class="icon-button" aria-label="닫기" value="close">✕</button>
+            </div>
+            <div class="field-grid">
+                <label class="field field-wide">
+                    <span class="field-label">저장소 <em>owner/repo</em></span>
+                    <input type="text" id="ghRepo" placeholder="HyangDan2/HyangDan2.github.io" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="field">
+                    <span class="field-label">브랜치 <em>branch</em></span>
+                    <input type="text" id="ghBranch" placeholder="main" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="field">
+                    <span class="field-label">경로 접두사 <em>path prefix</em></span>
+                    <input type="text" id="ghPath" placeholder="diary-src/posts/" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="field field-wide">
+                    <span class="field-label">커밋 메시지 <em>commit message</em></span>
+                    <input type="text" id="ghMessage" placeholder="post: 새 다이어리 글" autocomplete="off">
+                </label>
+                <label class="field field-wide">
+                    <span class="field-label">GitHub PAT <em>fine-grained token</em></span>
+                    <input type="password" id="ghToken" placeholder="github_pat_···" autocomplete="off" spellcheck="false">
+                </label>
+            </div>
+            <div class="gh-warning">
+                <strong>토큰은 이 브라우저(localStorage)에만 저장된다.</strong>
+                <p>GitHub → Settings → Developer settings → Personal access tokens → <em>Fine-grained tokens</em>에서 해당 저장소만 선택하고 권한은 <strong>Contents: Read &amp; Write</strong> 하나만 주면 충분하다. 토큰은 어디로도 전송되지 않고, 커밋할 때 api.github.com으로만 나간다.</p>
+            </div>
+            <div class="gh-dialog-actions">
+                <button type="button" class="button button-primary" id="btnSaveSettings">설정 저장</button>
+                <button type="button" class="button button-ghost" id="btnForgetToken">토큰 삭제</button>
+                <span class="gh-state" id="ghState" role="status" aria-live="polite">토큰 없음</span>
+            </div>
+        </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

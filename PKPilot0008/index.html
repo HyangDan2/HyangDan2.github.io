@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HD2Lab Markdown Viewer — .md 파일을 열거나 붙여넣고 GFM 그대로 읽는다. 목차, 코드 복사, 인쇄/PDF, URL 공유 링크까지 브라우저 안에서.">
+    <meta name="theme-color" content="#FAFAFD">
+    <title>HD2Lab | Markdown Viewer</title>
+    <link rel="canonical" href="https://hyangdan2.github.io/PKPilot0008/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="HD2Lab · Markdown Viewer">
+    <meta property="og:title" content="HD2Lab | Markdown Viewer">
+    <meta property="og:description" content="GFM 렌더러 · 목차 · 코드 복사 · 인쇄/PDF · 공유 링크.">
+    <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0008/">
+    <meta name="twitter:card" content="summary">
+    <!-- HD2Lab shared theme: applies the stored hd2-theme before first paint (no flash) -->
+    <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+    <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy">
+    <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
+    <link rel="stylesheet" href="style.css?v=20261117-a">
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261116-softiris">
+    <link rel="shortcut icon" href="/favicon.ico?v=20261116-softiris">
+    <script src="js/vendor/markdown-it.min.js" defer></script>
+    <script src="js/vendor/highlight.min.js" defer></script>
+    <script src="js/vendor/purify.min.js" defer></script>
+    <script src="js/vendor/lz-string.min.js" defer></script>
+    <script src="app.js?v=20261117-a" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#doc">본문으로 건너뛰기</a>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/" aria-label="HD2Lab Web-HQ home">
+                <span class="mark" aria-hidden="true"></span>
+                <span class="brand-name">HD2Lab</span>
+                <em>Markdown Viewer</em>
+            </a>
+            <div class="header-actions">
+                <a class="header-link" href="/">Web-HQ <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="page-head shell">
+            <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>PKPilot 0008 · Markdown</p>
+            <h1>Read it as<br><span>written.</span></h1>
+            <p class="page-lede">.md 파일을 열거나 붙여넣으면 GFM 그대로 읽힌다. 목차로 넘나들고, 코드는 한 번에 복사하고, 링크 하나로 통째로 공유한다.</p>
+            <ul class="head-chips" aria-label="Viewer features">
+                <li>파일 열기 · 드래그&amp;드롭</li>
+                <li>GFM · 문법 하이라이팅</li>
+                <li>목차 · 코드 복사</li>
+                <li>인쇄/PDF · 공유 링크</li>
+            </ul>
+        </section>
+
+        <section class="viewer shell" aria-label="Markdown viewer">
+            <div class="io-bar">
+                <div class="io-group">
+                    <button type="button" class="button button-primary" id="btnOpenFile">파일 열기</button>
+                    <input type="file" id="fileInput" accept=".md,.markdown,.mdown,.txt,text/markdown,text/plain" hidden>
+                    <button type="button" class="button button-ghost" id="btnPaste">텍스트 붙여넣기</button>
+                    <button type="button" class="button button-ghost" id="btnSample">샘플 문서</button>
+                </div>
+                <div class="io-group io-group-end">
+                    <button type="button" class="button button-ghost" id="btnShare">공유 링크 복사</button>
+                    <button type="button" class="button button-ghost" id="btnPrint">인쇄 / PDF</button>
+                    <button type="button" class="button button-ghost" id="btnExport">HTML 저장</button>
+                </div>
+            </div>
+
+            <div class="url-bar">
+                <label class="url-label" for="urlInput">URL</label>
+                <input type="url" id="urlInput" placeholder="https://raw.githubusercontent.com/HyangDan2/HyangDan2.github.io/main/diary-src/posts/….md" spellcheck="false" autocomplete="off">
+                <button type="button" class="button button-ghost" id="btnLoadUrl">불러오기</button>
+            </div>
+
+            <div class="doc-bar">
+                <div class="doc-file">
+                    <span class="mono-note">FILE</span>
+                    <strong id="fileName">샘플 문서</strong>
+                    <span class="doc-source" id="docSource"></span>
+                </div>
+                <div class="doc-stats" aria-live="polite">
+                    <span><strong id="statWords">0</strong> 단어</span>
+                    <span><strong id="statChars">0</strong> 자</span>
+                    <span><strong id="statRead">0</strong>분 읽기</span>
+                </div>
+                <button type="button" class="button button-ghost toc-toggle" id="btnToc">목차</button>
+            </div>
+
+            <div class="doc-layout">
+                <aside class="toc" id="tocPanel" aria-label="목차">
+                    <div class="toc-head">
+                        <span class="mono-note">CONTENTS</span>
+                        <button type="button" class="toc-close" id="btnTocClose" aria-label="목차 닫기">✕</button>
+                    </div>
+                    <nav class="toc-nav" id="tocNav">
+                        <p class="toc-empty">제목이 있는 문서를 열면 목차가 만들어진다.</p>
+                    </nav>
+                </aside>
+
+                <article class="doc" id="doc">
+                    <header class="doc-head" id="docHead">
+                        <p class="doc-eyebrow" id="docEyebrow">MARKDOWN</p>
+                        <h2 class="doc-title" id="docTitle">샘플 문서</h2>
+                        <p class="doc-summary" id="docSummary" hidden></p>
+                        <div class="doc-tags" id="docTags"></div>
+                    </header>
+                    <div class="markdown-body" id="article" tabindex="-1"></div>
+                    <div class="doc-end">
+                        <span class="mono-note">END OF DOCUMENT</span>
+                        <button type="button" class="text-button" id="btnClear">닫기</button>
+                    </div>
+                </article>
+            </div>
+
+            <div class="drop-hint" id="dropHint" hidden>
+                <div class="drop-hint-inner">
+                    <strong>.md 파일을 놓으면 바로 읽는다</strong>
+                    <span>.md · .markdown · .txt</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="notes shell" aria-label="사용 안내">
+            <div>
+                <span class="mono-note">URL · CORS</span>
+                <p>다른 사이트의 파일은 그 사이트가 CORS를 허용해야 열린다. GitHub 원문(raw.githubusercontent.com)은 허용되지만, 일반 블로그·드라이브 링크는 막히는 경우가 많다. 그때는 파일을 내려받아 열거나 본문을 붙여넣으면 된다.</p>
+            </div>
+            <div>
+                <span class="mono-note">SHARE · SANITIZE</span>
+                <p>공유 링크는 문서를 압축해 URL 뒤에 담는다. 렌더링 결과는 DOMPurify를 거쳐 스크립트가 실행되지 않는다.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner shell">
+            <span>© 2026 HD2Lab</span>
+            <span class="footer-note">++ OPEN · READ · SHARE ++</span>
+            <a href="/">Web-HQ <span aria-hidden="true">↗</span></a>
+        </div>
+    </footer>
+
+    <dialog id="pasteDialog" class="md-dialog" aria-labelledby="pasteTitle">
+        <form method="dialog" class="md-dialog-body">
+            <div class="md-dialog-head">
+                <div>
+                    <p class="eyebrow">Paste</p>
+                    <h2 id="pasteTitle">마크다운 붙여넣기</h2>
+                </div>
+                <button type="submit" class="icon-button" aria-label="닫기" value="close">✕</button>
+            </div>
+            <label class="visually-hidden" for="pasteArea">마크다운 본문</label>
+            <textarea id="pasteArea" spellcheck="false" placeholder="# 제목&#10;&#10;여기에 마크다운을 붙여넣고 **읽기**를 누른다."></textarea>
+            <div class="md-dialog-actions">
+                <button type="button" class="button button-primary" id="btnPasteRender">읽기</button>
+                <button type="submit" class="button button-ghost" value="close">취소</button>
+                <span class="dialog-hint">Ctrl/⌘ + Enter 로도 읽는다</span>
+            </div>
+        </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <div class="sr-status" id="srStatus" role="status" aria-live="polite"></div>
+</body>
+</html>
