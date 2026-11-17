@@ -391,3 +391,9 @@ kbd { padding: 1px 6px; border: 1px solid var(--border); border-bottom-width: 2p
     .load-select-wrap { flex: 1 1 100%; }
     .drop-overlay { padding: 16px; }
 }
+
+/* ---------- image upload ---------- */
+.tool-icon { display: block; }
+.tool[disabled] { opacity: .55; cursor: progress; }
+.tool[aria-busy="true"] .tool-icon { animation: tool-pulse 1s ease-in-out infinite; }
+@keyframes tool-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }

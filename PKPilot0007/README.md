@@ -23,6 +23,13 @@ A single-page Markdown editor that runs entirely in the browser. No backend, no 
   (`GET /repos/{owner}/{repo}/contents/{path}?ref={branch}`, `.md` only, newest first). Picking one loads it
   (`GET` the file, Base64 → UTF-8) and keeps the original `path` + `sha`; the FILE bar shows `수정 중`.
   `새 글로 전환` unbinds the loaded post and goes back to a new file, keeping the body.
+- **Image upload** — the toolbar image button (next to link / table) takes PNG · JPEG · WebP · GIF (≤5MB) and
+  commits the same bytes twice with the stored PAT: `diary-src/assets/images/<YYYY-MM-DD>-<name>.<ext>` (source)
+  and `diary/assets/images/<same name>` (the committed Eleventy output, so `/diary/assets/images/…` serves it at
+  once). The file name is lowered to ASCII letters, digits and hyphens; an existing file of that name is
+  overwritten with its `sha`. Only after both commits succeed is
+  `![<original name>](/diary/assets/images/<file name>)` inserted at the editor caret. Without a PAT the settings
+  dialog opens and the upload is refused.
 - **Diary publish panel** (collapsed by default) — title / category / date / slug / tags / summary →
   frontmatter + `<date>-<slug>.md` file name preview.
 - **GitHub commit** — one click from the panel:
