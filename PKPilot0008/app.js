@@ -17,7 +17,7 @@
         '',
         '# 한 파일로 끝내는 기록',
         '',
-        'HD2Lab의 문서는 **마크다운 한 파일**이다. 쓰는 도구는 따로, 읽는 도구는 따로 — 여기서는 읽는 쪽을 맡는다.',
+        'HD2Lab의 문서는 **마크다운 한 파일**입니다. 쓰는 도구는 따로, 읽는 도구는 따로 — 여기서는 읽는 쪽을 맡습니다.',
         '',
         '## 이 뷰어가 하는 일',
         '',
@@ -27,7 +27,7 @@
         '- [x] 인쇄 / PDF 저장',
         '- [ ] 아직 안 해 본 것: 이미지 갤러리',
         '',
-        '> 읽기 도구는 조용해야 한다. 문서가 앞에 있고, 기능은 뒤에 있으면 충분하다.',
+        '> 읽기 도구는 조용해야 합니다. 문서가 앞에 있고, 기능은 뒤에 있으면 충분합니다.',
         '',
         '### 지원하는 문법',
         '',
@@ -50,7 +50,7 @@
         '',
         '## 공유와 인쇄',
         '',
-        '`공유 링크 복사`를 누르면 문서가 압축되어 URL에 담긴다. 같은 링크를 열면 같은 문서가 그대로 복원된다. 인쇄는 브라우저의 PDF 저장으로 이어진다.',
+        '`공유 링크 복사`를 누르면 문서가 압축되어 URL에 담깁니다. 같은 링크를 열면 같은 문서가 그대로 복원됩니다. 인쇄는 브라우저의 PDF 저장으로 이어집니다.',
         '',
         '---',
         '',
@@ -221,7 +221,7 @@
             }
             toast(message, 'ok');
         } catch (error) {
-            toast('복사에 실패했다. 브라우저 권한을 확인해 달라.', 'err');
+            toast('복사에 실패했습니다. 브라우저 권한을 확인해 주세요.', 'err');
         }
     }
 
@@ -293,7 +293,7 @@
         });
         el.article.querySelectorAll('.md-copy').forEach((button) => {
             button.addEventListener('click', async () => {
-                await copyText(button.dataset.copy || '', '코드를 복사했다.');
+                await copyText(button.dataset.copy || '', '코드를 복사했습니다.');
                 button.textContent = '복사됨';
                 button.classList.add('is-done');
                 window.setTimeout(() => { button.textContent = '복사'; button.classList.remove('is-done'); }, 1800);
@@ -357,7 +357,7 @@
         if (state.observer) state.observer.disconnect();
         const headings = Array.from(el.article.querySelectorAll('h1, h2, h3, h4'));
         if (!headings.length) {
-            el.tocNav.innerHTML = '<p class="toc-empty">제목이 없어 목차가 비어 있다.</p>';
+            el.tocNav.innerHTML = '<p class="toc-empty">제목이 없어 목차가 비어 있습니다.</p>';
             return;
         }
         const used = new Set();
@@ -422,23 +422,23 @@
         const okName = /\.(md|markdown|mdown|txt)$/i.test(file.name);
         const okType = /^text\//i.test(file.type || '');
         if (!okName && !okType) {
-            toast('.md · .markdown · .txt 파일만 열 수 있다.', 'err');
+            toast('.md · .markdown · .txt 파일만 열 수 있습니다.', 'err');
             return;
         }
         const reader = new FileReader();
         reader.onload = () => {
             renderDocument(String(reader.result || ''), file.name, '');
-            announce(`${file.name} 문서를 열었다.`);
+            announce(`${file.name} 문서를 열었습니다.`);
             toast(`${file.name} 열기 완료`, 'ok');
         };
-        reader.onerror = () => toast('파일을 읽지 못했다.', 'err');
+        reader.onerror = () => toast('파일을 읽지 못했습니다.', 'err');
         reader.readAsText(file, 'utf-8');
     }
 
     async function loadFromUrl(rawUrl) {
         const value = String(rawUrl || '').trim();
-        if (!value) { toast('불러올 URL을 입력해 달라.', 'err'); return; }
-        if (!/^https?:\/\//i.test(value)) { toast('http(s) URL만 불러올 수 있다.', 'err'); return; }
+        if (!value) { toast('불러올 URL을 입력해 주세요.', 'err'); return; }
+        if (!/^https?:\/\//i.test(value)) { toast('http(s) URL만 불러올 수 있습니다.', 'err'); return; }
         toast('불러오는 중…');
         try {
             const response = await fetch(value, { mode: 'cors' });
@@ -447,10 +447,10 @@
             const name = decodeURIComponent((new URL(value).pathname.split('/').pop() || 'remote.md'));
             renderDocument(text, name, value);
             el.urlInput.value = value;
-            toast('URL 문서를 열었다.', 'ok');
-            announce('URL 문서를 열었다.');
+            toast('URL 문서를 열었습니다.', 'ok');
+            announce('URL 문서를 열었습니다.');
         } catch (error) {
-            toast(`불러오지 못했다 (${escapeHtml(error.message)}). 이 사이트가 CORS를 허용하지 않으면 파일로 내려받아 열거나 본문을 붙여넣어 달라.`, 'err');
+            toast(`불러오지 못했습니다 (${escapeHtml(error.message)}). 이 사이트가 CORS를 허용하지 않으면 파일로 내려받아 열거나 본문을 붙여넣어 주세요.`, 'err');
         }
     }
 
@@ -463,16 +463,16 @@
 
     async function shareLink() {
         const link = buildShareLink();
-        if (!link) { toast('공유 링크를 만들 수 없다 (압축 라이브러리 없음).', 'err'); return; }
+        if (!link) { toast('공유 링크를 만들 수 없습니다 (압축 라이브러리 없음).', 'err'); return; }
         if (link.length > 12000) {
-            toast('문서가 너무 커서 URL에 담기 어렵다. 파일이나 .md로 공유해 달라.', 'err');
+            toast('문서가 너무 커서 URL에 담기 어렵습니다. 파일이나 .md로 공유해 주세요.', 'err');
             return;
         }
         try {
             history.replaceState(null, '', link.url);
         } catch (error) { /* ignore */ }
-        await copyText(link.url, '공유 링크를 복사했다.');
-        announce('공유 링크를 복사했다.');
+        await copyText(link.url, '공유 링크를 복사했습니다.');
+        announce('공유 링크를 복사했습니다.');
     }
 
     function readShareParams() {
@@ -500,7 +500,7 @@
         const title = el.docTitle.textContent || 'HD2Lab Document';
         const html = standalone(title, clone.innerHTML);
         download(`${slug(title) || 'document'}.html`, html, 'text/html;charset=utf-8');
-        toast('HTML 파일을 내려받았다.', 'ok');
+        toast('HTML 파일을 내려받았습니다.', 'ok');
     }
 
     function standalone(title, bodyHtml) {
@@ -553,7 +553,7 @@ ${bodyHtml}
         state.markdown = '';
         state.name = '문서 없음';
         state.source = '';
-        el.article.innerHTML = '<p class="toc-empty" style="color:var(--text-secondary);font-size:13px">열린 문서가 없다. <strong>파일 열기</strong>로 .md를 고르거나, <strong>텍스트 붙여넣기</strong>로 본문을 넣어 달라.</p>';
+        el.article.innerHTML = '<p class="toc-empty" style="color:var(--text-secondary);font-size:13px">열린 문서가 없습니다. <strong>파일 열기</strong>로 .md를 고르거나, <strong>텍스트 붙여넣기</strong>로 본문을 넣어 주세요.</p>';
         el.docTitle.textContent = '문서 없음';
         el.docEyebrow.textContent = 'MARKDOWN';
         el.docSummary.hidden = true;
@@ -563,13 +563,13 @@ ${bodyHtml}
         el.fmHint.textContent = '';
         el.fileName.textContent = '문서 없음';
         el.docSource.textContent = '';
-        el.tocNav.innerHTML = '<p class="toc-empty">제목이 있는 문서를 열면 목차가 만들어진다.</p>';
+        el.tocNav.innerHTML = '<p class="toc-empty">제목이 있는 문서를 열면 목차가 만들어집니다.</p>';
         el.statWords.textContent = '0';
         el.statChars.textContent = '0';
         el.statRead.textContent = '0';
         document.title = 'HD2Lab | Markdown Viewer';
         try { history.replaceState(null, '', location.pathname); } catch (error) { /* ignore */ }
-        toast('문서를 닫았다.');
+        toast('문서를 닫았습니다.');
     }
 
     function wireEvents() {
@@ -580,7 +580,7 @@ ${bodyHtml}
         });
         $('btnSample').addEventListener('click', () => {
             renderDocument(SAMPLE, SAMPLE_NAME, '');
-            toast('샘플 문서를 열었다.', 'ok');
+            toast('샘플 문서를 열었습니다.', 'ok');
         });
         $('btnPaste').addEventListener('click', () => {
             if (typeof el.pasteDialog.showModal === 'function') el.pasteDialog.showModal();
@@ -589,10 +589,10 @@ ${bodyHtml}
         });
         $('btnPasteRender').addEventListener('click', () => {
             const text = el.pasteArea.value;
-            if (!text.trim()) { toast('붙여넣은 내용이 없다.', 'err'); return; }
+            if (!text.trim()) { toast('붙여넣은 내용이 없습니다.', 'err'); return; }
             renderDocument(text, 'pasted.md', '');
             if (el.pasteDialog.open) el.pasteDialog.close();
-            toast('붙여넣은 문서를 읽었다.', 'ok');
+            toast('붙여넣은 문서를 읽었습니다.', 'ok');
         });
         el.pasteArea.addEventListener('keydown', (event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
@@ -641,14 +641,14 @@ ${bodyHtml}
 
     function boot() {
         if (!window.markdownit) {
-            el.article.innerHTML = '<p>렌더러를 불러오지 못했다. 새로고침해 달라.</p>';
+            el.article.innerHTML = '<p>렌더러를 불러오지 못했습니다. 새로고침해 주세요.</p>';
             return;
         }
         wireEvents();
         const shared = readShareParams();
         if (shared && shared.text) {
             renderDocument(shared.text, shared.name, shared.source);
-            toast('공유 링크의 문서를 복원했다.', 'ok');
+            toast('공유 링크의 문서를 복원했습니다.', 'ok');
         } else if (shared && shared.url) {
             el.urlInput.value = shared.url;
             loadFromUrl(shared.url);
