@@ -14,19 +14,32 @@ A single-page Markdown editor that runs entirely in the browser. No backend, no 
   Rendered HTML passes through DOMPurify before it touches the DOM.
 - **Autosave** — body, diary fields and view mode in `localStorage['hd2_md_editor_v1']`.
 - **Export** — `.md` download, copy Markdown, copy HTML, standalone HTML file download.
+- **Open a file** — `.md 열기` in the FILE bar (or `Ctrl/⌘ + O`) opens a `.md / .markdown / .txt` file;
+  dragging a file onto the page works too. UTF-8 is used first and EUC-KR is tried as a fallback. A YAML
+  frontmatter block (`--- … ---`) fills title / category / date / slug / tags / summary and only the body
+  goes to the editor; without frontmatter the whole file is the body. The FILE bar then shows the file
+  name and a `로컬 파일` badge.
+- **Load a post from GitHub** — the top of the publish panel lists the repository's posts
+  (`GET /repos/{owner}/{repo}/contents/{path}?ref={branch}`, `.md` only, newest first). Picking one loads it
+  (`GET` the file, Base64 → UTF-8) and keeps the original `path` + `sha`; the FILE bar shows `수정 중`.
+  `새 글로 전환` unbinds the loaded post and goes back to a new file, keeping the body.
 - **Diary publish panel** (collapsed by default) — title / category / date / slug / tags / summary →
   frontmatter + `<date>-<slug>.md` file name preview.
 - **GitHub commit** — one click from the panel:
-  1. `GET /repos/{owner}/{repo}/contents/{path}?ref={branch}` to pick up an existing `sha`
+  1. when a post was loaded from GitHub, its original path is the target and the current `sha` is read first,
+     so the commit overwrites that file (a confirm dialog asks before overwriting); the new `sha` from the
+     response is stored for the next edit,
+  2. otherwise `GET /repos/{owner}/{repo}/contents/{path}?ref={branch}` picks up an existing `sha`
      (new file = 404, overwrite = 200),
-  2. `PUT /repos/{owner}/{repo}/contents/{path}` with UTF-8 Base64 content.
+  3. `PUT /repos/{owner}/{repo}/contents/{path}` with UTF-8 Base64 content.
 
 ## GitHub token
 
 The PAT is stored only in this browser (`localStorage['hd2_md_pat_v1']`) and is sent only to
 `api.github.com`. A fine-grained token scoped to the target repository with **Contents: Read & Write**
-is enough. The settings dialog holds repo / branch / path prefix / commit message too
-(`localStorage['hd2_md_github_v1']`).
+is enough. Reading a post list or a file from a **public** repository needs no token at all
+(`Authorization` is only added when a PAT is stored). The settings dialog holds repo / branch / path prefix /
+commit message too (`localStorage['hd2_md_github_v1']`).
 
 A commit to `diary-src/posts/` is not visible on `/diary/` by itself: that route serves the committed
 Eleventy build output, so `diary-src` has to be rebuilt and `/diary/` re-committed

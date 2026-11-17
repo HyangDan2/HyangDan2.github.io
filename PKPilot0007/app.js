@@ -16,6 +16,9 @@
         message: 'post: HD2Lab diary',
     };
     const CATEGORIES = ['devlog', 'architecture', 'troubleshooting', 'notes'];
+    const MD_EXT = /\.(md|markdown|txt)$/i;
+    const MAX_LOCAL_BYTES = 2 * 1024 * 1024;
+    const CONTENTS_API = 'https://api.github.com/repos/';
 
     const SAMPLE = [
         '# 마크다운으로 기록하기',
@@ -49,6 +52,16 @@
         preview: $('preview'),
         panes: $('panes'),
         docFileName: $('docFileName'),
+        loadBadge: $('loadBadge'),
+        btnOpenLocal: $('btnOpenLocal'),
+        btnNewDoc: $('btnNewDoc'),
+        fileInput: $('fileInput'),
+        dropOverlay: $('dropOverlay'),
+        postList: $('postList'),
+        btnListPosts: $('btnListPosts'),
+        btnLoadPost: $('btnLoadPost'),
+        loadTarget: $('loadTarget'),
+        loadStatus: $('loadStatus'),
         wordCount: $('wordCount'),
         charCount: $('charCount'),
         saveState: $('saveState'),
@@ -79,6 +92,12 @@
         saving: false,
         dirty: false,
         committing: false,
+        loadedKind: '',
+        loadedName: '',
+        loadedPath: '',
+        loadedSha: '',
+        listing: false,
+        loading: false,
     };
 
     /* ---------------------------------------------------------------- markdown */
@@ -203,6 +222,182 @@
         return Boolean(el.fmTitle.value.trim() || el.fmSlug.value.trim());
     }
 
+    /* ---------------------------------------------------------------- frontmatter parsing */
+    function stripBom(text) {
+        return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+    }
+
+    function unquote(value) {
+        const text = String(value == null ? '' : value).trim();
+        if (text.length >= 2 && text[0] === '"' && text.charAt(text.length - 1) === '"') {
+            return text.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim();
+        }
+        if (text.length >= 2 && text[0] === "'" && text.charAt(text.length - 1) === "'") {
+            return text.slice(1, -1).replace(/''/g, "'").trim();
+        }
+        return text;
+    }
+
+    function parseYamlBlock(block) {
+        const data = {};
+        let key = '';
+        block.split('\n').forEach((line) => {
+            if (!line.trim() || /^\s*#/.test(line)) return;
+            const item = /^\s*-\s+(.*)$/.exec(line);
+            if (item && key) {
+                if (!Array.isArray(data[key])) data[key] = data[key] ? [data[key]] : [];
+                data[key].push(unquote(item[1]));
+                return;
+            }
+            const pair = /^([A-Za-z0-9_-]+)\s*:\s*(.*)$/.exec(line);
+            if (!pair) return;
+            key = pair[1].toLowerCase();
+            const rawValue = pair[2].trim();
+            if (!rawValue) { data[key] = ''; return; }
+            if (/^\[[\s\S]*\]$/.test(rawValue)) {
+                data[key] = rawValue.slice(1, -1).split(',').map((part) => unquote(part)).filter((part) => part !== '');
+                return;
+            }
+            data[key] = unquote(rawValue);
+        });
+        return data;
+    }
+
+    function parseFrontmatter(raw) {
+        const text = stripBom(String(raw == null ? '' : raw)).replace(/\r\n?/g, '\n');
+        if (!/^---[ \t]*\n/.test(text)) return { data: {}, body: text, hasFrontmatter: false };
+        const lines = text.split('\n');
+        let end = -1;
+        for (let i = 1; i < lines.length; i += 1) {
+            if (/^---[ \t]*$/.test(lines[i])) { end = i; break; }
+        }
+        if (end === -1) return { data: {}, body: text, hasFrontmatter: false };
+        const data = parseYamlBlock(lines.slice(1, end).join('\n'));
+        const body = lines.slice(end + 1).join('\n').replace(/^\n+/, '');
+        return { data, body, hasFrontmatter: true };
+    }
+
+    function firstValue(data, keys) {
+        for (let i = 0; i < keys.length; i += 1) {
+            const value = data[keys[i]];
+            if (Array.isArray(value)) {
+                if (value.length) return value.join(', ');
+                continue;
+            }
+            if (value != null && String(value).trim()) return String(value).trim();
+        }
+        return '';
+    }
+
+    function setCategoryValue(value) {
+        const wanted = String(value || '').trim();
+        if (!wanted) return;
+        const options = Array.prototype.slice.call(el.fmCategory.options);
+        const exact = options.filter((option) => option.value === wanted)[0];
+        if (exact) { el.fmCategory.value = exact.value; return; }
+        /* keep the file's own wording instead of silently re-casing the category */
+        const option = new Option(wanted, wanted, true, true);
+        el.fmCategory.add(option);
+        el.fmCategory.value = wanted;
+    }
+
+    function applyDiaryData(data) {
+        el.fmTitle.value = firstValue(data, ['title']);
+        el.fmSlug.value = firstValue(data, ['slug']);
+        el.fmTags.value = firstValue(data, ['tags', 'keywords']);
+        el.fmSummary.value = firstValue(data, ['summary', 'description', 'excerpt']);
+        const date = firstValue(data, ['date', 'published', 'pubdate']);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) el.fmDate.value = date;
+        const category = firstValue(data, ['category', 'categories', 'section']);
+        if (category) setCategoryValue(category);
+    }
+
+    function clearDiaryFields() {
+        el.fmTitle.value = '';
+        el.fmSlug.value = '';
+        el.fmTags.value = '';
+        el.fmSummary.value = '';
+        el.fmDate.value = todayKst();
+        el.fmCategory.value = CATEGORIES[0];
+    }
+
+    /* ---------------------------------------------------------------- open document */
+    function paintLoaded() {
+        const loaded = Boolean(state.loadedKind && state.loadedName);
+        el.loadBadge.hidden = !loaded;
+        el.btnNewDoc.hidden = !loaded;
+        if (loaded) {
+            const github = state.loadedKind === 'github';
+            el.loadBadge.textContent = github ? '수정 중' : '로컬 파일';
+            el.loadBadge.classList.toggle('is-local', !github);
+            el.loadBadge.title = state.loadedPath ? `원본 경로: ${state.loadedPath}` : `원본 파일: ${state.loadedName}`;
+        }
+        paintFileName();
+    }
+
+    function openMarkdownText(text, source) {
+        const parsed = parseFrontmatter(text);
+        if (parsed.hasFrontmatter) applyDiaryData(parsed.data);
+        else clearDiaryFields();
+
+        const body = parsed.body.replace(/\s+$/, '');
+        el.editor.value = body ? `${body}\n` : '';
+
+        state.loadedKind = (source && source.kind) || 'local';
+        state.loadedName = (source && source.name) || '';
+        state.loadedPath = (source && source.path) || '';
+        state.loadedSha = (source && source.sha) || '';
+
+        paintLoaded();
+        paintPreview();
+        paintCounts();
+        paintDiary();
+        scheduleSave();
+        return parsed;
+    }
+
+    function decodeBase64Utf8(base64) {
+        const binary = window.atob(String(base64 || '').replace(/\s+/g, ''));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    async function readFileText(file) {
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        try {
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch (error) {
+            try {
+                return new TextDecoder('euc-kr').decode(bytes);
+            } catch (other) {
+                return new TextDecoder('utf-8').decode(bytes);
+            }
+        }
+    }
+
+    async function openLocalFile(file) {
+        if (!file) return;
+        if (!MD_EXT.test(file.name || '')) {
+            toast('.md · .markdown · .txt 파일만 열 수 있습니다. 다른 파일을 선택해 주세요.', 'err');
+            return;
+        }
+        if (file.size > MAX_LOCAL_BYTES) {
+            toast('2MB 이하의 파일만 열 수 있습니다. 파일을 나누어 열어 주세요.', 'err');
+            return;
+        }
+        try {
+            const text = await readFileText(file);
+            const parsed = openMarkdownText(text, { kind: 'local', name: file.name, path: '', sha: '' });
+            el.saveState.textContent = `${file.name} 파일을 열었습니다`;
+            el.saveState.classList.add('is-ok');
+            toast(`${file.name} 파일을 열었습니다.${parsed.hasFrontmatter ? '' : ' Frontmatter가 없어 본문만 불러왔습니다.'}`, 'ok');
+        } catch (error) {
+            toast('파일을 읽지 못했습니다. 다른 파일로 다시 시도해 주세요.', 'err');
+        }
+    }
+
     function buildFrontmatter() {
         const tags = tagList();
         const lines = [
@@ -303,7 +498,13 @@
     }
 
     function paintFileName() {
+        if (state.loadedName) {
+            el.docFileName.textContent = state.loadedName;
+            el.docFileName.title = state.loadedPath ? `원본 경로: ${state.loadedPath}` : `원본 파일: ${state.loadedName}`;
+            return;
+        }
         el.docFileName.textContent = hasDiaryFields() ? currentFileName() : 'untitled.md';
+        el.docFileName.removeAttribute('title');
     }
 
     /* ---------------------------------------------------------------- autosave */
@@ -546,6 +747,145 @@
         toast('저장된 토큰을 지웠습니다.');
     }
 
+    /* ---------------------------------------------------------------- load from GitHub */
+    let postIndex = new Map();
+
+    function loadTargetLabel(settings) {
+        const prefix = String(settings.path || '').trim().replace(/^\/+|\/+$/g, '');
+        return `${settings.repo} · ${settings.branch} · ${prefix || '루트'}`;
+    }
+
+    function requestHeaders() {
+        const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+        const token = getToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+        return headers;
+    }
+
+    function readErrorMessage(status, stage) {
+        if (status === 403 || status === 429) {
+            return `${stage} 실패 — GitHub 요청 한도를 넘었습니다. 잠시 뒤 다시 시도하시거나 GitHub 설정에 PAT를 등록해 주세요.`;
+        }
+        return describeError(status, stage);
+    }
+
+    function paintPostOptions(posts, settings) {
+        postIndex = new Map();
+        el.postList.innerHTML = '';
+        if (!posts.length) {
+            el.postList.append(new Option('불러올 글이 없습니다.', ''));
+            el.postList.disabled = true;
+            el.btnLoadPost.disabled = true;
+            return;
+        }
+        el.postList.append(new Option(`글 ${posts.length}건 · 고르면 바로 열립니다`, ''));
+        posts.forEach((post) => {
+            postIndex.set(post.path, post);
+            el.postList.append(new Option(post.name, post.path));
+        });
+        el.postList.disabled = false;
+        el.postList.value = '';
+        el.btnLoadPost.disabled = true;
+        el.loadTarget.textContent = loadTargetLabel(settings);
+    }
+
+    async function listPosts() {
+        if (state.listing) return;
+        const settings = githubSettings();
+        const prefix = String(settings.path || '').trim().replace(/^\/+|\/+$/g, '');
+        const url = `${CONTENTS_API}${settings.repo}/contents/${encodePath(prefix)}?ref=${encodeURIComponent(settings.branch)}`;
+        state.listing = true;
+        el.btnListPosts.disabled = true;
+        el.btnListPosts.textContent = '불러오는 중…';
+        el.loadTarget.textContent = loadTargetLabel(settings);
+        setStatus(el.loadStatus, '글 목록을 불러오는 중입니다.');
+        try {
+            const response = await fetch(url, { headers: requestHeaders() });
+            if (!response.ok) throw new Error(readErrorMessage(response.status, '목록 조회'));
+            const items = await response.json();
+            if (!Array.isArray(items)) throw new Error('목록 형식이 올바르지 않습니다. 저장소 이름과 경로 접두사를 확인해 주세요.');
+            const posts = items
+                .filter((item) => item && item.type === 'file' && /\.(md|markdown)$/i.test(item.name || ''))
+                .sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
+            paintPostOptions(posts, settings);
+            if (!posts.length) {
+                setStatus(el.loadStatus, `<code>${escapeHtml(prefix || '루트')}</code>에 마크다운 글이 없습니다. GitHub 설정에서 경로 접두사를 확인해 주세요.`, 'warn');
+                return;
+            }
+            setStatus(el.loadStatus, `글 ${posts.length}건을 불러왔습니다. 목록에서 고르면 바로 열립니다.`, 'ok');
+        } catch (error) {
+            postIndex = new Map();
+            el.postList.innerHTML = '<option value="">목록을 불러오지 못했습니다.</option>';
+            el.postList.disabled = true;
+            el.btnLoadPost.disabled = true;
+            setStatus(el.loadStatus, escapeHtml(error.message), 'err');
+            toast(error.message, 'err');
+        } finally {
+            state.listing = false;
+            el.btnListPosts.disabled = false;
+            el.btnListPosts.textContent = '목록 불러오기';
+        }
+    }
+
+    async function loadPost(path) {
+        const target = path || el.postList.value;
+        if (!target || state.loading) return;
+        const settings = githubSettings();
+        const url = `${CONTENTS_API}${settings.repo}/contents/${encodePath(target)}?ref=${encodeURIComponent(settings.branch)}`;
+        state.loading = true;
+        el.btnLoadPost.disabled = true;
+        const label = el.btnLoadPost.textContent;
+        el.btnLoadPost.textContent = '여는 중…';
+        setStatus(el.loadStatus, `<code>${escapeHtml(target)}</code> 파일을 여는 중입니다.`);
+        try {
+            const response = await fetch(url, { headers: requestHeaders() });
+            if (!response.ok) throw new Error(readErrorMessage(response.status, '글 불러오기'));
+            const meta = await response.json();
+            let text;
+            if (meta && meta.encoding === 'base64' && typeof meta.content === 'string' && meta.content) {
+                text = decodeBase64Utf8(meta.content);
+            } else {
+                const raw = await fetch(url, { headers: Object.assign({ Accept: 'application/vnd.github.raw' }, requestHeaders()) });
+                if (!raw.ok) throw new Error(readErrorMessage(raw.status, '본문 내려받기'));
+                text = await raw.text();
+            }
+            const name = (meta && meta.name) || target.split('/').pop();
+            openMarkdownText(text, { kind: 'github', name, path: (meta && meta.path) || target, sha: (meta && meta.sha) || '' });
+            setStatus(el.loadStatus, `<code>${escapeHtml((meta && meta.path) || target)}</code> 글을 열었습니다. 수정한 뒤 <strong>GitHub에 바로 커밋</strong>을 누르면 같은 경로로 덮어씁니다.`, 'ok');
+            toast(`${name} 글을 불러왔습니다.`, 'ok');
+            el.publishPanel.open = true;
+        } catch (error) {
+            setStatus(el.loadStatus, escapeHtml(error.message), 'err');
+            toast(error.message, 'err');
+        } finally {
+            state.loading = false;
+            el.btnLoadPost.disabled = !el.postList.value;
+            el.btnLoadPost.textContent = label;
+        }
+    }
+
+    function detachSource() {
+        if (!state.loadedKind) return;
+        const previous = state.loadedPath || state.loadedName;
+        state.loadedKind = '';
+        state.loadedName = '';
+        state.loadedPath = '';
+        state.loadedSha = '';
+        el.postList.value = '';
+        el.btnLoadPost.disabled = true;
+        el.fmTitle.value = '';
+        el.fmSlug.value = '';
+        el.fmTags.value = '';
+        el.fmSummary.value = '';
+        el.fmDate.value = todayKst();
+        paintLoaded();
+        paintDiary();
+        scheduleSave();
+        setStatus(el.loadStatus, `<code>${escapeHtml(previous)}</code>과의 연결을 해제했습니다. 제목과 슬러그를 비웠으므로 새 파일 이름으로 저장됩니다.`, 'ok');
+        setStatus(el.publishStatus, '새 글을 쓰는 중입니다. <strong>제목</strong>과 <strong>날짜</strong>로 파일 이름이 정해집니다.');
+        toast('새 글로 전환했습니다. 본문은 그대로 두고 제목·태그·요약을 비웠습니다.', 'ok');
+    }
+
     /* ---------------------------------------------------------------- github commit */
     function utf8ToBase64(text) {
         const bytes = new TextEncoder().encode(text);
@@ -588,12 +928,18 @@
         }
 
         const settings = githubSettings();
+        const editing = Boolean(state.loadedPath);
         const fileName = currentFileName();
         const prefix = settings.path.trim().replace(/^\/+|\/+$/g, '');
-        const path = prefix ? `${prefix}/${fileName}` : fileName;
+        const path = editing ? state.loadedPath : (prefix ? `${prefix}/${fileName}` : fileName);
         const content = fullMarkdown();
         const api = `https://api.github.com/repos/${settings.repo}/contents/${encodePath(path)}`;
         const headers = apiHeaders(token);
+
+        if (editing && !window.confirm(`불러온 글 "${path}"을(를) 덮어씁니다. 계속할까요?`)) {
+            setStatus(el.publishStatus, '덮어쓰기를 취소했습니다. 새 파일로 저장하려면 <strong>새 글로 전환</strong>을 눌러 주세요.');
+            return;
+        }
 
         state.committing = true;
         const commitButton = $('btnCommit');
@@ -607,6 +953,8 @@
             if (head.ok) {
                 const meta = await head.json();
                 sha = meta.sha;
+            } else if (editing) {
+                throw new Error('불러온 원본 글을 찾지 못했습니다 (404). 새 글로 저장하려면 덮어쓰기를 취소하고 “새 글로 전환”을 눌러 주세요.');
             } else if (head.status !== 404) {
                 throw new Error(describeError(head.status, '기존 파일 확인'));
             }
@@ -627,6 +975,11 @@
             if (!put.ok) throw new Error(describeError(put.status, sha ? '파일 덮어쓰기' : '새 파일 생성'));
 
             const result = await put.json();
+            if (editing) {
+                state.loadedSha = (result.content && result.content.sha) || state.loadedSha;
+                state.loadedPath = (result.content && result.content.path) || state.loadedPath;
+                paintLoaded();
+            }
             const url = (result.commit && result.commit.html_url) || `https://github.com/${settings.repo}/commit/${result.commit && result.commit.sha}`;
             const action = sha ? '덮어썼습니다' : '새로 만들었습니다';
             setStatus(
@@ -745,6 +1098,11 @@ ${bodyHtml}
                     downloadPost();
                     return;
                 }
+                if (key === 'o') {
+                    event.preventDefault();
+                    el.fileInput.click();
+                    return;
+                }
                 if (key === '1' || key === '2' || key === '3') {
                     event.preventDefault();
                     ACTIONS['h' + key]();
@@ -770,6 +1128,62 @@ ${bodyHtml}
                 onInput();
             }
         });
+    }
+
+    function wireLoad() {
+        el.btnOpenLocal.addEventListener('click', () => el.fileInput.click());
+        el.fileInput.addEventListener('change', () => {
+            const file = el.fileInput.files && el.fileInput.files[0];
+            openLocalFile(file);
+            el.fileInput.value = '';
+        });
+        el.btnNewDoc.addEventListener('click', detachSource);
+        el.btnListPosts.addEventListener('click', listPosts);
+        el.btnLoadPost.addEventListener('click', () => loadPost(el.postList.value));
+        el.postList.addEventListener('change', () => {
+            const path = el.postList.value;
+            el.btnLoadPost.disabled = !path;
+            if (path) loadPost(path);
+        });
+        wireDropZone();
+    }
+
+    function wireDropZone() {
+        let depth = 0;
+        const carriesFiles = (event) => {
+            const transfer = event.dataTransfer;
+            if (!transfer) return false;
+            const types = transfer.types ? Array.prototype.slice.call(transfer.types) : [];
+            return types.indexOf('Files') !== -1;
+        };
+        window.addEventListener('dragenter', (event) => {
+            if (!carriesFiles(event)) return;
+            event.preventDefault();
+            depth += 1;
+            el.dropOverlay.hidden = false;
+        });
+        window.addEventListener('dragover', (event) => {
+            if (!carriesFiles(event)) return;
+            event.preventDefault();
+            if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+            el.dropOverlay.hidden = false;
+        });
+        window.addEventListener('dragleave', (event) => {
+            if (!carriesFiles(event)) return;
+            depth = Math.max(0, depth - 1);
+            if (!depth) el.dropOverlay.hidden = true;
+        });
+        window.addEventListener('drop', (event) => {
+            if (!carriesFiles(event)) return;
+            event.preventDefault();
+            depth = 0;
+            el.dropOverlay.hidden = true;
+            const files = event.dataTransfer.files ? Array.prototype.slice.call(event.dataTransfer.files) : [];
+            const target = files.filter((file) => MD_EXT.test(file.name || ''))[0] || files[0];
+            if (target) openLocalFile(target);
+        });
+        window.addEventListener('dragend', () => { depth = 0; el.dropOverlay.hidden = true; });
+        window.addEventListener('blur', () => { depth = 0; el.dropOverlay.hidden = true; });
     }
 
     function downloadPost() {
@@ -841,12 +1255,14 @@ ${bodyHtml}
         paintPreview();
         paintCounts();
         paintDiary();
+        paintLoaded();
         paintGhState();
         setMode(window.matchMedia('(max-width: 900px)').matches ? 'edit' : 'split');
         wireToolbar();
         wireViews();
         wireKeys();
         wireActions();
+        wireLoad();
         el.ghNewFile.href = newFileUrl();
         window.addEventListener('beforeunload', () => {
             if (state.dirty) saveDraft();
@@ -866,5 +1282,13 @@ ${bodyHtml}
         utf8ToBase64,
         commitToGithub,
         setMode,
+        parseFrontmatter,
+        openMarkdownText,
+        openLocalFile,
+        listPosts,
+        loadPost,
+        detachSource,
+        decodeBase64Utf8,
+        getLoaded: () => ({ kind: state.loadedKind, name: state.loadedName, path: state.loadedPath, sha: state.loadedSha }),
     };
 })();
