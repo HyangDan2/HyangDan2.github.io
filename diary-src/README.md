@@ -2,8 +2,8 @@
 
 Eleventy source for **HD2's Diary** — the devlog that lives at `/diary/` on `hyangdan2.github.io`.
 
-The site is assembled at deploy time: everything in this folder is built into `_site/`, and the
-GitHub Actions workflow copies that output to `_deploy/diary/` next to the root static site.
+Everything in this folder is built into `_site/`, and the published copy lives in the repository's
+`/diary/` folder (see **Deploy** below).
 
 ## Commands
 
@@ -52,6 +52,7 @@ _includes/base.njk       header (HD2Lab | HD2's Diary), footer, shell
 _includes/post.njk       post layout
 _includes/parts/…        post list + empty state macros
 index.njk                /diary/          category cards + recent posts
+categories-index.njk     /diary/categories/  all four drawers
 categories.njk           /diary/categories/<slug>/
 write.njk                /diary/write/    client-side editor
 posts/*.md               the posts
@@ -61,8 +62,25 @@ assets/write.js          editor logic (markdown preview, draft, export, GitHub U
 
 ## Deploy
 
-`.github/workflows/deploy-pages.yml` runs on every push to `main`: `npm ci` → `npm run build` →
-assemble `_deploy/` (root statics + `_deploy/diary/`) → upload → deploy.
+The repository still publishes through the **legacy branch build** (Settings → Pages → Source:
+Deploy from a branch, `main` / root), which runs Jekyll over the repo and serves it as-is. There is
+no workflow in the repo: the GitHub App used here cannot push files under `.github/workflows/`
+(`without workflows permission`).
 
-GitHub Pages must be set to **Source: GitHub Actions** (Settings → Pages → Build and deployment).
-Until that is switched, the workflow deploys nothing and the site stays on the legacy branch build.
+So the build output is **committed**: `diary-src/_site/` is copied to `/diary/` and pushed. After
+adding or editing a post, rebuild and commit both sides:
+
+```bash
+cd diary-src && npm ci && npm run build
+rm -rf ../diary && mkdir -p ../diary && cp -R _site/. ../diary/
+cd .. && git add diary diary-src && git commit -m "post: …" && git push
+```
+
+`/diary/` is deliberately not in `.gitignore`; `diary-src/_site/` and `diary-src/node_modules/` are.
+Jekyll leaves `diary/` alone because those HTML files carry no front matter, and `_config.yml`
+excludes `diary-src` (its Nunjucks would fail the Jekyll build).
+
+**Optional — switch to Actions.** Add `.github/workflows/deploy-pages.yml` through the GitHub web
+UI (the workflow builds `_site/`, merges it into `_deploy/diary/`, and deploys), then set Settings →
+Pages → Build and deployment → Source to **GitHub Actions**. From then on the committed `diary/`
+output is no longer needed: CI rebuilds it on every push.
