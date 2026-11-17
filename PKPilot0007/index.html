@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="HD2Lab Markdown Editor — GFM 실시간 미리보기, .md·HTML 내보내기, Diary frontmatter 생성과 GitHub 1클릭 커밋까지 브라우저에서 끝냅니다.">
+    <meta name="description" content="HD2Lab Markdown Editor — GFM 실시간 미리보기, .md 파일 열기, 저장소의 기존 글 불러오기·덮어쓰기 커밋, .md·HTML 내보내기까지 브라우저에서 끝냅니다.">
     <meta name="theme-color" content="#FAFAFD">
     <title>HD2Lab | Markdown Editor</title>
     <link rel="canonical" href="https://hyangdan2.github.io/PKPilot0007/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="HD2Lab · Markdown Editor">
     <meta property="og:title" content="HD2Lab | Markdown Editor">
-    <meta property="og:description" content="GFM 실시간 미리보기, .md·HTML 내보내기, Diary frontmatter + GitHub 1클릭 커밋.">
+    <meta property="og:description" content="GFM 실시간 미리보기, .md 열기, 기존 글 불러오기·덮어쓰기, Diary frontmatter + GitHub 1클릭 커밋.">
     <meta property="og:url" content="https://hyangdan2.github.io/PKPilot0007/">
     <meta name="twitter:card" content="summary">
     <!-- HD2Lab shared theme: applies the stored hd2-theme before first paint (no flash) -->
     <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
     <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261117-navy">
     <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-    <link rel="stylesheet" href="style.css?v=20261117-polite">
+    <link rel="stylesheet" href="style.css?v=20261117-load">
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261116-softiris">
@@ -25,7 +25,7 @@
     <script src="js/vendor/markdown-it.min.js" defer></script>
     <script src="js/vendor/highlight.min.js" defer></script>
     <script src="js/vendor/purify.min.js" defer></script>
-    <script src="app.js?v=20261117-polite" defer></script>
+    <script src="app.js?v=20261117-load" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#editor">본문으로 건너뛰기</a>
@@ -51,6 +51,8 @@
                 <li>GFM · 코드 하이라이팅</li>
                 <li>자동 저장 · 단어/글자 수</li>
                 <li>Diary frontmatter</li>
+                <li>.md 열기 · 끌어다 놓기</li>
+                <li>기존 글 불러오기</li>
                 <li>GitHub 1클릭 커밋</li>
             </ul>
         </section>
@@ -60,6 +62,10 @@
                 <div class="docbar-file">
                     <span class="docbar-label">FILE</span>
                     <strong id="docFileName">untitled.md</strong>
+                    <span class="load-badge" id="loadBadge" hidden>수정 중</span>
+                    <button type="button" class="text-button docbar-action" id="btnOpenLocal">.md 열기</button>
+                    <button type="button" class="text-button docbar-action" id="btnNewDoc" hidden>새 글로 전환</button>
+                    <input type="file" id="fileInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
                 </div>
                 <div class="view-switch" role="tablist" aria-label="편집 화면 모드">
                     <button type="button" class="view-tab" role="tab" id="tab-edit" aria-selected="false" aria-controls="pane-edit" data-view="edit">편집</button>
@@ -139,6 +145,24 @@
                     <span class="publish-meta">frontmatter 생성 → 저장소에 바로 커밋</span>
                 </summary>
                 <div class="publish-body">
+                    <div class="load-row" id="loadRow">
+                        <div class="load-head">
+                            <span class="mono-note">기존 글 불러오기</span>
+                            <p class="load-target" id="loadTarget">HyangDan2/HyangDan2.github.io · main · diary-src/posts/</p>
+                        </div>
+                        <div class="load-controls">
+                            <label class="load-select-wrap">
+                                <span class="visually-hidden">저장소의 글 목록</span>
+                                <select id="postList" disabled>
+                                    <option value="">목록 불러오기를 눌러 주세요.</option>
+                                </select>
+                            </label>
+                            <button type="button" class="button button-ghost" id="btnListPosts">목록 불러오기</button>
+                            <button type="button" class="button button-ghost" id="btnLoadPost" disabled>불러오기</button>
+                        </div>
+                        <p class="load-status" id="loadStatus" role="status" aria-live="polite">공개 저장소는 토큰 없이도 목록을 불러올 수 있습니다. 목록에서 글을 고르면 바로 열립니다.</p>
+                    </div>
+
                     <p class="publish-lede">제목·카테고리·날짜·슬러그·태그·요약을 채우면 Diary 포스트 frontmatter가 만들어집니다. PAT를 저장해 두면 아래 버튼 한 번으로 <code>HyangDan2/HyangDan2.github.io</code>에 커밋됩니다.</p>
 
                     <div class="field-grid">
@@ -198,7 +222,11 @@
         <section class="notes shell" aria-label="사용 안내">
             <div>
                 <span class="mono-note">SHORTCUTS</span>
-                <p><kbd>Ctrl/⌘</kbd> + <kbd>B</kbd> 굵게 · <kbd>I</kbd> 기울임 · <kbd>S</kbd> 취소선 · <kbd>K</kbd> 링크 · <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 제목 · <kbd>Tab</kbd> 들여쓰기 · <kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> .md 저장</p>
+                <p><kbd>Ctrl/⌘</kbd> + <kbd>B</kbd> 굵게 · <kbd>I</kbd> 기울임 · <kbd>S</kbd> 취소선 · <kbd>K</kbd> 링크 · <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 제목 · <kbd>Tab</kbd> 들여쓰기 · <kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> .md 저장 · <kbd>Ctrl/⌘</kbd>+<kbd>O</kbd> 파일 열기</p>
+            </div>
+            <div>
+                <span class="mono-note">OPEN</span>
+                <p><strong>.md 열기</strong>를 누르거나 편집 화면에 파일을 끌어다 놓으면 본문과 frontmatter를 함께 불러옵니다. 저장소에 있는 글은 발행 패널의 <strong>기존 글 불러오기</strong>로 열고, 그대로 커밋하면 같은 경로로 덮어씁니다.</p>
             </div>
             <div>
                 <span class="mono-note">SANITIZE</span>
@@ -257,6 +285,14 @@
             </div>
         </form>
     </dialog>
+
+    <div class="drop-overlay" id="dropOverlay" hidden aria-hidden="true">
+        <div class="drop-card">
+            <span class="mono-note">DROP</span>
+            <strong>.md 파일을 여기에서 놓아 주세요</strong>
+            <p>본문과 frontmatter를 읽어 편집 화면과 Diary 입력칸에 채웁니다.</p>
+        </div>
+    </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>
