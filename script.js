@@ -51,13 +51,22 @@ if (menuButton && mobileDrawer) {
     window.addEventListener('pageshow', () => closeDrawer(false));
 }
 
-// Diary accordion: the row label is a link to /diary/, the caret toggles the
-// five sections underneath. Diary pages start open (set in the markup).
-document.querySelectorAll('.drawer-toggle').forEach((toggle) => {
-    const group = toggle.closest('.drawer-group');
-    if (!group) return;
-    toggle.addEventListener('click', () => {
-        const open = group.classList.toggle('is-open');
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
+// Section accordions (Apps, Play, Diary): the row label links to the hub page,
+// the caret unfolds that group's sections on its own. A page can start with its
+// own group open by setting is-open / aria-expanded="true" in the markup.
+document.querySelectorAll('.drawer-group').forEach((group) => {
+    const toggle = group.querySelector('.drawer-toggle');
+    const panel = group.querySelector('.drawer-sub');
+    if (!toggle || !panel) return;
+    const setOpen = (open) => {
+        group.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        // Collapsed panels keep their height transition, so their links have to
+        // leave the tab order another way than display:none.
+        panel.inert = !open;
+        if (open) panel.removeAttribute('aria-hidden');
+        else panel.setAttribute('aria-hidden', 'true');
+    };
+    setOpen(toggle.getAttribute('aria-expanded') === 'true');
+    toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
 });
