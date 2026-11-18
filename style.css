@@ -336,7 +336,7 @@ body.drawer-open .hd2-theme-toggle { opacity: 0; pointer-events: none; }
     transition: max-height .3s cubic-bezier(.22, 1, .36, 1), opacity .2s ease, visibility 0s linear .3s;
 }
 .drawer-group.is-open .drawer-sub {
-    max-height: 340px;
+    max-height: 520px;
     opacity: 1;
     visibility: visible;
     transition: max-height .3s cubic-bezier(.22, 1, .36, 1), opacity .2s ease, visibility 0s linear 0s;
