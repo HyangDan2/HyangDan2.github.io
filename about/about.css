@@ -30,6 +30,32 @@
 }
 .about-lead { margin: 0; color: var(--text-body); font-size: 17px; line-height: 1.85; }
 
+/* hero at-a-glance chips (Soft Iris) */
+.about-hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 26px 0 0;
+    padding: 0;
+    list-style: none;
+}
+.about-hero-chips li {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 6px 13px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .14em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
 .about-visual { display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .about-logo-frame {
     display: grid;
@@ -72,7 +98,7 @@
 .about-story { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 48px; }
 .about-story-head { margin-bottom: 0; }
 .about-story-body p { margin: 0 0 20px; color: var(--text-body); font-size: 16px; line-height: 1.85; }
-.about-story-body p:first-child { color: var(--text); font-size: 19px; line-height: 1.7; font-weight: 600; letter-spacing: -.02em; }
+.about-story-body p strong { color: var(--text); font-weight: 700; letter-spacing: -.01em; }
 .about-story-body p:last-child { margin-bottom: 0; }
 
 /* ---------- hubs ---------- */
@@ -140,9 +166,10 @@
 }
 @media (max-width: 650px) {
     .about-hero { padding-block: 48px 44px; }
-    .about-hero h1 { margin-top: 26px; font-size: clamp(44px, 12vw, 62px); }
+    .about-hero h1 { margin-top: 26px; font-size: clamp(37px, 11.6vw, 62px); }
     .about-lead { font-size: 15px; }
-    .about-story-body p:first-child { font-size: 17px; }
+    .about-hero-chips { margin-top: 22px; gap: 6px; }
+    .about-hero-chips li { font-size: 9px; padding: 5px 10px; letter-spacing: .12em; }
     .about-contact-links { width: 100%; }
     .about-mail, .about-ghost { flex: 1 1 100%; justify-content: space-between; }
 }
