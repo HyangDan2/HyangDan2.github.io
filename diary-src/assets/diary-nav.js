@@ -41,4 +41,15 @@
     });
     // Returning through bfcache should never restore an unfolded sidebar.
     window.addEventListener('pageshow', function () { closeDrawer(false); });
+
+    // Diary accordion: the row label is a link to /diary/, the caret toggles the
+    // five sections underneath. Diary pages start open (set in the markup).
+    Array.prototype.forEach.call(document.querySelectorAll('.drawer-toggle'), function (toggle) {
+        var group = toggle.closest ? toggle.closest('.drawer-group') : null;
+        if (!group) return;
+        toggle.addEventListener('click', function () {
+            var open = group.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    });
 })();
