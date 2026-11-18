@@ -50,3 +50,14 @@ if (menuButton && mobileDrawer) {
     // comes back with the sidebar still unfolded (bfcache).
     window.addEventListener('pageshow', () => closeDrawer(false));
 }
+
+// Diary accordion: the row label is a link to /diary/, the caret toggles the
+// five sections underneath. Diary pages start open (set in the markup).
+document.querySelectorAll('.drawer-toggle').forEach((toggle) => {
+    const group = toggle.closest('.drawer-group');
+    if (!group) return;
+    toggle.addEventListener('click', () => {
+        const open = group.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+});
