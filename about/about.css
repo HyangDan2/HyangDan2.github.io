@@ -34,17 +34,17 @@
 .about-logo-frame {
     display: grid;
     place-items: center;
-    width: min(340px, 82%);
-    aspect-ratio: 1;
-    padding: 22px;
+    width: min(400px, 100%);
+    aspect-ratio: 1 / 1;
+    padding: 10px;
     border: 1px solid var(--border);
-    border-radius: 50%;
+    border-radius: 24px;
     background:
         radial-gradient(circle at 50% 35%, var(--accent-soft), transparent 68%),
         var(--surface);
     box-shadow: 0 24px 60px rgb(107 76 214 / 12%);
 }
-.about-logo { display: block; width: 100%; height: auto; border-radius: 50%; }
+.about-logo { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; }
 .about-visual-note {
     margin: 0;
     color: var(--text-secondary);
@@ -134,7 +134,7 @@
     .about-hero { grid-template-columns: 1fr; padding-block: 64px 56px; gap: 36px; }
     .about-hero h1 { font-size: clamp(48px, 10vw, 76px); }
     .about-visual { order: -1; }
-    .about-logo-frame { width: min(240px, 66%); }
+    .about-logo-frame { width: min(400px, 92%); }
     .about-story, .about-hubs, .about-contact { padding-block: 44px 52px; }
     .about-hub-grid { grid-template-columns: 1fr; }
 }
