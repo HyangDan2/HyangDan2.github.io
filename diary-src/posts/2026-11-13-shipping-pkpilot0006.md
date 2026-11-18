@@ -41,7 +41,7 @@ npm run build
 
 ## 구조는 결국 한 장으로 정리됩니다
 
-![HD2Lab 로고](/assets/LOGO.png)
+![네 개의 허브 카드가 2×2로 정리된 Web-HQ 화면](/diary/assets/images/2026-11-13-webhq-hubs-grid.png)
 
 허브를 네 개로 늘리면서 각 사이트가 서로를 어떻게 가리킬지 다시 정리했습니다. ApplicationHub, GameHub, TechnicalHub, 그리고 Diary. 공통 규칙은 세 가지입니다.
 
