@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#FAFAFD">
     <title>PKPilot0006, 그리고 HD2Lab 사이트를 하나로 묶는 중 · HD2&#39;s Diary</title>
-    <meta name="description" content="PKPilot0006 배포, Web-HQ 허브 정리, 그리고 기록을 남길 자리를 새로 만든 한 주.">
+    <meta name="description" content="PKPilot0006 배포, Web-HQ 허브 정리, 그리고 기록을 남길 자리를 새로 만든 한 주입니다.">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="HD2Lab · HD2&#39;s Diary">
     <meta property="og:title" content="PKPilot0006, 그리고 HD2Lab 사이트를 하나로 묶는 중 · HD2&#39;s Diary">
-    <meta property="og:description" content="PKPilot0006 배포, Web-HQ 허브 정리, 그리고 기록을 남길 자리를 새로 만든 한 주.">
+    <meta property="og:description" content="PKPilot0006 배포, Web-HQ 허브 정리, 그리고 기록을 남길 자리를 새로 만든 한 주입니다.">
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20261106">
@@ -101,7 +101,7 @@
     <header class="post-header">
         <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>Devlog · 2026.11.13</p>
         <h1>PKPilot0006, 그리고 HD2Lab 사이트를 하나로 묶는 중</h1>
-        <p class="post-summary">PKPilot0006 배포, Web-HQ 허브 정리, 그리고 기록을 남길 자리를 새로 만든 한 주.</p>
+        <p class="post-summary">PKPilot0006 배포, Web-HQ 허브 정리, 그리고 기록을 남길 자리를 새로 만든 한 주입니다.</p>
         <div class="post-meta">
             <span class="badge">Devlog</span>
             <time datetime="2026-11-13">2026년 11월 13일</time>
@@ -116,13 +116,13 @@
     </header>
 
     <div class="md-body post-content">
-        <p>이번 주는 새 기능을 크게 벌이기보다, 흩어져 있던 것들을 <strong>한 곳에서 굴러가게</strong> 만드는 데 시간을 썼다. PKPilot0006을 배포하고, Hub 사이트의 카드와 링크를 다시 맞추고, 기록을 남길 자리까지 만들었다.</p>
+        <p>이번 주는 새 기능을 크게 벌이기보다, 흩어져 있던 것들을 <strong>한 곳에서 굴러가게</strong> 만드는 데 시간을 썼습니다. PKPilot0006을 배포하고, 허브 사이트의 카드와 링크를 다시 맞추고, 기록을 남길 자리까지 만들었습니다.</p>
 <h2>이번 주에 바뀐 것</h2>
 <ul>
-<li>PKPilot0006 배포 — 문서 변환 파이프라인 정리, 빌드 결과물 정적 호스팅</li>
-<li><code>Web-HQ</code> 카드 구조 정리 — 3개에서 4개 허브로, 데스크톱 2×2 그리드</li>
-<li>저장소 루트의 오래된 스크립트 정리 및 <code>.gitignore</code> 정비</li>
-<li>이 Diary 추가 — Eleventy 빌드 + <code>/diary/write/</code> 편집기</li>
+<li>PKPilot0006을 배포했습니다 — 문서 변환 파이프라인을 정리하고, 빌드 결과물을 정적 호스팅했습니다.</li>
+<li><code>Web-HQ</code> 카드 구조를 정리했습니다 — 허브가 3개에서 4개로 늘고, 데스크톱은 2×2 그리드가 됐습니다.</li>
+<li>저장소 루트의 오래된 스크립트를 정리하고 <code>.gitignore</code>를 정비했습니다.</li>
+<li>이 Diary를 추가했습니다 — Eleventy 빌드와 <code>/diary/write/</code> 편집기로 시작했습니다.</li>
 </ul>
 <h2>커밋 로그</h2>
 <div class="table-wrap"><table><thead>
@@ -154,31 +154,31 @@
 <td>Diary 기반 공사 시작</td>
 </tr>
 </tbody>
-</table></div><h2>빌드는 항상 같은 자리에서 틀린다</h2>
-<p>이번에도 실패는 늘 같은 곳에서 나왔다. 로컬에서는 통과하는데 배포에서만 깨지는 것.</p>
+</table></div><h2>빌드는 항상 같은 자리에서 틀립니다</h2>
+<p>이번에도 실패는 늘 같은 곳에서 나왔습니다. 로컬에서는 통과하는데 배포에서만 깨지는 일입니다.</p>
 <pre class="code-block" data-lang="bash"><code class="hljs language-bash"><span class="hljs-comment"># 로컬에서는 통과, CI에서 실패</span>
 npm run build
 <span class="hljs-comment"># Error: ENOENT: no such file or directory, open &#x27;dist/index.html&#x27;</span>
 </code></pre>
-<p>원인은 단순했다. 빌드 스크립트가 <strong>저장소 루트 기준 경로</strong>를 쓰고 있었고, CI는 다른 작업 디렉터리에서 실행됐다. 스크립트 안에서 <code>process.cwd()</code>를 쓰는 대신 설정 파일 기준 상대 경로로 바꾸니 해결됐다.</p>
+<p>원인은 단순했습니다. 빌드 스크립트가 <strong>저장소 루트 기준 경로</strong>를 쓰고 있었고, CI는 다른 작업 디렉터리에서 실행됐습니다. 스크립트 안에서 <code>process.cwd()</code>를 쓰는 대신 설정 파일 기준 상대 경로로 바꾸니 해결됐습니다.</p>
 <blockquote>
-<p>경로 문제는 코드 문제가 아니라 실행 위치 문제인 경우가 훨씬 많다. 실패했을 때 제일 먼저 찍어 볼 것은 <code>pwd</code>다.</p>
+<p>경로 문제는 코드 문제가 아니라 실행 위치 문제인 경우가 훨씬 많습니다. 실패했을 때 제일 먼저 찍어 볼 것은 <code>pwd</code>입니다.</p>
 </blockquote>
-<h2>구조는 결국 한 장으로 정리된다</h2>
+<h2>구조는 결국 한 장으로 정리됩니다</h2>
 <p><img src="/assets/LOGO.png" alt="HD2Lab 로고"></p>
-<p>허브를 네 개로 늘리면서 각 사이트가 서로를 어떻게 가리킬지 다시 정리했다. ApplicationHub, GameHub, TechnicalHub, 그리고 Diary. 공통 규칙은 세 가지다.</p>
+<p>허브를 네 개로 늘리면서 각 사이트가 서로를 어떻게 가리킬지 다시 정리했습니다. ApplicationHub, GameHub, TechnicalHub, 그리고 Diary. 공통 규칙은 세 가지입니다.</p>
 <ol>
-<li>모든 페이지는 Web-HQ로 돌아오는 링크를 헤더에 둔다.</li>
-<li>색은 <code>#101110</code> 배경에 <code>#ff824f</code> 액센트 하나만 쓴다.</li>
-<li>새 프로젝트는 카드 한 장으로만 설명한다. 설명이 길어지면 그건 카드가 아니라 글이다.</li>
+<li>모든 페이지는 Web-HQ로 돌아오는 링크를 헤더에 둡니다.</li>
+<li>색은 <code>#101110</code> 배경에 <code>#ff824f</code> 액센트 하나만 씁니다.</li>
+<li>새 프로젝트는 카드 한 장으로만 설명합니다. 설명이 길어지면 그건 카드가 아니라 글입니다.</li>
 </ol>
 <h2>다음 주</h2>
 <ul>
-<li>Diary에 글을 계속 쌓기 (지금은 샘플 두 편뿐이다)</li>
-<li>PKPilot0002 지도 앱의 모바일 성능 다시 재기</li>
-<li>Web-HQ에 Diary 카드가 들어간 뒤 2×2 그리드가 실제로 균형 있는지 확인</li>
+<li>Diary에 글을 계속 쌓겠습니다 (지금은 샘플 두 편뿐입니다)</li>
+<li>PKPilot0002 지도 앱의 모바일 성능을 다시 재겠습니다</li>
+<li>Web-HQ에 Diary 카드가 들어간 뒤 2×2 그리드가 실제로 균형이 맞는지 확인하겠습니다</li>
 </ul>
-<p>작게 배포하고, 자주 기록한다. 이번 주는 그 두 가지를 지킨 주였다.</p>
+<p>작게 배포하고, 자주 기록합니다. 이번 주는 그 두 가지를 지킨 주였습니다.</p>
 
     </div>
 
