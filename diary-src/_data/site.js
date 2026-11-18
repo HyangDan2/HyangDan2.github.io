@@ -10,5 +10,5 @@ export default {
   postDirectory: "diary-src/posts",
   author: "심재혁",
   year: new Date().getFullYear(),
-  email: "jhshim1988@gmail.com",
+  email: "hyperdimensionaldesignlab@gmail.com",
 };
