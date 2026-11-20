@@ -26,12 +26,13 @@
     <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
     <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261118-nav" />
     <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-    <link rel="stylesheet" href="style.css?v=20261119-appsplay" />
+    <link rel="stylesheet" href="style.css?v=20261120-visits" />
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=20261116-softiris">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png?v=20261116-softiris">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=20261116-softiris">
     <link rel="shortcut icon" href="favicon.ico?v=20261116-softiris">
     <script src="script.js?v=20261119-appsplay" defer></script>
+    <script src="visit-badge.js?v=20261120-visits" defer></script>
     <script data-goatcounter="https://hd2lab.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -244,6 +245,12 @@
         <div class="footer-inner shell">
             <span>© 2026 HD2Lab</span>
             <span>From here, I build.</span>
+            <span class="visit-badge" data-visit-badge hidden>
+                <svg class="visit-eye" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M1.7 8S3.9 4.1 8 4.1 14.3 8 14.3 8 12.1 11.9 8 11.9 1.7 8 1.7 8Z"/><circle cx="8" cy="8" r="1.9"/></svg>
+                <span>Today <b class="visit-num" data-visit-today>—</b></span>
+                <span class="visit-sep" aria-hidden="true">·</span>
+                <span>Total <b class="visit-num" data-visit-total>—</b></span>
+            </span>
             <a href="https://github.com/HyangDan2/HyangDan2.github.io">GitHub <span aria-hidden="true">↗</span></a>
         </div>
     </footer>
