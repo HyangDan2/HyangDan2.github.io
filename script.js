@@ -51,22 +51,37 @@ if (menuButton && mobileDrawer) {
     window.addEventListener('pageshow', () => closeDrawer(false));
 }
 
-// Section accordions (Apps, Play, Diary): the row label links to the hub page,
-// the caret unfolds that group's sections on its own. A page can start with its
-// own group open by setting is-open / aria-expanded="true" in the markup.
-document.querySelectorAll('.drawer-group').forEach((group) => {
+// Section accordions (Apps, Play, Diary, Info): the row label links to the hub
+// page, the caret unfolds that group's sections — and unfolding one group
+// folds the others, so a long section such as Apps never pushes About off the
+// drawer. A page can start with its own group open by setting is-open /
+// aria-expanded="true" in the markup.
+const drawerGroups = Array.from(document.querySelectorAll('.drawer-group'));
+const setGroupOpen = (group, open) => {
     const toggle = group.querySelector('.drawer-toggle');
     const panel = group.querySelector('.drawer-sub');
     if (!toggle || !panel) return;
-    const setOpen = (open) => {
-        group.classList.toggle('is-open', open);
-        toggle.setAttribute('aria-expanded', String(open));
-        // Collapsed panels keep their height transition, so their links have to
-        // leave the tab order another way than display:none.
-        panel.inert = !open;
-        if (open) panel.removeAttribute('aria-hidden');
-        else panel.setAttribute('aria-hidden', 'true');
-    };
-    setOpen(toggle.getAttribute('aria-expanded') === 'true');
-    toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+    group.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    // Collapsed panels keep their height transition, so their links have to
+    // leave the tab order another way than display:none.
+    panel.inert = !open;
+    if (open) {
+        panel.removeAttribute('aria-hidden');
+        // Reopening a scrolled section starts it at its first row again.
+        const list = panel.querySelector('.drawer-sub-inner') || panel;
+        list.scrollTop = 0;
+    } else {
+        panel.setAttribute('aria-hidden', 'true');
+    }
+};
+drawerGroups.forEach((group) => {
+    const toggle = group.querySelector('.drawer-toggle');
+    if (!toggle) return;
+    setGroupOpen(group, toggle.getAttribute('aria-expanded') === 'true');
+    toggle.addEventListener('click', () => {
+        const open = toggle.getAttribute('aria-expanded') !== 'true';
+        if (open) drawerGroups.forEach((other) => { if (other !== group) setGroupOpen(other, false); });
+        setGroupOpen(group, open);
+    });
 });

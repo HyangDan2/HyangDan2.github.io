@@ -486,3 +486,30 @@ body.drawer-open .hd2-theme-toggle { opacity: 0; pointer-events: none; }
 .visit-badge .visit-eye { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; color: var(--accent-text, #6B4CD6); }
 .visit-badge .visit-num { font-weight: 700; color: var(--text, #1D192B); }
 .visit-badge .visit-sep { opacity: .5; }
+
+/* ── Navigation: a long section list scrolls in place ─────────────────────
+   Apps holds 15 apps now, so a dropdown panel or a drawer section shows a
+   five-row window (5 × ~40px plus gaps ≈ 224px) and scrolls inside it instead
+   of pushing Play / Tech / Diary / Info / About off the screen. The panel is a
+   scroll container from here on, which clips its own ::before hover bridge, so
+   the bridge lives on .nav-dropdown instead. */
+.nav-dropdown::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 14px;
+}
+.nav-dropdown-panel { max-height: 224px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    scrollbar-color: color-mix(in srgb, var(--accent) 32%, var(--border)) transparent; }
+.nav-dropdown-panel::before { content: none; }
+.nav-dropdown-panel::-webkit-scrollbar { width: 6px; }
+.nav-dropdown-panel::-webkit-scrollbar-track { background: transparent; }
+.nav-dropdown-panel::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border); background: color-mix(in srgb, var(--accent) 32%, var(--border)); }
+
+.drawer-sub-inner { max-height: 224px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    scrollbar-color: color-mix(in srgb, var(--accent) 32%, var(--border)) transparent; }
+.drawer-sub-inner::-webkit-scrollbar { width: 6px; }
+.drawer-sub-inner::-webkit-scrollbar-track { background: transparent; }
+.drawer-sub-inner::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border); background: color-mix(in srgb, var(--accent) 32%, var(--border)); }
