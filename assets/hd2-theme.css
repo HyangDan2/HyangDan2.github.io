@@ -10,29 +10,27 @@
    ========================================================================== */
 
 .hd2-theme-switch {
-  --hd2-switch-width: 56px;
-  --hd2-switch-height: 30px;
-  --hd2-switch-thumb: 24px;
-  --hd2-switch-inset: 2px;
-  --hd2-switch-travel: 26px; /* width - thumb - inset × 2 - border × 2 */
-  --hd2-switch-track: #F1ECFE;
-  --hd2-switch-border: #E8E4F2;
-  --hd2-switch-thumb-bg: #8B6CE8;
-  --hd2-switch-icon: #8A839C;
-
   position: relative;
   flex: none;
-  width: var(--hd2-switch-width);
-  height: var(--hd2-switch-height);
+  width: 58px;
+  height: 30px;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--hd2-switch-border);
+  border: 1px solid #DBD3EE;
   border-radius: 999px;
-  background: var(--hd2-switch-track);
-  color: var(--hd2-switch-icon);
+  background: #EFEBF7;
+  color: #A79FBB;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* the visible capsule is taller than a comfortable touch target */
+.hd2-theme-switch::after {
+  content: '';
+  position: absolute;
+  inset: -8px -6px;
+  border-radius: 999px;
 }
 
 .hd2-theme-switch:hover {
@@ -52,62 +50,66 @@
   box-shadow: 0 10px 26px rgba(29, 25, 43, 0.16);
 }
 
-/* the thumb: a solid accent disc under the active icon */
+/* the thumb: a white disc under the active icon */
 .hd2-theme-switch .hd2-theme-thumb {
   position: absolute;
-  top: var(--hd2-switch-inset);
-  left: var(--hd2-switch-inset);
-  width: var(--hd2-switch-thumb);
-  height: var(--hd2-switch-thumb);
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
-  background: var(--hd2-switch-thumb-bg);
-  box-shadow: 0 2px 6px rgba(29, 25, 43, 0.24);
-  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(29, 25, 43, 0.22);
+  transition: transform 0.22s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 html[data-theme='dark'] .hd2-theme-switch .hd2-theme-thumb {
-  transform: translateX(var(--hd2-switch-travel));
+  transform: translateX(28px);
+  background: #E7ECFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
-/* the two icons sit on the track; the active one turns white over the thumb */
+/* both icons stay visible; the one under the thumb carries the mode */
 .hd2-theme-switch .hd2-theme-ic {
   position: absolute;
+  z-index: 1;
   top: 50%;
   width: 13px;
   height: 13px;
   transform: translateY(-50%);
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.9;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+  color: #A79FBB;
   transition: color 0.2s ease;
   pointer-events: none;
 }
 
 .hd2-theme-switch .hd2-theme-ic[data-icon='sun'] {
-  left: 7.5px;
-  color: #FFFFFF;
+  left: 7px;
 }
 
 .hd2-theme-switch .hd2-theme-ic[data-icon='moon'] {
-  right: 7.5px;
-  color: var(--hd2-switch-icon);
+  right: 7px;
 }
 
-html[data-theme='dark'] .hd2-theme-switch .hd2-theme-ic[data-icon='sun'] {
-  color: var(--hd2-switch-icon);
-}
-
-html[data-theme='dark'] .hd2-theme-switch .hd2-theme-ic[data-icon='moon'] {
-  color: #FFFFFF;
+html[data-theme='light'] .hd2-theme-switch .hd2-theme-ic[data-icon='sun'] {
+  color: #6B4CD6;
 }
 
 html[data-theme='dark'] .hd2-theme-switch {
-  --hd2-switch-track: #1A2340;
-  --hd2-switch-border: #344472;
-  --hd2-switch-thumb-bg: #A78BFA;
-  --hd2-switch-icon: #8494B6;
+  background: #1B2440;
+  border-color: #344472;
+}
+
+html[data-theme='dark'] .hd2-theme-switch .hd2-theme-ic {
+  color: #7C8AB3;
+}
+
+html[data-theme='dark'] .hd2-theme-switch .hd2-theme-ic[data-icon='moon'] {
+  color: #4A2FB0;
 }
 
 @media (prefers-reduced-motion: reduce) {
