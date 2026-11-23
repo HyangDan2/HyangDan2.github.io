@@ -1,78 +1,119 @@
 /* ==========================================================================
-   HD2Lab · shared Light/Dark toggle (Navy & Lavender)
-   One button, injected by /assets/hd2-theme.js, that flips
+   HD2Lab · shared Light/Dark switch (Navy & Lavender)
+   One control, injected by /assets/hd2-theme.js, that flips
    :root[data-theme] between "light" (Soft Iris) and "dark" (Navy & Lavender).
 
-   Per-page placement: an app overrides the custom properties below on
-   `.hd2-theme-toggle` (bottom offset, z-index, surface colours).
+   It is a slide switch: a 56×30 capsule with a sun at the left, a moon at the
+   right, and a round thumb that slides to the active side. The header holds it
+   (`.is-docked`, closing the top navigation); a page with no header slot keeps
+   it in the bottom-right corner (`.is-floating`).
    ========================================================================== */
 
-.hd2-theme-toggle {
-  --hd2-toggle-size: 44px;  /* 44px = the smallest comfortable touch target */
-  --hd2-toggle-right: max(16px, env(safe-area-inset-right, 0px) + 16px);
-  --hd2-toggle-bottom: max(18px, env(safe-area-inset-bottom, 0px) + 18px);
-  --hd2-toggle-z: 60;
+.hd2-theme-switch {
+  --hd2-switch-width: 56px;
+  --hd2-switch-height: 30px;
+  --hd2-switch-thumb: 24px;
+  --hd2-switch-inset: 2px;
+  --hd2-switch-travel: 26px; /* width - thumb - inset × 2 - border × 2 */
+  --hd2-switch-track: #F1ECFE;
+  --hd2-switch-border: #E8E4F2;
+  --hd2-switch-thumb-bg: #8B6CE8;
+  --hd2-switch-icon: #8A839C;
 
-  position: fixed;
-  z-index: var(--hd2-toggle-z);
-  right: var(--hd2-toggle-right);
-  bottom: var(--hd2-toggle-bottom);
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--hd2-toggle-size);
-  height: var(--hd2-toggle-size);
+  position: relative;
+  flex: none;
+  width: var(--hd2-switch-width);
+  height: var(--hd2-switch-height);
   margin: 0;
   padding: 0;
-
-  border: 1px solid var(--hd2-toggle-border, rgba(29, 25, 43, 0.14));
+  border: 1px solid var(--hd2-switch-border);
   border-radius: 999px;
-  background: var(--hd2-toggle-bg, #FFFFFF);
-  color: var(--hd2-toggle-fg, #1D192B);
-  box-shadow: var(--hd2-toggle-shadow, 0 10px 26px rgba(29, 25, 43, 0.16));
+  background: var(--hd2-switch-track);
+  color: var(--hd2-switch-icon);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  backdrop-filter: blur(10px);
-  transition: transform 0.18s ease, background-color 0.2s ease, border-color 0.2s ease,
-    color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.hd2-theme-toggle:hover {
-  border-color: var(--hd2-toggle-hover, #A78BFA);
-  color: var(--hd2-toggle-hover, #A78BFA);
+.hd2-theme-switch:hover {
+  border-color: #A78BFA;
 }
 
-.hd2-theme-toggle:active {
-  transform: scale(0.94);
-}
-
-.hd2-theme-toggle:focus-visible {
-  outline: 2px solid var(--hd2-toggle-hover, #A78BFA);
+.hd2-theme-switch:focus-visible {
+  outline: 2px solid #A78BFA;
   outline-offset: 3px;
 }
 
-.hd2-theme-toggle .hd2-theme-ic {
-  display: none;
-  width: 19px;
-  height: 19px;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
+.hd2-theme-switch.is-floating {
+  position: fixed;
+  z-index: 60;
+  right: max(16px, env(safe-area-inset-right, 0px) + 16px);
+  bottom: max(18px, env(safe-area-inset-bottom, 0px) + 18px);
+  box-shadow: 0 10px 26px rgba(29, 25, 43, 0.16);
 }
 
-/* the icon shows where the button takes you */
-html[data-theme='light'] .hd2-theme-toggle .hd2-theme-ic[data-icon='moon'],
-html[data-theme='dark'] .hd2-theme-toggle .hd2-theme-ic[data-icon='sun'] {
-  display: block;
+/* the thumb: a solid accent disc under the active icon */
+.hd2-theme-switch .hd2-theme-thumb {
+  position: absolute;
+  top: var(--hd2-switch-inset);
+  left: var(--hd2-switch-inset);
+  width: var(--hd2-switch-thumb);
+  height: var(--hd2-switch-thumb);
+  border-radius: 999px;
+  background: var(--hd2-switch-thumb-bg);
+  box-shadow: 0 2px 6px rgba(29, 25, 43, 0.24);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+}
+
+html[data-theme='dark'] .hd2-theme-switch .hd2-theme-thumb {
+  transform: translateX(var(--hd2-switch-travel));
+}
+
+/* the two icons sit on the track; the active one turns white over the thumb */
+.hd2-theme-switch .hd2-theme-ic {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+
+.hd2-theme-switch .hd2-theme-ic[data-icon='sun'] {
+  left: 7.5px;
+  color: #FFFFFF;
+}
+
+.hd2-theme-switch .hd2-theme-ic[data-icon='moon'] {
+  right: 7.5px;
+  color: var(--hd2-switch-icon);
+}
+
+html[data-theme='dark'] .hd2-theme-switch .hd2-theme-ic[data-icon='sun'] {
+  color: var(--hd2-switch-icon);
+}
+
+html[data-theme='dark'] .hd2-theme-switch .hd2-theme-ic[data-icon='moon'] {
+  color: #FFFFFF;
+}
+
+html[data-theme='dark'] .hd2-theme-switch {
+  --hd2-switch-track: #1A2340;
+  --hd2-switch-border: #344472;
+  --hd2-switch-thumb-bg: #A78BFA;
+  --hd2-switch-icon: #8494B6;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hd2-theme-toggle,
-  .hd2-theme-toggle:active {
+  .hd2-theme-switch,
+  .hd2-theme-switch .hd2-theme-thumb,
+  .hd2-theme-switch .hd2-theme-ic {
     transition: none;
-    transform: none;
   }
 }

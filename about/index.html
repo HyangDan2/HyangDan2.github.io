@@ -23,9 +23,11 @@
     <meta name="twitter:image" content="https://hyangdan2.github.io/og-image.png?v=20261122-og">
     <!-- HD2Lab shared theme: applies the stored hd2-theme before first paint (no flash) -->
     <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
-    <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261118-nav" />
-    <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-    <link rel="stylesheet" href="/style.css?v=20261121-nav15" />
+    <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261124-share" />
+    <script src="/assets/hd2-theme.js?v=20261124-share" defer></script>
+    <link rel="stylesheet" href="/assets/hd2-share.css?v=20261124-share" />
+    <script src="/assets/hd2-share.js?v=20261124-share" defer></script>
+    <link rel="stylesheet" href="/style.css?v=20261124-share" />
     <link rel="stylesheet" href="/about/about.css?v=20261118-about-copy" />
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=20261116-softiris">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=20261116-softiris">
@@ -276,5 +278,9 @@
             <a href="https://github.com/HyangDan2/HyangDan2.github.io">GitHub <span aria-hidden="true">↗</span></a>
         </div>
     </footer>
+    <button class="hd2-share" id="share-toggle" type="button" aria-label="Share this page" title="Share this page">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="18" cy="5.5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.5" r="2.6"/><path d="M8.35 10.75 15.65 6.75"/><path d="M8.35 13.25 15.65 17.25"/></svg>
+    </button>
+    <div class="hd2-share-toast" id="share-toast" role="status" aria-live="polite"></div>
 </body>
 </html>
