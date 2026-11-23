@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-23T23:18:54.605Z",
+  "generated_at": "2026-11-23T23:34:34.429Z",
   "timezone": "Asia/Seoul",
   "window": {
     "start": "2026-10-28",
     "end": "2026-11-24",
     "days": 28
   },
-  "total_commits": 747,
+  "total_commits": 751,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -152,10 +152,37 @@
     },
     {
       "date": "2026-11-24",
-      "count": 19
+      "count": 23
     }
   ],
   "commits": [
+    {
+      "sha": "ee249142c3a4fe973029cb41766f3b8a54e03bee",
+      "short": "ee24914",
+      "repo": "HyangDan2.github.io",
+      "repo_full": "HyangDan2/HyangDan2.github.io",
+      "message": "style(theme): match the Diary switch look (58×30, white thumb)",
+      "date": "2026-11-24T08:34:05.000+09:00",
+      "url": "https://github.com/HyangDan2/HyangDan2.github.io/commit/ee249142c3a4fe973029cb41766f3b8a54e03bee"
+    },
+    {
+      "sha": "f0830229f7d00412388a9253c8e36c538d5d7a2d",
+      "short": "f083022",
+      "repo": "GameHub",
+      "repo_full": "HyangDan2/GameHub",
+      "message": "style(theme): match the Diary switch look (58×30, white thumb)",
+      "date": "2026-11-24T08:33:58.000+09:00",
+      "url": "https://github.com/HyangDan2/GameHub/commit/f0830229f7d00412388a9253c8e36c538d5d7a2d"
+    },
+    {
+      "sha": "d0260653b831ac808b1c2ab066643fc0686e6cf4",
+      "short": "d026065",
+      "repo": "ApplicationHub",
+      "repo_full": "HyangDan2/ApplicationHub",
+      "message": "style(theme): match the Diary switch look (58×30, white thumb)",
+      "date": "2026-11-24T08:33:55.000+09:00",
+      "url": "https://github.com/HyangDan2/ApplicationHub/commit/d0260653b831ac808b1c2ab066643fc0686e6cf4"
+    },
     {
       "sha": "88a2cc2b1d5dc1c669db130b969a8dba575d2c13",
       "short": "88a2cc2",
@@ -166,24 +193,6 @@
       "url": "https://github.com/HyangDan2/TechnicalHub/commit/88a2cc2b1d5dc1c669db130b969a8dba575d2c13"
     },
     {
-      "sha": "3c91a827efaaf4e94a35926bf773d9f8eea4b0a7",
-      "short": "3c91a82",
-      "repo": "GameHub",
-      "repo_full": "HyangDan2/GameHub",
-      "message": "feat(theme): header slide switch and a corner share button",
-      "date": "2026-11-24T08:18:05.000+09:00",
-      "url": "https://github.com/HyangDan2/GameHub/commit/3c91a827efaaf4e94a35926bf773d9f8eea4b0a7"
-    },
-    {
-      "sha": "2544f74e5d83279e47e9b9c4a9e513ff9110f176",
-      "short": "2544f74",
-      "repo": "ApplicationHub",
-      "repo_full": "HyangDan2/ApplicationHub",
-      "message": "feat(theme): header slide switch and a corner share button",
-      "date": "2026-11-24T08:18:01.000+09:00",
-      "url": "https://github.com/HyangDan2/ApplicationHub/commit/2544f74e5d83279e47e9b9c4a9e513ff9110f176"
-    },
-    {
       "sha": "e509ee4cfb9d4810a0bc8e21e45c30c5fc06774e",
       "short": "e509ee4",
       "repo": "InformationHub",
@@ -191,15 +200,6 @@
       "message": "feat(ui): 테마 토글 해·달 슬라이드 스위치 · 공유 버튼 Soft Iris 원형 (v2)",
       "date": "2026-11-24T08:15:51.000+09:00",
       "url": "https://github.com/HyangDan2/InformationHub/commit/e509ee4cfb9d4810a0bc8e21e45c30c5fc06774e"
-    },
-    {
-      "sha": "2c8c5fc3d7f2df807a51051ed303d53b9a5f7f6c",
-      "short": "2c8c5fc",
-      "repo": "PKPilot0008",
-      "repo_full": "HyangDan2/PKPilot0008",
-      "message": "remove: delete unused lz-string inline-share dependency",
-      "date": "2026-11-24T08:11:35.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0008/commit/2c8c5fc3d7f2df807a51051ed303d53b9a5f7f6c"
     }
   ]
 }
