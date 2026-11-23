@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-23T05:54:19.085Z",
+  "generated_at": "2026-11-23T23:18:54.605Z",
   "timezone": "Asia/Seoul",
   "window": {
-    "start": "2026-10-27",
-    "end": "2026-11-23",
+    "start": "2026-10-28",
+    "end": "2026-11-24",
     "days": 28
   },
-  "total_commits": 713,
+  "total_commits": 747,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -42,10 +42,6 @@
   ],
   "truncated": false,
   "days": [
-    {
-      "date": "2026-10-27",
-      "count": 1
-    },
     {
       "date": "2026-10-28",
       "count": 0
@@ -152,54 +148,58 @@
     },
     {
       "date": "2026-11-23",
-      "count": 44
+      "count": 60
+    },
+    {
+      "date": "2026-11-24",
+      "count": 19
     }
   ],
   "commits": [
     {
-      "sha": "66416387b474521b6b364fabd569dc22d75b8942",
-      "short": "6641638",
-      "repo": "PKPilot0018",
-      "repo_full": "HyangDan2/PKPilot0018",
-      "message": "Merge pull request #8 from HyangDan2/feat/workspace-stage3",
-      "date": "2026-11-23T13:41:31.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0018/commit/66416387b474521b6b364fabd569dc22d75b8942"
+      "sha": "88a2cc2b1d5dc1c669db130b969a8dba575d2c13",
+      "short": "88a2cc2",
+      "repo": "TechnicalHub",
+      "repo_full": "HyangDan2/TechnicalHub",
+      "message": "feat(theme): header slide switch and a corner share button",
+      "date": "2026-11-24T08:18:20.000+09:00",
+      "url": "https://github.com/HyangDan2/TechnicalHub/commit/88a2cc2b1d5dc1c669db130b969a8dba575d2c13"
     },
     {
-      "sha": "324fcf652babba851009332c5c7cf234c1474112",
-      "short": "324fcf6",
-      "repo": "diary",
-      "repo_full": "HyangDan2/diary",
-      "message": "style(notes): tighten the Korean spacing around two quoted phrases",
-      "date": "2026-11-23T12:27:06.000+09:00",
-      "url": "https://github.com/HyangDan2/diary/commit/324fcf652babba851009332c5c7cf234c1474112"
+      "sha": "3c91a827efaaf4e94a35926bf773d9f8eea4b0a7",
+      "short": "3c91a82",
+      "repo": "GameHub",
+      "repo_full": "HyangDan2/GameHub",
+      "message": "feat(theme): header slide switch and a corner share button",
+      "date": "2026-11-24T08:18:05.000+09:00",
+      "url": "https://github.com/HyangDan2/GameHub/commit/3c91a827efaaf4e94a35926bf773d9f8eea4b0a7"
     },
     {
-      "sha": "a7564eb500231990e36f16f9f014acc5d7d759f2",
-      "short": "a7564eb",
-      "repo": "HyangDan2.github.io",
-      "repo_full": "HyangDan2/HyangDan2.github.io",
-      "message": "feat(web-hq): 06 / Latest Updates — Recently built.",
-      "date": "2026-11-23T11:47:17.000+09:00",
-      "url": "https://github.com/HyangDan2/HyangDan2.github.io/commit/a7564eb500231990e36f16f9f014acc5d7d759f2"
+      "sha": "2544f74e5d83279e47e9b9c4a9e513ff9110f176",
+      "short": "2544f74",
+      "repo": "ApplicationHub",
+      "repo_full": "HyangDan2/ApplicationHub",
+      "message": "feat(theme): header slide switch and a corner share button",
+      "date": "2026-11-24T08:18:01.000+09:00",
+      "url": "https://github.com/HyangDan2/ApplicationHub/commit/2544f74e5d83279e47e9b9c4a9e513ff9110f176"
     },
     {
-      "sha": "b20b2aad476a60b1015ca506a1aa1a5a6ddc1ed3",
-      "short": "b20b2aa",
-      "repo": "ADOP0001",
-      "repo_full": "HyangDan2/ADOP0001",
-      "message": "fix(ui): 테마 전환을 한 번에 그려 다크 모드 흰 배경 위 흰 글씨 제거 (QA-002)",
-      "date": "2026-11-23T10:26:49.000+09:00",
-      "url": "https://github.com/HyangDan2/ADOP0001/commit/b20b2aad476a60b1015ca506a1aa1a5a6ddc1ed3"
+      "sha": "e509ee4cfb9d4810a0bc8e21e45c30c5fc06774e",
+      "short": "e509ee4",
+      "repo": "InformationHub",
+      "repo_full": "HyangDan2/InformationHub",
+      "message": "feat(ui): 테마 토글 해·달 슬라이드 스위치 · 공유 버튼 Soft Iris 원형 (v2)",
+      "date": "2026-11-24T08:15:51.000+09:00",
+      "url": "https://github.com/HyangDan2/InformationHub/commit/e509ee4cfb9d4810a0bc8e21e45c30c5fc06774e"
     },
     {
-      "sha": "0fa3c10d5a10b7de4daea93f25a7cef14e1f3581",
-      "short": "0fa3c10",
-      "repo": "PKPilot0013",
-      "repo_full": "HyangDan2/PKPilot0013",
-      "message": "Honour git merge --no-ff instead of silently fast-forwarding (WO-18)",
-      "date": "2026-11-23T09:32:05.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0013/commit/0fa3c10d5a10b7de4daea93f25a7cef14e1f3581"
+      "sha": "2c8c5fc3d7f2df807a51051ed303d53b9a5f7f6c",
+      "short": "2c8c5fc",
+      "repo": "PKPilot0008",
+      "repo_full": "HyangDan2/PKPilot0008",
+      "message": "remove: delete unused lz-string inline-share dependency",
+      "date": "2026-11-24T08:11:35.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0008/commit/2c8c5fc3d7f2df807a51051ed303d53b9a5f7f6c"
     }
   ]
 }
