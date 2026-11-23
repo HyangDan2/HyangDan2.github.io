@@ -26,12 +26,13 @@
     <script>try{var h=localStorage.getItem('hd2-theme');document.documentElement.setAttribute('data-theme',h==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
     <link rel="stylesheet" href="/assets/hd2-theme.css?v=20261118-nav" />
     <script src="/assets/hd2-theme.js?v=20261117-navy" defer></script>
-    <link rel="stylesheet" href="style.css?v=20261121-nav15" />
+    <link rel="stylesheet" href="style.css?v=20261123-updates" />
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=20261116-softiris">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png?v=20261116-softiris">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=20261116-softiris">
     <link rel="shortcut icon" href="favicon.ico?v=20261116-softiris">
     <script src="script.js?v=20261121-nav15" defer></script>
+    <script src="latest-updates.js?v=20261123-updates" defer></script>
     <script src="visit-badge.js?v=20261120-visits" defer></script>
     <script data-goatcounter="https://hd2lab.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
@@ -236,6 +237,32 @@
                     <span class="card-topics">China AI · Semiconductors · Daily Briefs</span>
                 </a>
             </nav>
+        </section>
+
+        <section class="updates shell" id="updates" aria-labelledby="updates-title">
+            <div class="section-heading updates-heading">
+                <div>
+                    <p class="eyebrow">06 / Latest Updates</p>
+                    <h2 id="updates-title">Recently built.</h2>
+                </div>
+                <a class="updates-live" href="https://github.com/HyangDan2" rel="noopener">Live GitHub Activity <span aria-hidden="true">·</span> @HyangDan2</a>
+            </div>
+            <div class="updates-panels">
+                <article class="updates-summary">
+                    <p class="updates-badge" data-update-badge hidden><span class="updates-dot" aria-hidden="true"></span><span data-update-badge-text>Active today</span></p>
+                    <p class="updates-total"><strong data-update-total>—</strong> commits</p>
+                    <p class="updates-repos">across <span data-update-repos>—</span> repositories</p>
+                    <p class="updates-label" data-update-label>Last 28 days</p>
+                    <div class="updates-heat" data-update-heat role="group" aria-label="Commits per day over the last 28 days"></div>
+                    <a class="updates-profile" href="https://github.com/HyangDan2" rel="noopener">github.com/HyangDan2</a>
+                </article>
+                <article class="updates-stream" aria-label="Latest commits by @HyangDan2">
+                    <p class="updates-stream-head"><span class="updates-prompt" aria-hidden="true">$</span> git log --all -n 5 --oneline</p>
+                    <ol class="updates-commits" data-update-commits>
+                        <li class="updates-empty">Loading recent commits…</li>
+                    </ol>
+                </article>
+            </div>
         </section>
 
         <section class="closing shell" aria-labelledby="closing-title">
