@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-23T03:10:46.572Z",
+  "generated_at": "2026-11-23T05:54:19.085Z",
   "timezone": "Asia/Seoul",
   "window": {
     "start": "2026-10-27",
     "end": "2026-11-23",
     "days": 28
   },
-  "total_commits": 705,
+  "total_commits": 713,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -152,18 +152,27 @@
     },
     {
       "date": "2026-11-23",
-      "count": 36
+      "count": 44
     }
   ],
   "commits": [
     {
-      "sha": "99f7d7f552e499d7984af54ecde6b06061fd5a9c",
-      "short": "99f7d7f",
+      "sha": "66416387b474521b6b364fabd569dc22d75b8942",
+      "short": "6641638",
       "repo": "PKPilot0018",
       "repo_full": "HyangDan2/PKPilot0018",
-      "message": "feat(worksheet): selection model, context menus and + column header (Stage 1)",
-      "date": "2026-11-23T12:09:19.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0018/commit/99f7d7f552e499d7984af54ecde6b06061fd5a9c"
+      "message": "Merge pull request #8 from HyangDan2/feat/workspace-stage3",
+      "date": "2026-11-23T13:41:31.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0018/commit/66416387b474521b6b364fabd569dc22d75b8942"
+    },
+    {
+      "sha": "324fcf652babba851009332c5c7cf234c1474112",
+      "short": "324fcf6",
+      "repo": "diary",
+      "repo_full": "HyangDan2/diary",
+      "message": "style(notes): tighten the Korean spacing around two quoted phrases",
+      "date": "2026-11-23T12:27:06.000+09:00",
+      "url": "https://github.com/HyangDan2/diary/commit/324fcf652babba851009332c5c7cf234c1474112"
     },
     {
       "sha": "a7564eb500231990e36f16f9f014acc5d7d759f2",
@@ -173,15 +182,6 @@
       "message": "feat(web-hq): 06 / Latest Updates — Recently built.",
       "date": "2026-11-23T11:47:17.000+09:00",
       "url": "https://github.com/HyangDan2/HyangDan2.github.io/commit/a7564eb500231990e36f16f9f014acc5d7d759f2"
-    },
-    {
-      "sha": "40f41b91c3b8dd8e96727771cff7084d00ade703",
-      "short": "40f41b9",
-      "repo": "diary",
-      "repo_full": "HyangDan2/diary",
-      "message": "chore(devlog): drop the Korean edition of the night stability pass",
-      "date": "2026-11-23T10:56:43.000+09:00",
-      "url": "https://github.com/HyangDan2/diary/commit/40f41b91c3b8dd8e96727771cff7084d00ade703"
     },
     {
       "sha": "b20b2aad476a60b1015ca506a1aa1a5a6ddc1ed3",
