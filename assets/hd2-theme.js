@@ -1,7 +1,7 @@
 /* ==========================================================================
    HD2Lab · shared Light/Dark theme (Navy & Lavender)
    --------------------------------------------------------------------------
-   One localStorage key, one floating toggle, every route.
+   One localStorage key, one switch in the site header, every route.
 
      localStorage['hd2-theme'] = 'light' | 'dark'   (default 'light')
 
@@ -9,7 +9,9 @@
    value before the first paint (no flash), links /assets/hd2-theme.css and
    loads this file with `defer`. Everything else is handled here:
 
-     · the fixed bottom-right toggle button (44px, safe-area aware)
+     · the slide switch in the header (56×30 capsule: sun, moon, sliding thumb),
+       right of the last menu item and left of the mobile menu button; a page
+       without a header slot keeps the old floating 44px round button
      · <meta name="theme-color"> kept in step with the theme
      · cross-tab sync through the `storage` event
      · window.HD2Theme.get() / .set(theme) / .toggle() for page-level controls
@@ -70,7 +72,8 @@
   function paintButton(theme) {
     if (!button) return;
     var text = label(theme);
-    button.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    var state = theme === 'dark' ? 'true' : 'false';
+    button.setAttribute(button.getAttribute('role') === 'switch' ? 'aria-checked' : 'aria-pressed', state);
     button.setAttribute('aria-label', text);
     button.setAttribute('title', text);
   }
@@ -106,7 +109,12 @@
     var el = document.createElement('button');
     el.type = 'button';
     el.id = 'hd2ThemeToggle';
-    el.className = 'hd2-theme-toggle';
+    el.className = 'hd2-theme-switch';
+
+    var thumb = document.createElement('span');
+    thumb.className = 'hd2-theme-thumb';
+    thumb.setAttribute('aria-hidden', 'true');
+    el.appendChild(thumb);
 
     var svgNs = 'http://www.w3.org/2000/svg';
     ['sun', 'moon'].forEach(function (name) {
@@ -124,7 +132,22 @@
       apply(current() === 'dark' ? 'light' : 'dark', { persist: true });
     });
 
-    document.body.appendChild(el);
+    /* The header owns the switch wherever a header slot exists; the slot is
+       marked explicitly or is the actions group that holds the menu button. */
+    var host =
+      document.querySelector('[data-hd2-theme-slot]') ||
+      document.querySelector('.header-actions');
+
+    if (host) {
+      el.setAttribute('role', 'switch');
+      el.className = 'hd2-theme-switch is-docked';
+      host.insertBefore(el, host.firstChild);
+    } else {
+      el.setAttribute('aria-pressed', 'false');
+      el.className = 'hd2-theme-switch is-floating';
+      document.body.appendChild(el);
+    }
+
     button = el;
     paintButton(current());
   }

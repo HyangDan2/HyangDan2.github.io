@@ -1,0 +1,107 @@
+/* ==========================================================================
+   HD2Lab · shared page share button + toast
+   The light/dark switch moved into the site header, so the bottom-right
+   corner holds share: a 48×48 solid Soft Iris (#7C5CFF) disc with a white
+   three-dot share icon and a soft glow, readable in both themes.
+   ========================================================================== */
+
+.hd2-share {
+  --hd2-share-size: 48px;
+  --hd2-share-right: max(16px, env(safe-area-inset-right, 0px) + 16px);
+  --hd2-share-bottom: max(18px, env(safe-area-inset-bottom, 0px) + 18px);
+  --hd2-share-z: 60;
+
+  position: fixed;
+  z-index: var(--hd2-share-z);
+  right: var(--hd2-share-right);
+  bottom: var(--hd2-share-bottom);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hd2-share-size);
+  height: var(--hd2-share-size);
+  margin: 0;
+  padding: 0;
+
+  border: 0;
+  border-radius: 999px;
+  background: var(--hd2-share-bg, #7C5CFF);
+  color: var(--hd2-share-fg, #FFFFFF);
+  box-shadow: var(--hd2-share-shadow,
+    0 10px 24px rgba(124, 92, 255, 0.38),
+    0 2px 6px rgba(29, 25, 43, 0.18));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hd2-share:hover {
+  background: var(--hd2-share-hover-bg, #8B6CE8);
+  box-shadow: var(--hd2-share-shadow-hover,
+    0 14px 30px rgba(124, 92, 255, 0.46),
+    0 2px 6px rgba(29, 25, 43, 0.2));
+}
+
+.hd2-share:active {
+  transform: scale(0.94);
+}
+
+.hd2-share:focus-visible {
+  outline: 2px solid #A78BFA;
+  outline-offset: 3px;
+}
+
+.hd2-share svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* a dark pill that sits left of the button, level with its centre */
+.hd2-share-toast {
+  position: fixed;
+  z-index: 61;
+  right: max(76px, env(safe-area-inset-right, 0px) + 76px);
+  bottom: max(25px, env(safe-area-inset-bottom, 0px) + 25px);
+  max-width: min(280px, calc(100vw - 120px));
+
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: #1D192B;
+  color: #FFFFFF;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  box-shadow: 0 10px 26px rgba(29, 25, 43, 0.24);
+
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.hd2-share-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+[data-theme='dark'] .hd2-share-toast {
+  background: #241E38;
+  border: 1px solid #3B3358;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.52);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hd2-share,
+  .hd2-share:active,
+  .hd2-share-toast {
+    transition: none;
+    transform: none;
+  }
+}

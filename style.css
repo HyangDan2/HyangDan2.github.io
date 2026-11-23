@@ -49,17 +49,29 @@
 [data-theme="dark"] .skip-link { color: #0B1020; }
 [data-theme="dark"] .hero-visual img { opacity: 0.92; }
 
-/* floating Light/Dark toggle — clears the page edge and the footer bar */
-.hd2-theme-toggle {
-    --hd2-toggle-bg: var(--surface);
-    --hd2-toggle-fg: var(--text);
-    --hd2-toggle-border: var(--border);
-    --hd2-toggle-shadow: 0 10px 26px rgb(29 25 43 / 16%);
+/* header Light/Dark switch — 56×30 capsule closing the top navigation */
+.hd2-theme-switch {
+    --hd2-switch-track: var(--accent-soft);
+    --hd2-switch-border: var(--border);
+    --hd2-switch-thumb-bg: var(--accent);
+    --hd2-switch-icon: #8A839C;
 }
-[data-theme="dark"] .hd2-theme-toggle {
-    --hd2-toggle-bg: rgb(18 25 46 / 92%);
-    --hd2-toggle-border: #344472;
-    --hd2-toggle-shadow: 0 12px 30px rgb(0 0 0 / 52%);
+[data-theme="dark"] .hd2-theme-switch.is-docked {
+    --hd2-switch-track: #1A2340;
+    --hd2-switch-border: #344472;
+    --hd2-switch-thumb-bg: #A78BFA;
+    --hd2-switch-icon: #8494B6;
+}
+
+/* bottom-right share button — 48px solid Soft Iris disc, white icon */
+.hd2-share {
+    --hd2-share-bg: #7C5CFF;
+    --hd2-share-fg: #FFFFFF;
+    --hd2-share-hover-bg: #8B6CE8;
+}
+[data-theme="dark"] .hd2-share {
+    --hd2-share-shadow: 0 12px 28px rgb(124 92 255 / 52%), 0 2px 8px rgb(0 0 0 / 46%);
+    --hd2-share-shadow-hover: 0 16px 34px rgb(124 92 255 / 58%), 0 2px 8px rgb(0 0 0 / 50%);
 }
 
 * { box-sizing: border-box; }
@@ -222,7 +234,6 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outlin
 .menu-button:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
 
 body.drawer-open { overflow: hidden; }
-body.drawer-open .hd2-theme-toggle { opacity: 0; pointer-events: none; }
 .drawer-backdrop {
     position: fixed;
     inset: 0;
@@ -419,7 +430,10 @@ body.drawer-open .hd2-theme-toggle { opacity: 0; pointer-events: none; }
     .hero h1 { font-size: clamp(58px, 10vw, 86px); }
     .hero-visual { max-width: 650px; width: 100%; margin-inline: auto; padding-top: 10px; }
 }
-@media (max-width: 820px) {
+/* The tab row plus the theme switch needs ~930px on this page (its tabs are the
+   widest); below that the drawer takes over so the actions never push past the
+   header's gutter. */
+@media (max-width: 930px) {
     .header-nav { display: none; }
     .menu-button { display: inline-flex; }
 }
