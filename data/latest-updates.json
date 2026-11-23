@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-23T02:43:47Z",
+  "generated_at": "2026-11-23T03:10:46.572Z",
   "timezone": "Asia/Seoul",
   "window": {
     "start": "2026-10-27",
     "end": "2026-11-23",
     "days": 28
   },
-  "total_commits": 703,
+  "total_commits": 705,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -152,18 +152,27 @@
     },
     {
       "date": "2026-11-23",
-      "count": 34
+      "count": 36
     }
   ],
   "commits": [
     {
-      "sha": "88930181567c248ce49cc4e78a1aa999aec894e0",
-      "short": "8893018",
+      "sha": "99f7d7f552e499d7984af54ecde6b06061fd5a9c",
+      "short": "99f7d7f",
       "repo": "PKPilot0018",
       "repo_full": "HyangDan2/PKPilot0018",
-      "message": "feat(ui): resizable floating windows and aligned chart axes",
-      "date": "2026-11-23T11:10:43.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0018/commit/88930181567c248ce49cc4e78a1aa999aec894e0"
+      "message": "feat(worksheet): selection model, context menus and + column header (Stage 1)",
+      "date": "2026-11-23T12:09:19.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0018/commit/99f7d7f552e499d7984af54ecde6b06061fd5a9c"
+    },
+    {
+      "sha": "a7564eb500231990e36f16f9f014acc5d7d759f2",
+      "short": "a7564eb",
+      "repo": "HyangDan2.github.io",
+      "repo_full": "HyangDan2/HyangDan2.github.io",
+      "message": "feat(web-hq): 06 / Latest Updates — Recently built.",
+      "date": "2026-11-23T11:47:17.000+09:00",
+      "url": "https://github.com/HyangDan2/HyangDan2.github.io/commit/a7564eb500231990e36f16f9f014acc5d7d759f2"
     },
     {
       "sha": "40f41b91c3b8dd8e96727771cff7084d00ade703",
@@ -191,15 +200,6 @@
       "message": "Honour git merge --no-ff instead of silently fast-forwarding (WO-18)",
       "date": "2026-11-23T09:32:05.000+09:00",
       "url": "https://github.com/HyangDan2/PKPilot0013/commit/0fa3c10d5a10b7de4daea93f25a7cef14e1f3581"
-    },
-    {
-      "sha": "bf6ceeee598751bf12220cdf7178eb7551406e19",
-      "short": "bf6ceee",
-      "repo": "PKPilot0011",
-      "repo_full": "HyangDan2/PKPilot0011",
-      "message": "feat(topbar): a 파일 menu where 교체 stood — open a file, or reset the edit",
-      "date": "2026-11-23T09:21:51.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0011/commit/bf6ceeee598751bf12220cdf7178eb7551406e19"
     }
   ]
 }
