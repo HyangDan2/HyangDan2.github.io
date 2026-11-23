@@ -49,20 +49,6 @@
 [data-theme="dark"] .skip-link { color: #0B1020; }
 [data-theme="dark"] .hero-visual img { opacity: 0.92; }
 
-/* header Light/Dark switch — 56×30 capsule closing the top navigation */
-.hd2-theme-switch {
-    --hd2-switch-track: var(--accent-soft);
-    --hd2-switch-border: var(--border);
-    --hd2-switch-thumb-bg: var(--accent);
-    --hd2-switch-icon: #8A839C;
-}
-[data-theme="dark"] .hd2-theme-switch.is-docked {
-    --hd2-switch-track: #1A2340;
-    --hd2-switch-border: #344472;
-    --hd2-switch-thumb-bg: #A78BFA;
-    --hd2-switch-icon: #8494B6;
-}
-
 /* bottom-right share button — 48px solid Soft Iris disc, white icon */
 .hd2-share {
     --hd2-share-bg: #7C5CFF;
