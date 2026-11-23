@@ -513,3 +513,94 @@ body.drawer-open .hd2-theme-toggle { opacity: 0; pointer-events: none; }
 .drawer-sub-inner::-webkit-scrollbar { width: 6px; }
 .drawer-sub-inner::-webkit-scrollbar-track { background: transparent; }
 .drawer-sub-inner::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border); background: color-mix(in srgb, var(--accent) 32%, var(--border)); }
+
+/* ------------------------------------------------------------------
+   06 / Latest Updates — Recently built.
+   Left: a 28-day activity card (Soft Iris heat grid + totals).
+   Right: the five newest public commits, one per repository.
+   Numbers arrive from data/latest-updates.json and are refreshed in the
+   browser from the public GitHub events API (latest-updates.js); the same
+   Soft Iris / Navy & Lavender tokens paint both themes.
+   ------------------------------------------------------------------ */
+.updates { padding-block: 58px 72px; border-top: 1px solid var(--border); }
+:root { --ok-soft: #E8F8EE; --ok-text: #15803D; --ok-dot: #16A34A;
+        --heat-0: #F0EEF8; --heat-1: #DACFFF; --heat-2: #B5A1FE; --heat-3: #9378FD; --heat-4: #7C5CFC; }
+[data-theme="dark"] { --ok-soft: rgba(52, 211, 153, .14); --ok-text: #6EE7A8; --ok-dot: #34D399;
+        --heat-0: #1A2340; --heat-1: rgba(167, 139, 250, .30); --heat-2: rgba(167, 139, 250, .50);
+        --heat-3: rgba(167, 139, 250, .72); --heat-4: #A78BFA; }
+.updates-heading { margin-bottom: 28px; }
+.updates-live { color: var(--muted); font-size: 13.5px; text-decoration: none; white-space: nowrap; transition: color .18s; }
+.updates-live span { color: var(--border); }
+.updates-live:hover { color: var(--accent-text); }
+.updates-panels { transition: opacity .22s ease; display: grid; grid-template-columns: minmax(0, .52fr) minmax(0, 1fr); gap: 22px; align-items: stretch; }
+
+@keyframes updates-refresh { from { opacity: .55; } to { opacity: 1; } }
+.updates.is-updating .updates-panels { animation: updates-refresh .3s ease; }
+.updates-summary { display: flex; flex-direction: column; min-width: 0; padding: 26px 30px 24px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgb(29 25 43 / 4%); }
+[data-theme="dark"] .updates-summary,
+[data-theme="dark"] .updates-stream { box-shadow: 0 1px 2px rgb(0 0 0 / 34%); }
+.updates-badge { display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; margin: 0; padding: 6px 13px 6px 11px; border-radius: 999px; background: var(--ok-soft); color: var(--ok-text); font-size: 10.5px; font-weight: 700; letter-spacing: .09em; line-height: 1.35; text-transform: uppercase; }
+.updates-badge[hidden] { display: none; }
+.updates-badge.is-quiet { background: var(--panel-soft); color: var(--muted); }
+.updates-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--ok-dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok-dot) 16%, transparent); }
+.updates-badge.is-quiet .updates-dot { background: var(--text-secondary); box-shadow: none; }
+.updates-total { margin: 20px 0 0; color: var(--text); font-size: 34px; font-weight: 800; line-height: 1.05; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.updates-total strong { font-weight: 800; }
+.updates-repos { margin: 9px 0 0; color: var(--text-body); font-size: 15px; line-height: 1.5; }
+.updates-label { margin: 32px 0 12px; color: var(--text-secondary); font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; }
+
+.updates-heat { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.updates-cell { position: relative; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--heat-0); transition: transform .14s ease, box-shadow .14s ease; }
+.updates-cell[data-level="0"] { background: var(--heat-0); }
+.updates-cell[data-level="1"] { background: var(--heat-1); }
+.updates-cell[data-level="2"] { background: var(--heat-2); }
+.updates-cell[data-level="3"] { background: var(--heat-3); }
+.updates-cell[data-level="4"] { background: var(--heat-4); }
+.updates-cell:hover { transform: scale(1.08); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--accent); }
+.updates-tip { position: absolute; z-index: 5; left: 50%; top: -6px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font-size: 11.5px; line-height: 1.3; white-space: nowrap; box-shadow: 0 8px 20px rgb(29 25 43 / 14%); pointer-events: none; transform: translate(-50%, -100%); }
+[data-theme="dark"] .updates-tip { box-shadow: 0 10px 24px rgb(0 0 0 / 50%); }
+.updates-tip.is-start { left: 0; transform: translate(0, -100%); }
+.updates-tip.is-end { left: auto; right: 0; transform: translate(0, -100%); }
+.updates-profile { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); color: var(--accent-text); font-size: 13.5px; font-weight: 600; text-decoration: none; transition: color .18s; }
+.updates-profile:hover { color: var(--accent-hover); text-decoration: underline; text-underline-offset: 3px; }
+.updates-heat { margin-bottom: 26px; }
+
+.updates-stream { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgb(29 25 43 / 4%); overflow: hidden; }
+.updates-stream-head { margin: 0; padding: 19px 26px; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-family: var(--mono); font-size: 12.5px; line-height: 1.4; letter-spacing: .005em; }
+.updates-prompt { margin-right: 7px; color: var(--accent-text); }
+.updates-commits { flex: 1; display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.commit-row { flex: 1; min-width: 0; border-top: 1px solid var(--line-soft); }
+.commit-row:first-child { border-top: 0; }
+.commit-link { display: flex; flex-direction: column; justify-content: center; gap: 6px; height: 100%; min-width: 0; padding: 14px 26px; text-decoration: none; transition: background-color .16s; }
+.commit-link:hover { background: var(--panel-raised); }
+.commit-top { display: flex; align-items: baseline; gap: 13px; min-width: 0; }
+.commit-sha { flex: none; color: var(--accent-text); font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.commit-repo { min-width: 0; color: var(--text); font-size: 12.5px; font-weight: 700; letter-spacing: .005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.commit-time { flex: none; margin-left: auto; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.commit-msg { min-width: 0; color: var(--text-body); font-size: 13.5px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.updates-empty { display: flex; align-items: center; min-height: 76px; padding: 16px 26px; color: var(--muted); font-size: 13.5px; }
+
+@media (max-width: 900px) {
+    .updates { padding-block: 48px 56px; }
+    .updates-panels { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .updates-summary { padding: 24px 24px 22px; }
+    .updates-heat { margin-bottom: 22px; }
+    .updates-stream-head { padding: 16px 20px; }
+    .commit-link { padding: 13px 20px; }
+    .updates-empty { padding: 14px 20px; min-height: 68px; }
+}
+@media (max-width: 650px) {
+    .updates-heading { display: block; }
+    .updates-live { display: inline-block; margin-top: 14px; }
+    .updates-total { font-size: 30px; }
+    .updates-heat { gap: 6px; }
+    .updates-cell { border-radius: 5px; }
+    .commit-top { gap: 10px; }
+    /* two lines on a phone: a commit subject stays readable without a sideways scroll */
+    .commit-msg { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; overflow: hidden; font-size: 13px; line-height: 1.5; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .updates-cell, .updates-tip, .commit-link, .updates-profile, .updates-panels { transition: none; }
+    .updates.is-updating .updates-panels { animation: none; }
+    .updates-cell:hover { transform: none; }
+}
