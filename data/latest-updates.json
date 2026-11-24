@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-23T23:44:36.194Z",
+  "generated_at": "2026-11-24T02:21:24.932Z",
   "timezone": "Asia/Seoul",
   "window": {
     "start": "2026-10-28",
     "end": "2026-11-24",
     "days": 28
   },
-  "total_commits": 754,
+  "total_commits": 763,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -152,10 +152,37 @@
     },
     {
       "date": "2026-11-24",
-      "count": 26
+      "count": 35
     }
   ],
   "commits": [
+    {
+      "sha": "87728e9fe7fd6095ebe930ef77586646e092514e",
+      "short": "87728e9",
+      "repo": "PKPilot0018",
+      "repo_full": "HyangDan2/PKPilot0018",
+      "message": "test(charts): prove a re-run keeps the card's chart style",
+      "date": "2026-11-24T10:59:00.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0018/commit/87728e9fe7fd6095ebe930ef77586646e092514e"
+    },
+    {
+      "sha": "3ee756342f64e4e7aa87d2d1c81c429cb793f384",
+      "short": "3ee7563",
+      "repo": "PKPilot0008",
+      "repo_full": "HyangDan2/PKPilot0008",
+      "message": "feat: add read-only repository open modal matching Markdown editor",
+      "date": "2026-11-24T10:45:15.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0008/commit/3ee756342f64e4e7aa87d2d1c81c429cb793f384"
+    },
+    {
+      "sha": "fe1ec557686f28e0d7c40f53ae2da023e7e45935",
+      "short": "fe1ec55",
+      "repo": "HyangDan2.github.io",
+      "repo_full": "HyangDan2/HyangDan2.github.io",
+      "message": "chore(cache): bump hd2-theme.css and style.css to ?v=20261124-switch",
+      "date": "2026-11-24T08:44:09.000+09:00",
+      "url": "https://github.com/HyangDan2/HyangDan2.github.io/commit/fe1ec557686f28e0d7c40f53ae2da023e7e45935"
+    },
     {
       "sha": "f53010e061778e86f3127026ae76fa6869e4f480",
       "short": "f53010e",
@@ -173,33 +200,6 @@
       "message": "chore(cache): bump style.css to ?v=20261124-switch",
       "date": "2026-11-24T08:44:01.000+09:00",
       "url": "https://github.com/HyangDan2/GameHub/commit/65a08a914346a9bf32895b781e321b4f82fba68a"
-    },
-    {
-      "sha": "ee249142c3a4fe973029cb41766f3b8a54e03bee",
-      "short": "ee24914",
-      "repo": "HyangDan2.github.io",
-      "repo_full": "HyangDan2/HyangDan2.github.io",
-      "message": "style(theme): match the Diary switch look (58×30, white thumb)",
-      "date": "2026-11-24T08:34:05.000+09:00",
-      "url": "https://github.com/HyangDan2/HyangDan2.github.io/commit/ee249142c3a4fe973029cb41766f3b8a54e03bee"
-    },
-    {
-      "sha": "d0260653b831ac808b1c2ab066643fc0686e6cf4",
-      "short": "d026065",
-      "repo": "ApplicationHub",
-      "repo_full": "HyangDan2/ApplicationHub",
-      "message": "style(theme): match the Diary switch look (58×30, white thumb)",
-      "date": "2026-11-24T08:33:55.000+09:00",
-      "url": "https://github.com/HyangDan2/ApplicationHub/commit/d0260653b831ac808b1c2ab066643fc0686e6cf4"
-    },
-    {
-      "sha": "e509ee4cfb9d4810a0bc8e21e45c30c5fc06774e",
-      "short": "e509ee4",
-      "repo": "InformationHub",
-      "repo_full": "HyangDan2/InformationHub",
-      "message": "feat(ui): 테마 토글 해·달 슬라이드 스위치 · 공유 버튼 Soft Iris 원형 (v2)",
-      "date": "2026-11-24T08:15:51.000+09:00",
-      "url": "https://github.com/HyangDan2/InformationHub/commit/e509ee4cfb9d4810a0bc8e21e45c30c5fc06774e"
     }
   ]
 }
