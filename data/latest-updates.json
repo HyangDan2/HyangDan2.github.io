@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-24T02:21:24.932Z",
+  "generated_at": "2026-11-24T23:57:32.603Z",
   "timezone": "Asia/Seoul",
   "window": {
-    "start": "2026-10-28",
-    "end": "2026-11-24",
+    "start": "2026-10-29",
+    "end": "2026-11-25",
     "days": 28
   },
-  "total_commits": 763,
+  "total_commits": 803,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -42,10 +42,6 @@
   ],
   "truncated": false,
   "days": [
-    {
-      "date": "2026-10-28",
-      "count": 0
-    },
     {
       "date": "2026-10-29",
       "count": 0
@@ -152,18 +148,31 @@
     },
     {
       "date": "2026-11-24",
-      "count": 35
+      "count": 67
+    },
+    {
+      "date": "2026-11-25",
+      "count": 8
     }
   ],
   "commits": [
     {
-      "sha": "87728e9fe7fd6095ebe930ef77586646e092514e",
-      "short": "87728e9",
+      "sha": "91382d34797c46e600829d6b90da701c94daa0e7",
+      "short": "91382d3",
       "repo": "PKPilot0018",
       "repo_full": "HyangDan2/PKPilot0018",
-      "message": "test(charts): prove a re-run keeps the card's chart style",
-      "date": "2026-11-24T10:59:00.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0018/commit/87728e9fe7fd6095ebe930ef77586646e092514e"
+      "message": "Merge pull request #35 from HyangDan2/fix/phase3-final-stabilization",
+      "date": "2026-11-25T07:50:52.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0018/commit/91382d34797c46e600829d6b90da701c94daa0e7"
+    },
+    {
+      "sha": "3d47a50db7e88ece3ac3f9fb2d0855bb791350ae",
+      "short": "3d47a50",
+      "repo": "InformationHub",
+      "repo_full": "HyangDan2/InformationHub",
+      "message": "copy(us-markets): 11-25 리포트 M7 흐름·날짜 표기 정정 (KO·EN)",
+      "date": "2026-11-25T06:47:01.000+09:00",
+      "url": "https://github.com/HyangDan2/InformationHub/commit/3d47a50db7e88ece3ac3f9fb2d0855bb791350ae"
     },
     {
       "sha": "3ee756342f64e4e7aa87d2d1c81c429cb793f384",
@@ -191,15 +200,6 @@
       "message": "chore(cache): bump hub and profile styles to ?v=20261124-switch",
       "date": "2026-11-24T08:44:05.000+09:00",
       "url": "https://github.com/HyangDan2/TechnicalHub/commit/f53010e061778e86f3127026ae76fa6869e4f480"
-    },
-    {
-      "sha": "65a08a914346a9bf32895b781e321b4f82fba68a",
-      "short": "65a08a9",
-      "repo": "GameHub",
-      "repo_full": "HyangDan2/GameHub",
-      "message": "chore(cache): bump style.css to ?v=20261124-switch",
-      "date": "2026-11-24T08:44:01.000+09:00",
-      "url": "https://github.com/HyangDan2/GameHub/commit/65a08a914346a9bf32895b781e321b4f82fba68a"
     }
   ]
 }
