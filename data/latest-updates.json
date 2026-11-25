@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-24T23:57:32.603Z",
+  "generated_at": "2026-11-25T23:41:54.710Z",
   "timezone": "Asia/Seoul",
   "window": {
-    "start": "2026-10-29",
-    "end": "2026-11-25",
+    "start": "2026-10-30",
+    "end": "2026-11-26",
     "days": 28
   },
-  "total_commits": 803,
+  "total_commits": 806,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -42,10 +42,6 @@
   ],
   "truncated": false,
   "days": [
-    {
-      "date": "2026-10-29",
-      "count": 0
-    },
     {
       "date": "2026-10-30",
       "count": 0
@@ -152,18 +148,40 @@
     },
     {
       "date": "2026-11-25",
-      "count": 8
+      "count": 11
+    },
+    {
+      "date": "2026-11-26",
+      "count": 0
     }
   ],
   "commits": [
     {
-      "sha": "91382d34797c46e600829d6b90da701c94daa0e7",
-      "short": "91382d3",
+      "sha": "f2e4d6df58d1d1464556142398ccc63b995f6e0e",
+      "short": "f2e4d6d",
+      "repo": "diary",
+      "repo_full": "HyangDan2/diary",
+      "message": "post: Sigrún — from chart engine to v1.0.0-rc.1",
+      "date": "2026-11-25T22:28:13.000+09:00",
+      "url": "https://github.com/HyangDan2/diary/commit/f2e4d6df58d1d1464556142398ccc63b995f6e0e"
+    },
+    {
+      "sha": "42d5df179854c192a585d0030ee4e2626ab42372",
+      "short": "42d5df1",
       "repo": "PKPilot0018",
       "repo_full": "HyangDan2/PKPilot0018",
-      "message": "Merge pull request #35 from HyangDan2/fix/phase3-final-stabilization",
-      "date": "2026-11-25T07:50:52.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0018/commit/91382d34797c46e600829d6b90da701c94daa0e7"
+      "message": "docs: clarify independent development and analytical limitations",
+      "date": "2026-11-25T22:07:56.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0018/commit/42d5df179854c192a585d0030ee4e2626ab42372"
+    },
+    {
+      "sha": "0a48ac1174add1eba4247d3cbacfcd3c1fe36c61",
+      "short": "0a48ac1",
+      "repo": "ADOP0001",
+      "repo_full": "HyangDan2/ADOP0001",
+      "message": "Merge pull request #11 from HyangDan2/feature/phase5-engine-foundation",
+      "date": "2026-11-25T12:33:24.000+09:00",
+      "url": "https://github.com/HyangDan2/ADOP0001/commit/0a48ac1174add1eba4247d3cbacfcd3c1fe36c61"
     },
     {
       "sha": "3d47a50db7e88ece3ac3f9fb2d0855bb791350ae",
@@ -182,24 +200,6 @@
       "message": "feat: add read-only repository open modal matching Markdown editor",
       "date": "2026-11-24T10:45:15.000+09:00",
       "url": "https://github.com/HyangDan2/PKPilot0008/commit/3ee756342f64e4e7aa87d2d1c81c429cb793f384"
-    },
-    {
-      "sha": "fe1ec557686f28e0d7c40f53ae2da023e7e45935",
-      "short": "fe1ec55",
-      "repo": "HyangDan2.github.io",
-      "repo_full": "HyangDan2/HyangDan2.github.io",
-      "message": "chore(cache): bump hd2-theme.css and style.css to ?v=20261124-switch",
-      "date": "2026-11-24T08:44:09.000+09:00",
-      "url": "https://github.com/HyangDan2/HyangDan2.github.io/commit/fe1ec557686f28e0d7c40f53ae2da023e7e45935"
-    },
-    {
-      "sha": "f53010e061778e86f3127026ae76fa6869e4f480",
-      "short": "f53010e",
-      "repo": "TechnicalHub",
-      "repo_full": "HyangDan2/TechnicalHub",
-      "message": "chore(cache): bump hub and profile styles to ?v=20261124-switch",
-      "date": "2026-11-24T08:44:05.000+09:00",
-      "url": "https://github.com/HyangDan2/TechnicalHub/commit/f53010e061778e86f3127026ae76fa6869e4f480"
     }
   ]
 }
