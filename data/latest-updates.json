@@ -1,13 +1,13 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-25T23:41:54.710Z",
+  "generated_at": "2026-11-26T23:55:18.069Z",
   "timezone": "Asia/Seoul",
   "window": {
-    "start": "2026-10-30",
-    "end": "2026-11-26",
+    "start": "2026-10-31",
+    "end": "2026-11-27",
     "days": 28
   },
-  "total_commits": 806,
+  "total_commits": 826,
   "active_repos": 29,
   "repositories": [
     "HyangDan2/ADOP0001",
@@ -42,10 +42,6 @@
   ],
   "truncated": false,
   "days": [
-    {
-      "date": "2026-10-30",
-      "count": 0
-    },
     {
       "date": "2026-10-31",
       "count": 0
@@ -148,58 +144,62 @@
     },
     {
       "date": "2026-11-25",
-      "count": 11
+      "count": 16
     },
     {
       "date": "2026-11-26",
-      "count": 0
+      "count": 13
+    },
+    {
+      "date": "2026-11-27",
+      "count": 2
     }
   ],
   "commits": [
     {
-      "sha": "f2e4d6df58d1d1464556142398ccc63b995f6e0e",
-      "short": "f2e4d6d",
-      "repo": "diary",
-      "repo_full": "HyangDan2/diary",
-      "message": "post: Sigrún — from chart engine to v1.0.0-rc.1",
-      "date": "2026-11-25T22:28:13.000+09:00",
-      "url": "https://github.com/HyangDan2/diary/commit/f2e4d6df58d1d1464556142398ccc63b995f6e0e"
-    },
-    {
-      "sha": "42d5df179854c192a585d0030ee4e2626ab42372",
-      "short": "42d5df1",
-      "repo": "PKPilot0018",
-      "repo_full": "HyangDan2/PKPilot0018",
-      "message": "docs: clarify independent development and analytical limitations",
-      "date": "2026-11-25T22:07:56.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0018/commit/42d5df179854c192a585d0030ee4e2626ab42372"
-    },
-    {
-      "sha": "0a48ac1174add1eba4247d3cbacfcd3c1fe36c61",
-      "short": "0a48ac1",
+      "sha": "04dd2fc0808e199d5baa09b8b290a5dee25dd4a4",
+      "short": "04dd2fc",
       "repo": "ADOP0001",
       "repo_full": "HyangDan2/ADOP0001",
-      "message": "Merge pull request #11 from HyangDan2/feature/phase5-engine-foundation",
-      "date": "2026-11-25T12:33:24.000+09:00",
-      "url": "https://github.com/HyangDan2/ADOP0001/commit/0a48ac1174add1eba4247d3cbacfcd3c1fe36c61"
+      "message": "Merge pull request #12 from HyangDan2/feature/phase5c-hybrid-gateway",
+      "date": "2026-11-27T08:30:10.000+09:00",
+      "url": "https://github.com/HyangDan2/ADOP0001/commit/04dd2fc0808e199d5baa09b8b290a5dee25dd4a4"
     },
     {
-      "sha": "3d47a50db7e88ece3ac3f9fb2d0855bb791350ae",
-      "short": "3d47a50",
-      "repo": "InformationHub",
-      "repo_full": "HyangDan2/InformationHub",
-      "message": "copy(us-markets): 11-25 리포트 M7 흐름·날짜 표기 정정 (KO·EN)",
-      "date": "2026-11-25T06:47:01.000+09:00",
-      "url": "https://github.com/HyangDan2/InformationHub/commit/3d47a50db7e88ece3ac3f9fb2d0855bb791350ae"
+      "sha": "6aa43371f484516fbfffbdc0c2c5c43218fada5a",
+      "short": "6aa4337",
+      "repo": "AGPilot0005",
+      "repo_full": "HyangDan2/AGPilot0005",
+      "message": "Merge pull request #6 from HyangDan2/feature/runtime-r1-corrective",
+      "date": "2026-11-27T01:41:46.000+09:00",
+      "url": "https://github.com/HyangDan2/AGPilot0005/commit/6aa43371f484516fbfffbdc0c2c5c43218fada5a"
     },
     {
-      "sha": "3ee756342f64e4e7aa87d2d1c81c429cb793f384",
-      "short": "3ee7563",
+      "sha": "34725fd7c073e01da5e41f4fe488da2e6042ceac",
+      "short": "34725fd",
       "repo": "PKPilot0008",
       "repo_full": "HyangDan2/PKPilot0008",
-      "message": "feat: add read-only repository open modal matching Markdown editor",
-      "date": "2026-11-24T10:45:15.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0008/commit/3ee756342f64e4e7aa87d2d1c81c429cb793f384"
+      "message": "fix: package nested clickable image destinations",
+      "date": "2026-11-26T21:40:40.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0008/commit/34725fd7c073e01da5e41f4fe488da2e6042ceac"
+    },
+    {
+      "sha": "b3427fd78709b2dbeeab0b5b16d4b4b1f1c6354c",
+      "short": "b3427fd",
+      "repo": "PKPilot0007",
+      "repo_full": "HyangDan2/PKPilot0007",
+      "message": "fix: package nested clickable image destinations",
+      "date": "2026-11-26T21:40:36.000+09:00",
+      "url": "https://github.com/HyangDan2/PKPilot0007/commit/b3427fd78709b2dbeeab0b5b16d4b4b1f1c6354c"
+    },
+    {
+      "sha": "c822316c5974482ea3f15ef02ee71ac4646ae938",
+      "short": "c822316",
+      "repo": "InformationHub",
+      "repo_full": "HyangDan2/InformationHub",
+      "message": "copy(chinaai): 11-26 스포트라이트 3사 3분기 순이익 합계 표기 정정 (KO)",
+      "date": "2026-11-26T19:21:22.000+09:00",
+      "url": "https://github.com/HyangDan2/InformationHub/commit/c822316c5974482ea3f15ef02ee71ac4646ae938"
     }
   ]
 }
