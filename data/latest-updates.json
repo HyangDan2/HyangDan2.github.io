@@ -1,14 +1,14 @@
 {
   "user": "HyangDan2",
-  "generated_at": "2026-11-26T23:55:18.069Z",
+  "generated_at": "2026-11-27T23:33:38.272Z",
   "timezone": "Asia/Seoul",
   "window": {
-    "start": "2026-10-31",
-    "end": "2026-11-27",
+    "start": "2026-11-01",
+    "end": "2026-11-28",
     "days": 28
   },
-  "total_commits": 826,
-  "active_repos": 29,
+  "total_commits": 832,
+  "active_repos": 30,
   "repositories": [
     "HyangDan2/ADOP0001",
     "HyangDan2/AGPilot0001",
@@ -36,16 +36,13 @@
     "HyangDan2/PKPilot0015",
     "HyangDan2/PKPilot0018",
     "HyangDan2/PKPilot0019",
+    "HyangDan2/QDPilot0001",
     "HyangDan2/TechnicalHub",
     "HyangDan2/WAPilot0001",
     "HyangDan2/diary"
   ],
   "truncated": false,
   "days": [
-    {
-      "date": "2026-10-31",
-      "count": 0
-    },
     {
       "date": "2026-11-01",
       "count": 0
@@ -152,10 +149,32 @@
     },
     {
       "date": "2026-11-27",
-      "count": 2
+      "count": 5
+    },
+    {
+      "date": "2026-11-28",
+      "count": 3
     }
   ],
   "commits": [
+    {
+      "sha": "b70773cdfc2fa3b8df87b3ca435f116ca249911e",
+      "short": "b70773c",
+      "repo": "InformationHub",
+      "repo_full": "HyangDan2/InformationHub",
+      "message": "copy(us-markets): 11-28 SOX·마이크론 장중 표기와 앤트로픽 상장 경과일 정정 (KO·EN)",
+      "date": "2026-11-28T06:39:52.000+09:00",
+      "url": "https://github.com/HyangDan2/InformationHub/commit/b70773cdfc2fa3b8df87b3ca435f116ca249911e"
+    },
+    {
+      "sha": "f1a9f663fbd5929e6656f2d5fe6bce35af58b05c",
+      "short": "f1a9f66",
+      "repo": "QDPilot0001",
+      "repo_full": "HyangDan2/QDPilot0001",
+      "message": "docs(r3): establish development twin work order and integration gates",
+      "date": "2026-11-27T22:16:54.000+09:00",
+      "url": "https://github.com/HyangDan2/QDPilot0001/commit/f1a9f663fbd5929e6656f2d5fe6bce35af58b05c"
+    },
     {
       "sha": "04dd2fc0808e199d5baa09b8b290a5dee25dd4a4",
       "short": "04dd2fc",
@@ -182,24 +201,6 @@
       "message": "fix: package nested clickable image destinations",
       "date": "2026-11-26T21:40:40.000+09:00",
       "url": "https://github.com/HyangDan2/PKPilot0008/commit/34725fd7c073e01da5e41f4fe488da2e6042ceac"
-    },
-    {
-      "sha": "b3427fd78709b2dbeeab0b5b16d4b4b1f1c6354c",
-      "short": "b3427fd",
-      "repo": "PKPilot0007",
-      "repo_full": "HyangDan2/PKPilot0007",
-      "message": "fix: package nested clickable image destinations",
-      "date": "2026-11-26T21:40:36.000+09:00",
-      "url": "https://github.com/HyangDan2/PKPilot0007/commit/b3427fd78709b2dbeeab0b5b16d4b4b1f1c6354c"
-    },
-    {
-      "sha": "c822316c5974482ea3f15ef02ee71ac4646ae938",
-      "short": "c822316",
-      "repo": "InformationHub",
-      "repo_full": "HyangDan2/InformationHub",
-      "message": "copy(chinaai): 11-26 스포트라이트 3사 3분기 순이익 합계 표기 정정 (KO)",
-      "date": "2026-11-26T19:21:22.000+09:00",
-      "url": "https://github.com/HyangDan2/InformationHub/commit/c822316c5974482ea3f15ef02ee71ac4646ae938"
     }
   ]
 }
